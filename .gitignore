@@ -1,0 +1,49 @@
+# Environment variables (보안)
+.env
+.env.local
+.env.*.local
+
+# Docker volumes
+postgres_data/
+redis_data/
+mongodb_data/
+chromadb_data/
+
+# Logs
+*.log
+logs/
+backend_logs/
+ai_logs/
+nginx_logs/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+venv/
+env/
+
+# Java
+*.class
+target/
+build/
+.gradle/
+
+# Temporary
+tmp/
+temp/
+*.tmp
+
+*.pem
