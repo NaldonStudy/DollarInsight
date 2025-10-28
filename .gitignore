@@ -1,0 +1,57 @@
+# Environment variables (보안)
+.env
+.env.local
+.env.*.local
+.env
+backend/.env
+ai-service/.env
+
+# 템플릿은 커밋 가능
+!.env.template
+!backend/.env.template
+!ai-service/.env.template
+
+# Docker volumes
+postgres_data/
+redis_data/
+mongodb_data/
+chromadb_data/
+
+# Logs
+*.log
+logs/
+backend_logs/
+ai_logs/
+nginx_logs/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+venv/
+env/
+
+# Java
+*.class
+target/
+build/
+.gradle/
+
+# Temporary
+tmp/
+temp/
+*.tmp
+
+*.pem
