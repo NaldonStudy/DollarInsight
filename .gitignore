@@ -2,6 +2,14 @@
 .env
 .env.local
 .env.*.local
+.env
+backend/.env
+ai-service/.env
+
+# 템플릿은 커밋 가능
+!.env.template
+!backend/.env.template
+!ai-service/.env.template
 
 # Docker volumes
 postgres_data/

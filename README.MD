@@ -107,25 +107,6 @@ S13P31B205/
 
 ---
 
-## 🔄 주요 변경사항 (2025-10-27)
-
-### ✅ ElasticSearch → MongoDB 전환 완료
-
-**변경 이유:**
-- 메모리 최적화 (ElasticSearch 2GB+ → MongoDB ~500MB)
-- 뉴스 데이터는 검색보다 저장/조회가 주 목적
-- 개발 복잡도 감소
-
-**변경 사항:**
-- ✅ `docker-compose.yml` MongoDB 서비스 추가
-- ✅ Backend: Spring Data MongoDB 설정
-- ✅ AI Service: pymongo & motor 설정
-- ✅ 환경 변수 업데이트
-
-**자세한 내용:** [MONGODB_MIGRATION_GUIDE.md](MONGODB_MIGRATION_GUIDE.md) 참조
-
----
-
 ## 🌐 서비스 포트
 
 | 서비스 | 포트 | 용도 |
@@ -159,14 +140,6 @@ S13P31B205/
 4. **밈주식러** - 커뮤니티 트렌드
 5. **리스크관리자** - 위험 평가
 6. **산업분석가** - 산업 트렌드
-
----
-
-## 📚 문서
-
-- [MongoDB 마이그레이션 가이드](MONGODB_MIGRATION_GUIDE.md)
-- [Backend README](backend/README.md)
-- [AI Service README](ai-service/README.md)
 
 ---
 
