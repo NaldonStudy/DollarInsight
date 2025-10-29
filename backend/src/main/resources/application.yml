@@ -1,31 +1,79 @@
+server:
+  port: ${SERVER_PORT:8080}
+
 spring:
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:local}
+
   datasource:
-    url: jdbc:postgresql://localhost:5432/dinsight
-    username: dinsight
-    password: secret
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+    driver-class-name: ${SPRING_DATASOURCE_DRIVER_CLASS_NAME:org.postgresql.Driver}
 
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:validate}
     open-in-view: false
+    show-sql: ${SPRING_JPA_SHOW_SQL:false}
     properties:
-      hibernate.jdbc.time_zone: UTC
+      hibernate:
+        jdbc:
+          time_zone: UTC
+        dialect: ${SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT:org.hibernate.dialect.PostgreSQLDialect}
+        format_sql: ${SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL:true}
 
   flyway:
+    enabled: true
     baseline-on-migrate: true
+    locations: classpath:db/migration
 
   data:
     mongodb:
-      uri: mongodb://dinsight:secret@localhost:27017/dinsight?authSource=admin
+      host: ${SPRING_DATA_MONGODB_HOST}
+      port: ${SPRING_DATA_MONGODB_PORT:27017}
+      database: ${SPRING_DATA_MONGODB_DATABASE}
+      username: ${SPRING_DATA_MONGODB_USERNAME}
+      password: ${SPRING_DATA_MONGODB_PASSWORD}
+      authentication-database: ${SPRING_DATA_MONGODB_AUTHENTICATION_DATABASE:admin}
     redis:
-      host: localhost
-      port: 6379
-      # password: yourPassword   # 쓰면 여기에
-      timeout: 2s                # 연결/응답 타임아웃
-      client-type: lettuce       # 기본값이지만 명시해도 OK
-      # ssl.enabled: true        # TLS 쓰면 켜기
+      host: ${SPRING_REDIS_HOST}
+      port: ${SPRING_REDIS_PORT:6379}
+      password: ${SPRING_REDIS_PASSWORD:}
+      timeout: 2s
+      client-type: lettuce
 
   cache:
     type: redis
     redis:
       time-to-live: 5m
+
+# Actuator 헬스체크 설정
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: when-authorized
+      probes:
+        enabled: true
+  health:
+    redis:
+      enabled: true
+    mongo:
+      enabled: true
+    db:
+      enabled: true
+  server:
+    port: ${MANAGEMENT_PORT:8080}
+
+# 로깅 설정
+logging:
+  level:
+    root: ${LOGGING_LEVEL_ROOT:INFO}
+    com.ssafy.b205: ${LOGGING_LEVEL_COM_DOLLARINSIGHT:DEBUG}
+  file:
+    path: ${LOGGING_FILE_PATH:./logs}

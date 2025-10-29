@@ -15,7 +15,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
       # - ./init-scripts/postgres:/docker-entrypoint-initdb.d  # 초기화 스크립트 있으면 활성화
     ports:
-      - "5432:5432"
+      - "15432:5432"
     networks:
       - dollar-insight-network
     healthcheck:
@@ -33,7 +33,7 @@ services:
     volumes:
       - redis_data:/data
     ports:
-      - "6379:6379"
+      - "16379:6379"
     networks:
       - dollar-insight-network
     healthcheck:
@@ -55,7 +55,7 @@ services:
       - mongodb_data:/data/db
       # - ./init-scripts/mongodb:/docker-entrypoint-initdb.d  # 초기화 스크립트 있으면 활성화
     ports:
-      - "27017:27017"
+      - "27018:27017"
     networks:
       - dollar-insight-network
     healthcheck:
@@ -74,9 +74,9 @@ services:
       - CHROMA_SERVER_HTTP_PORT=8001
       - ANONYMIZED_TELEMETRY=False
     volumes:
-      - chromadb_data:/chroma/chroma
+      - chromadb_data:/data
     ports:
-      - "8001:8001"
+      - "18001:8001"
     networks:
       - dollar-insight-network
     healthcheck:
@@ -85,6 +85,87 @@ services:
       timeout: 10s
       retries: 3
 
+  # Jenkins (CI/CD Server)
+  # jenkins:
+  #   image: jenkins/jenkins:lts
+  #   container_name: dollar-insight-jenkins
+  #   restart: unless-stopped
+  #   user: root
+  #   environment:
+  #     - JENKINS_OPTS=--prefix=/jenkins
+  #     - JAVA_OPTS=-Djenkins.install.runSetupWizard=true
+  #   volumes:
+  #     - jenkins_data:/var/jenkins_home
+  #     - /var/run/docker.sock:/var/run/docker.sock
+  #   ports:
+  #     - "18080:8080"
+  #     - "50000:50000"
+  #   networks:
+  #     - dollar-insight-network
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "curl -f http://localhost:8080/login || exit 1"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 5
+  #     start_period: 90s
+
+
+  # Backend Service (Spring Boot)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: dollar-insight-backend:latest
+    container_name: dollar-insight-backend
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    ports:
+      - "8090:8080"  # 호스트:컨테이너 (Jenkins와 포트 충돌 방지)
+    networks:
+      - dollar-insight-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # AI Service (Python/FastAPI)
+  ai-service:
+    build:
+      context: ./ai-service
+      dockerfile: Dockerfile
+    image: dollar-insight-ai-service:latest
+    container_name: dollar-insight-ai-service
+    restart: unless-stopped
+    env_file:
+      - ./ai-service/.env
+    ports:
+      - "18000:8000"  # FastAPI 기본 포트
+      # - "50052:50051"  # gRPC 포트 (필요시 활성화)
+    networks:
+      - dollar-insight-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      chromadb:
+        condition: service_healthy
 
 networks:
   dollar-insight-network:
@@ -102,3 +183,12 @@ volumes:
     driver: local
   chromadb_data:
     driver: local
+  # jenkins_data:
+  #   driver: local
+  backend_logs:
+    driver: local
+  ai_service_logs:
+    driver: local
+  ai_service_models:
+    driver: local
+
