@@ -1,18 +1,23 @@
 version: '3.8'
 
+networks:
+  default:
+    external: true
+    name: bridge  # Jenkins 컨테이너가 사용하는 기본 bridge 네트워크
+
 services:
   # PostgreSQL Database (테스트용)
   test-postgres:
     image: postgres:15-alpine
     container_name: test-postgres
-    network_mode: "host"
     environment:
       POSTGRES_DB: testdb
       POSTGRES_USER: test
       POSTGRES_PASSWORD: test
-      PGPORT: 5433
+    ports:
+      - "5433:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U test -p 5433"]
+      test: ["CMD-SHELL", "pg_isready -U test"]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -21,10 +26,11 @@ services:
   test-redis:
     image: redis:7-alpine
     container_name: test-redis
-    network_mode: "host"
-    command: redis-server --port 6380 --requirepass test
+    command: redis-server --requirepass test
+    ports:
+      - "6380:6379"
     healthcheck:
-      test: ["CMD", "redis-cli", "-p", "6380", "ping"]
+      test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -33,14 +39,14 @@ services:
   test-mongodb:
     image: mongo:7
     container_name: test-mongodb
-    network_mode: "host"
     environment:
       MONGO_INITDB_ROOT_USERNAME: test
       MONGO_INITDB_ROOT_PASSWORD: test
       MONGO_INITDB_DATABASE: testdb
-    command: mongod --port 27018
+    ports:
+      - "27018:27017"
     healthcheck:
-      test: ["CMD", "mongosh", "--port", "27018", "--eval", "db.adminCommand('ping')"]
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -49,7 +55,8 @@ services:
   test-chromadb:
     image: chromadb/chroma:latest
     container_name: test-chromadb
-    network_mode: "host"
-    command: run --host 0.0.0.0 --port 9001 --path /data
+    command: run --host 0.0.0.0 --port 8000 --path /data
     environment:
       - ANONYMIZED_TELEMETRY=False
+    ports:
+      - "9001:8000"
