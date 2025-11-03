@@ -69,22 +69,86 @@ services:
     image: chromadb/chroma:latest
     container_name: dollar-insight-chromadb
     restart: unless-stopped
+    command: run --host 0.0.0.0 --port 9000 --path /data
     environment:
-      - CHROMA_SERVER_HOST=0.0.0.0
-      - CHROMA_SERVER_HTTP_PORT=8001
       - ANONYMIZED_TELEMETRY=False
     volumes:
-      - chromadb_data:/chroma/chroma
+      - chromadb_data:/data
     ports:
-      - "8001:8001"
+      - "9000:9000"
+    networks:
+      - dollar-insight-network
+
+  # Backend Service (Spring Boot) - Registry에서 이미지 가져오기
+  backend:
+    image: registry.lab.ssafy.com/s13-final/s13p31b205/backend:latest
+    container_name: dollar-insight-backend
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    ports:
+      - "9090:9090"
     networks:
       - dollar-insight-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8001/api/v1/heartbeat"]
+      test: ["CMD", "curl", "-f", "http://localhost:9090/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # AI Service (Python/FastAPI) - Registry에서 이미지 가져오기
+  ai-service:
+    image: registry.lab.ssafy.com/s13-final/s13p31b205/ai-service:latest
+    container_name: dollar-insight-ai-service
+    restart: unless-stopped
+    env_file:
+      - ./ai-service/.env
+    ports:
+      - "8000:8000"  # FastAPI 기본 포트
+      # - "50052:50051"  # gRPC 포트 (필요시 활성화)
+    networks:
+      - dollar-insight-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # Nginx (리버스 프록시) - Registry에서 이미지 가져오기
+  nginx:
+    image: registry.lab.ssafy.com/s13-final/s13p31b205/nginx:latest
+    container_name: dollar-insight-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      # - "443:443"  # HTTPS 나중에 활성화
+    networks:
+      - dollar-insight-network
+    depends_on:
+      - backend
+      - ai-service
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
 
 networks:
   dollar-insight-network:
@@ -101,4 +165,10 @@ volumes:
   mongodb_data:
     driver: local
   chromadb_data:
+    driver: local
+  backend_logs:
+    driver: local
+  ai_service_logs:
+    driver: local
+  ai_service_models:
     driver: local
