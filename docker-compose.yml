@@ -81,31 +81,6 @@ services:
     networks:
       - dollar-insight-network
 
-  # Jenkins (CI/CD Server)
-  # jenkins:
-  #   image: jenkins/jenkins:lts
-  #   container_name: dollar-insight-jenkins
-  #   restart: unless-stopped
-  #   user: root
-  #   environment:
-  #     - JENKINS_OPTS=--prefix=/jenkins
-  #     - JAVA_OPTS=-Djenkins.install.runSetupWizard=true
-  #   volumes:
-  #     - jenkins_data:/var/jenkins_home
-  #     - /var/run/docker.sock:/var/run/docker.sock
-  #   ports:
-  #     - "8080:8080"
-  #     - "50000:50000"
-  #   networks:
-  #     - dollar-insight-network
-  #   healthcheck:
-  #     test: ["CMD-SHELL", "curl -f http://localhost:8080/login || exit 1"]
-  #     interval: 30s
-  #     timeout: 10s
-  #     retries: 5
-  #     start_period: 90s
-
-
   # Backend Service (Spring Boot)
   backend:
     build:
@@ -117,11 +92,11 @@ services:
     env_file:
       - ./backend/.env
     ports:
-      - "8080:8080"  # 호스트:컨테이너 (Jenkins와 포트 충돌 방지)
+      - "9090:9090"
     networks:
       - dollar-insight-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:9090/actuator/health"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -203,8 +178,6 @@ volumes:
     driver: local
   chromadb_data:
     driver: local
-  # jenkins_data:
-  #   driver: local
   backend_logs:
     driver: local
   ai_service_logs:
