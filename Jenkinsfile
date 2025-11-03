@@ -30,14 +30,75 @@ pipeline {
             }
         }
         
-        stage('Backend - Test') {
+        stage('Run Tests') {
             steps {
-                echo '=== Backend Unit Test ==='
-                dir('backend') {
-                    sh '''
-                        chmod +x gradlew
-                        ./gradlew clean test --no-daemon
-                    '''
+                echo '=== Backend & AI Service Tests ==='
+                script {
+                    try {
+                        // 테스트용 임시 DB 컨테이너들 실행
+                        sh '''
+                            # PostgreSQL
+                            docker run -d \
+                                --name test-postgres \
+                                -e POSTGRES_USER=test \
+                                -e POSTGRES_PASSWORD=test \
+                                -e POSTGRES_DB=testdb \
+                                -p 5433:5432 \
+                                postgres:15-alpine
+                            
+                            # Redis
+                            docker run -d \
+                                --name test-redis \
+                                -p 6380:6379 \
+                                redis:7-alpine redis-server --requirepass test
+                            
+                            # MongoDB
+                            docker run -d \
+                                --name test-mongodb \
+                                -e MONGO_INITDB_ROOT_USERNAME=test \
+                                -e MONGO_INITDB_ROOT_PASSWORD=test \
+                                -p 27018:27017 \
+                                mongo:7
+                            
+                            # ChromaDB (AI Service용)
+                            docker run -d \
+                                --name test-chromadb \
+                                -e ANONYMIZED_TELEMETRY=False \
+                                -p 9001:8000 \
+                                chromadb/chroma:latest
+                            
+                            # DB 초기화 대기
+                            sleep 15
+                        '''
+                        
+                        // Backend 테스트 실행
+                        dir('backend') {
+                            sh '''
+                                chmod +x gradlew
+                                ./gradlew clean test --no-daemon \
+                                    -Dspring.datasource.url=jdbc:postgresql://localhost:5433/testdb \
+                                    -Dspring.datasource.username=test \
+                                    -Dspring.datasource.password=test \
+                                    -Dspring.data.redis.host=localhost \
+                                    -Dspring.data.redis.port=6380 \
+                                    -Dspring.data.redis.password=test \
+                                    -Dspring.data.mongodb.uri=mongodb://test:test@localhost:27018/testdb?authSource=admin
+                            '''
+                        }
+                        
+                        // AI Service 테스트 실행
+                        dir('ai-service') {
+                            sh 'python3 -m py_compile main.py'
+                        }
+                    } finally {
+                        // 테스트용 컨테이너 정리
+                        sh '''
+                            docker rm -f test-postgres || true
+                            docker rm -f test-redis || true
+                            docker rm -f test-mongodb || true
+                            docker rm -f test-chromadb || true
+                        '''
+                    }
                 }
             }
             post {
@@ -54,17 +115,6 @@ pipeline {
                     sh '''
                         ./gradlew clean build -x test --no-daemon
                         ls -lh build/libs/
-                    '''
-                }
-            }
-        }
-        
-        stage('AI Service - Test') {
-            steps {
-                echo '=== AI Service Syntax Check ==='
-                dir('ai-service') {
-                    sh '''
-                        python3 -m py_compile main.py
                     '''
                 }
             }
