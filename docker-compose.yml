@@ -69,58 +69,29 @@ services:
     image: chromadb/chroma:latest
     container_name: dollar-insight-chromadb
     restart: unless-stopped
+    command: run --host 0.0.0.0 --port 9000 --path /data
     environment:
-      - CHROMA_SERVER_HOST=0.0.0.0
-      - CHROMA_SERVER_HTTP_PORT=8001
       - ANONYMIZED_TELEMETRY=False
     volumes:
       - chromadb_data:/data
     ports:
-      - "8001:8001"
+      - "9000:9000"
     networks:
       - dollar-insight-network
 
-  # Jenkins (CI/CD Server)
-  # jenkins:
-  #   image: jenkins/jenkins:lts
-  #   container_name: dollar-insight-jenkins
-  #   restart: unless-stopped
-  #   user: root
-  #   environment:
-  #     - JENKINS_OPTS=--prefix=/jenkins
-  #     - JAVA_OPTS=-Djenkins.install.runSetupWizard=true
-  #   volumes:
-  #     - jenkins_data:/var/jenkins_home
-  #     - /var/run/docker.sock:/var/run/docker.sock
-  #   ports:
-  #     - "8080:8080"
-  #     - "50000:50000"
-  #   networks:
-  #     - dollar-insight-network
-  #   healthcheck:
-  #     test: ["CMD-SHELL", "curl -f http://localhost:8080/login || exit 1"]
-  #     interval: 30s
-  #     timeout: 10s
-  #     retries: 5
-  #     start_period: 90s
-
-
-  # Backend Service (Spring Boot)
+  # Backend Service (Spring Boot) - Registry에서 이미지 가져오기
   backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    image: dollar-insight-backend:latest
+    image: registry.lab.ssafy.com/s13-final/s13p31b205/backend:latest
     container_name: dollar-insight-backend
     restart: unless-stopped
     env_file:
       - ./backend/.env
     ports:
-      - "8080:8080"  # 호스트:컨테이너 (Jenkins와 포트 충돌 방지)
+      - "9090:9090"
     networks:
       - dollar-insight-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:9090/actuator/health"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -133,12 +104,9 @@ services:
       redis:
         condition: service_healthy
 
-  # AI Service (Python/FastAPI)
+  # AI Service (Python/FastAPI) - Registry에서 이미지 가져오기
   ai-service:
-    build:
-      context: ./ai-service
-      dockerfile: Dockerfile
-    image: dollar-insight-ai-service:latest
+    image: registry.lab.ssafy.com/s13-final/s13p31b205/ai-service:latest
     container_name: dollar-insight-ai-service
     restart: unless-stopped
     env_file:
@@ -160,6 +128,28 @@ services:
       redis:
         condition: service_healthy
 
+  # Nginx (리버스 프록시) - Registry에서 이미지 가져오기
+  nginx:
+    image: registry.lab.ssafy.com/s13-final/s13p31b205/nginx:latest
+    container_name: dollar-insight-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      # - "443:443"  # HTTPS 나중에 활성화
+    networks:
+      - dollar-insight-network
+    depends_on:
+      - backend
+      - ai-service
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+
 networks:
   dollar-insight-network:
     driver: bridge
@@ -176,12 +166,9 @@ volumes:
     driver: local
   chromadb_data:
     driver: local
-  # jenkins_data:
-  #   driver: local
   backend_logs:
     driver: local
   ai_service_logs:
     driver: local
   ai_service_models:
     driver: local
-
