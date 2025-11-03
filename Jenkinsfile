@@ -86,9 +86,9 @@ pipeline {
         stage('Deploy to EC2') {
             steps {
                 echo '=== Deploy to Production Server ==='
-                sshagent([SSH_CREDENTIAL]) {
+                withCredentials([sshUserPrivateKey(credentialsId: SSH_CREDENTIAL, keyFileVariable: 'SSH_KEY')]) {
                     sh """
-                        ssh -o StrictHostKeyChecking=no ${DEPLOY_SERVER} '
+                        ssh -i \${SSH_KEY} -o StrictHostKeyChecking=no ${DEPLOY_SERVER} '
                             cd ${DEPLOY_PATH}
                             
                             # Git Pull from develop branch
@@ -134,9 +134,9 @@ pipeline {
                 script {
                     sleep(time: 30, unit: 'SECONDS')
                     
-                    sshagent([SSH_CREDENTIAL]) {
+                    withCredentials([sshUserPrivateKey(credentialsId: SSH_CREDENTIAL, keyFileVariable: 'SSH_KEY')]) {
                         sh """
-                            ssh -o StrictHostKeyChecking=no ${DEPLOY_SERVER} '
+                            ssh -i \${SSH_KEY} -o StrictHostKeyChecking=no ${DEPLOY_SERVER} '
                                 # Backend Health Check
                                 echo "=== Backend Health Check ==="
                                 for i in {1..30}; do
@@ -186,9 +186,9 @@ pipeline {
                     """
                 }
                 
-                sshagent([SSH_CREDENTIAL]) {
+                withCredentials([sshUserPrivateKey(credentialsId: SSH_CREDENTIAL, keyFileVariable: 'SSH_KEY')]) {
                     sh """
-                        ssh -o StrictHostKeyChecking=no ${DEPLOY_SERVER} '
+                        ssh -i \${SSH_KEY} -o StrictHostKeyChecking=no ${DEPLOY_SERVER} '
                             # 배포 서버의 오래된 이미지 정리
                             docker image prune -af --filter "until=24h"
                             echo "Cleanup completed"
