@@ -5,14 +5,14 @@ services:
   test-postgres:
     image: postgres:15-alpine
     container_name: test-postgres
+    network_mode: "host"
     environment:
       POSTGRES_DB: testdb
       POSTGRES_USER: test
       POSTGRES_PASSWORD: test
-    ports:
-      - "5433:5432"
+      PGPORT: 5433
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U test"]
+      test: ["CMD-SHELL", "pg_isready -U test -p 5433"]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -21,11 +21,10 @@ services:
   test-redis:
     image: redis:7-alpine
     container_name: test-redis
-    command: redis-server --requirepass test
-    ports:
-      - "6380:6379"
+    network_mode: "host"
+    command: redis-server --port 6380 --requirepass test
     healthcheck:
-      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      test: ["CMD", "redis-cli", "-p", "6380", "ping"]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -34,14 +33,14 @@ services:
   test-mongodb:
     image: mongo:7
     container_name: test-mongodb
+    network_mode: "host"
     environment:
       MONGO_INITDB_ROOT_USERNAME: test
       MONGO_INITDB_ROOT_PASSWORD: test
       MONGO_INITDB_DATABASE: testdb
-    ports:
-      - "27018:27017"
+    command: mongod --port 27018
     healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      test: ["CMD", "mongosh", "--port", "27018", "--eval", "db.adminCommand('ping')"]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -50,8 +49,7 @@ services:
   test-chromadb:
     image: chromadb/chroma:latest
     container_name: test-chromadb
-    command: run --host 0.0.0.0 --port 8000 --path /data
+    network_mode: "host"
+    command: run --host 0.0.0.0 --port 9001 --path /data
     environment:
       - ANONYMIZED_TELEMETRY=False
-    ports:
-      - "9001:8000"
