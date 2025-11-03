@@ -26,8 +26,6 @@
 
 ### AI Service
 - **FastAPI** (Python 3.11)
-- **gRPC** (Spring Boot ↔ FastAPI 통신)
-- **Celery** (백그라운드 작업)
 - **LLM APIs**: OpenAI, Gemini, Claude
 
 ### Frontend
@@ -101,7 +99,6 @@ S13P31B205/
 │   └── conf.d/
 ├── docker-compose.yml   # Docker Compose 설정
 ├── env.template         # 환경 변수 템플릿
-├── deploy.sh           # 배포 스크립트
 └── README.MD           # 이 파일
 ```
 
@@ -112,12 +109,12 @@ S13P31B205/
 | 서비스 | 포트 | 용도 |
 |--------|------|------|
 | **Nginx** | 80, 443 | 리버스 프록시 |
-| **Backend** | 8080 | REST API |
+| **Backend** | 9090 | REST API |
 | **AI Service** | 8000, 50051 | HTTP API, gRPC |
 | **PostgreSQL** | 5432 | 메인 DB |
 | **MongoDB** | 27017 | 뉴스 DB |
 | **Redis** | 6379 | 캐시 & 큐 |
-| **ChromaDB** | 8001 | 벡터 DB |
+| **ChromaDB** | 9000 | 벡터 DB |
 
 ---
 
@@ -209,11 +206,7 @@ wscat -c ws://localhost/ws/chat
 
 ## 🚀 배포
 
-### 수동 배포
-```bash
-# 배포 스크립트 실행
-sudo ./deploy.sh deploy
-```
+
 
 ### CI/CD (Jenkins)
 1. GitLab에 코드 푸시
