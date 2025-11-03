@@ -2,6 +2,9 @@ pipeline {
     agent any
     
     environment {
+        // DockerHub 정보 (필요시 사용)
+        DOCKERHUB_USERNAME = 'imtaewon'
+
         // Git 정보
         GIT_CREDENTIAL = 'gitlab-credential'
         
