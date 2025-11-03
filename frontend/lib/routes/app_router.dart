@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 // Screens imports
@@ -8,20 +7,20 @@ import '../presentation/screens/onboarding/loading_screen.dart';
 import '../presentation/screens/auth/login_screen.dart';
 import '../presentation/screens/auth/signup/signup_screen.dart';
 import '../presentation/screens/auth/signup/interest_stock_select_screen.dart';
-import '../presentation/screens/auth/signup/signup_complete_screen.dart';
-import '../presentation/screens/auth/withdrawal/withdrawal_password_screen.dart';
-import '../presentation/screens/auth/withdrawal/withdrawal_complete_screen.dart';
-import '../presentation/screens/main/main_screen.dart';
-import '../presentation/screens/company/company_detail_screen.dart';
-import '../presentation/screens/company/company_chart_screen.dart';
-import '../presentation/screens/company/news_list_screen.dart';
-import '../presentation/screens/company/news_detail_screen.dart';
-import '../presentation/screens/chat/chat_room_screen.dart';
-import '../presentation/screens/mypage/mypage_screen.dart';
-import '../presentation/screens/mypage/interest_stock_list_screen.dart';
-import '../presentation/screens/mypage/interest_stock_edit_screen.dart';
-import '../presentation/screens/mypage/password_change_screen.dart';
-import '../presentation/screens/mypage/ai_friend_change_screen.dart';
+// import '../presentation/screens/auth/signup/signup_complete_screen.dart';
+// import '../presentation/screens/auth/withdrawal/withdrawal_password_screen.dart';
+// import '../presentation/screens/auth/withdrawal/withdrawal_complete_screen.dart';
+// import '../presentation/screens/main/main_screen.dart';
+// import '../presentation/screens/company/company_detail_screen.dart';
+// import '../presentation/screens/company/company_chart_screen.dart';
+// import '../presentation/screens/company/news_list_screen.dart';
+// import '../presentation/screens/company/news_detail_screen.dart';
+// import '../presentation/screens/chat/chat_room_screen.dart';
+// import '../presentation/screens/mypage/mypage_screen.dart';
+// import '../presentation/screens/mypage/interest_stock_list_screen.dart';
+// import '../presentation/screens/mypage/interest_stock_edit_screen.dart';
+// import '../presentation/screens/mypage/password_change_screen.dart';
+// import '../presentation/screens/mypage/ai_friend_change_screen.dart';
 
 // Route Guards
 import 'route_guards.dart';
@@ -56,18 +55,18 @@ class AppRouter {
     //   // ==================== AUTH ====================
     //
     //   /// 로그인
-    //   GoRoute(
-    //     path: '/login',
-    //     name: 'login',
-    //     builder: (context, state) => const LoginScreen(),
-    //   ),
+      GoRoute(
+        path: '/login',
+        name: 'login',
+        builder: (context, state) => const LoginScreen(),
+      ),
     //
     //   /// 회원가입
-    //   GoRoute(
-    //     path: '/signup',
-    //     name: 'signup',
-    //     builder: (context, state) => const SignupScreen(),
-    //   ),
+      GoRoute(
+        path: '/signup',
+        name: 'signup',
+        builder: (context, state) => const SignupScreen(),
+      ),
     //
     //   /// 관심 종목 선택
     //   GoRoute(
