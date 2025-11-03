@@ -5,12 +5,20 @@ pipeline {
         // Git 정보
         GIT_CREDENTIAL = 'gitlab-credential'
         
-        // 배포 서버 정보 (1대)
+        // Docker Registry 정보 (GitLab Container Registry)
+        REGISTRY = 'registry.lab.ssafy.com'
+        REGISTRY_CREDENTIAL = 'gitlab-registry-credential'
+        IMAGE_BASE = "${REGISTRY}/s13-final/s13p31b205"
+        
+        // 배포 서버 정보
         DEPLOY_SERVER = 'ubuntu@k13b205.p.ssafy.io'
         DEPLOY_PATH = '/opt/S13P31B205'
         SSH_CREDENTIAL = 'ec2-ssh-key'
         
         PROJECT_NAME = 'dollar-insight'
+        
+        // 이미지 태그 (Git Commit Hash + Build Number)
+        IMAGE_TAG = "${GIT_COMMIT[0..7]}-${BUILD_NUMBER}"
     }
     
     stages {
@@ -62,6 +70,46 @@ pipeline {
             }
         }
         
+        stage('Build Docker Images') {
+            steps {
+                echo '=== Building Docker Images in Jenkins ==='
+                script {
+                    // Backend 이미지 빌드
+                    docker.build("${IMAGE_BASE}/backend:${IMAGE_TAG}", "./backend")
+                    docker.build("${IMAGE_BASE}/backend:latest", "./backend")
+                    
+                    // AI Service 이미지 빌드
+                    docker.build("${IMAGE_BASE}/ai-service:${IMAGE_TAG}", "./ai-service")
+                    docker.build("${IMAGE_BASE}/ai-service:latest", "./ai-service")
+                    
+                    // Nginx 이미지 빌드
+                    docker.build("${IMAGE_BASE}/nginx:${IMAGE_TAG}", "./nginx")
+                    docker.build("${IMAGE_BASE}/nginx:latest", "./nginx")
+                }
+            }
+        }
+        
+        stage('Push to Registry') {
+            steps {
+                echo '=== Pushing Images to GitLab Registry ==='
+                script {
+                    docker.withRegistry("https://${REGISTRY}", REGISTRY_CREDENTIAL) {
+                        // Backend 푸시
+                        docker.image("${IMAGE_BASE}/backend:${IMAGE_TAG}").push()
+                        docker.image("${IMAGE_BASE}/backend:latest").push()
+                        
+                        // AI Service 푸시
+                        docker.image("${IMAGE_BASE}/ai-service:${IMAGE_TAG}").push()
+                        docker.image("${IMAGE_BASE}/ai-service:latest").push()
+                        
+                        // Nginx 푸시
+                        docker.image("${IMAGE_BASE}/nginx:${IMAGE_TAG}").push()
+                        docker.image("${IMAGE_BASE}/nginx:latest").push()
+                    }
+                }
+            }
+        }
+        
         stage('Deploy to EC2') {
             steps {
                 echo '=== Deploy to Production Server ==='
@@ -70,10 +118,10 @@ pipeline {
                         ssh -o StrictHostKeyChecking=no ${DEPLOY_SERVER} '
                             cd ${DEPLOY_PATH}
                             
-                            # Git Pull
-                            echo "=== Pulling latest master branch ==="
-                            git checkout master
-                            git pull origin master
+                            # Git Pull from develop branch
+                            echo "=== Pulling latest develop branch ==="
+                            git checkout develop
+                            git pull origin develop
                             
                             # 환경 변수 파일 확인
                             if [ ! -f .env ]; then
@@ -81,15 +129,19 @@ pipeline {
                                 exit 1
                             fi
                             
+                            # Docker Registry 로그인
+                            echo "=== Login to Docker Registry ==="
+                            echo \${REGISTRY_PASSWORD} | docker login ${REGISTRY} -u \${REGISTRY_USER} --password-stdin
+                            
                             # 기존 컨테이너 중지
                             echo "=== Stopping old containers ==="
                             docker compose down
                             
-                            # Docker 이미지 빌드 (서버에서 직접 빌드)
-                            echo "=== Building Docker Images on Server ==="
-                            docker build -t ${PROJECT_NAME}-backend:latest backend/
-                            docker build -t ${PROJECT_NAME}-ai-service:latest ai-service/
-                            docker build -t ${PROJECT_NAME}-nginx:latest nginx/
+                            # 최신 이미지 Pull
+                            echo "=== Pulling latest images from Registry ==="
+                            docker pull ${IMAGE_BASE}/backend:latest
+                            docker pull ${IMAGE_BASE}/ai-service:latest
+                            docker pull ${IMAGE_BASE}/nginx:latest
                             
                             # 컨테이너 실행
                             echo "=== Starting containers ==="
@@ -154,10 +206,17 @@ pipeline {
         stage('Cleanup') {
             steps {
                 echo '=== Cleanup Old Images ==='
+                script {
+                    // Jenkins 서버의 오래된 이미지 정리
+                    sh """
+                        docker image prune -af --filter "until=24h"
+                    """
+                }
+                
                 sshagent([SSH_CREDENTIAL]) {
                     sh """
                         ssh -o StrictHostKeyChecking=no ${DEPLOY_SERVER} '
-                            # 사용하지 않는 이미지 정리
+                            # 배포 서버의 오래된 이미지 정리
                             docker image prune -af --filter "until=24h"
                             echo "Cleanup completed"
                         '
@@ -171,11 +230,12 @@ pipeline {
         success {
             echo '=== ✅ Deployment Success ==='
             echo "Build Number: ${BUILD_NUMBER}"
+            echo "Image Tag: ${IMAGE_TAG}"
             
             // Slack 알림 (선택)
             // slackSend(
             //     color: 'good',
-            //     message: "✅ Deployment Success\nBuild: #${env.BUILD_NUMBER}"
+            //     message: "✅ Deployment Success\nBuild: #${env.BUILD_NUMBER}\nTag: ${IMAGE_TAG}"
             // )
         }
         
