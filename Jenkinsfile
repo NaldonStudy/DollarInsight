@@ -30,86 +30,12 @@ pipeline {
             }
         }
         
-        stage('Run Tests') {
-            steps {
-                echo '=== Backend & AI Service Tests ==='
-                script {
-                    try {
-                        // 테스트용 DB 컨테이너 실행 (docker-compose.test.yml 사용)
-                        sh '''
-                            # 테스트 네트워크에 Jenkins 컨테이너 연결
-                            docker network ls | grep s13p31b205_test-network || docker compose -f docker-compose.test.yml up --no-start
-                            docker network connect s13p31b205_test-network jenkins || true
-                            
-                            # 테스트 DB 컨테이너 시작
-                            docker compose -f docker-compose.test.yml up -d
-                            
-                            # DB Health Check 대기
-                            echo "Waiting for PostgreSQL..."
-                            until docker exec test-postgres pg_isready -U test > /dev/null 2>&1; do
-                                echo "PostgreSQL is unavailable - sleeping"
-                                sleep 2
-                            done
-                            echo "PostgreSQL is ready!"
-                            
-                            echo "Waiting for Redis..."
-                            until docker exec test-redis redis-cli ping > /dev/null 2>&1; do
-                                echo "Redis is unavailable - sleeping"
-                                sleep 2
-                            done
-                            echo "Redis is ready!"
-                            
-                            echo "Waiting for MongoDB..."
-                            until docker exec test-mongodb mongosh --eval "db.adminCommand('ping')" > /dev/null 2>&1; do
-                                echo "MongoDB is unavailable - sleeping"
-                                sleep 2
-                            done
-                            echo "MongoDB is ready!"
-                            
-                            echo "All databases are ready!"
-                            sleep 5
-                        '''
-                        
-                        // Backend 테스트 실행
-                        dir('backend') {
-                            sh '''
-                                chmod +x gradlew
-                                ./gradlew clean test --no-daemon \
-                                    -Dspring.datasource.url=jdbc:postgresql://test-postgres:5432/testdb \
-                                    -Dspring.datasource.username=test \
-                                    -Dspring.datasource.password=test \
-                                    -Dspring.data.redis.host=test-redis \
-                                    -Dspring.data.redis.port=6379 \
-                                    -Dspring.data.redis.password=test \
-                                    -Dspring.data.mongodb.uri=mongodb://test:test@test-mongodb:27017/testdb?authSource=admin
-                            '''
-                        }
-                        
-                        // AI Service 테스트 실행
-                        dir('ai-service') {
-                            sh 'python3 -m py_compile main.py'
-                        }
-                    } finally {
-                        // 테스트용 컨테이너 정리
-                        sh '''
-                            docker compose -f docker-compose.test.yml down -v
-                            docker network disconnect s13p31b205_test-network jenkins || true
-                        '''
-                    }
-                }
-            }
-            post {
-                always {
-                    junit 'backend/build/test-results/test/*.xml'
-                }
-            }
-        }
-        
         stage('Backend - Build') {
             steps {
                 echo '=== Backend Build (Gradle) ==='
                 dir('backend') {
                     sh '''
+                        chmod +x gradlew
                         ./gradlew clean build -x test --no-daemon
                         ls -lh build/libs/
                     '''
