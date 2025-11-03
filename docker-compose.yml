@@ -79,12 +79,9 @@ services:
     networks:
       - dollar-insight-network
 
-  # Backend Service (Spring Boot)
+  # Backend Service (Spring Boot) - Registry에서 이미지 가져오기
   backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    image: dollar-insight-backend:latest
+    image: registry.lab.ssafy.com/s13-final/s13p31b205/backend:latest
     container_name: dollar-insight-backend
     restart: unless-stopped
     env_file:
@@ -107,12 +104,9 @@ services:
       redis:
         condition: service_healthy
 
-  # AI Service (Python/FastAPI)
+  # AI Service (Python/FastAPI) - Registry에서 이미지 가져오기
   ai-service:
-    build:
-      context: ./ai-service
-      dockerfile: Dockerfile
-    image: dollar-insight-ai-service:latest
+    image: registry.lab.ssafy.com/s13-final/s13p31b205/ai-service:latest
     container_name: dollar-insight-ai-service
     restart: unless-stopped
     env_file:
@@ -134,18 +128,14 @@ services:
       redis:
         condition: service_healthy
 
-  # Nginx (리버스 프록시)
+  # Nginx (리버스 프록시) - Registry에서 이미지 가져오기
   nginx:
-    build:
-      context: ./nginx
-      dockerfile: Dockerfile
-    image: dollar-insight-nginx:latest
+    image: registry.lab.ssafy.com/s13-final/s13p31b205/nginx:latest
     container_name: dollar-insight-nginx
     restart: unless-stopped
     ports:
       - "80:80"
       # - "443:443"  # HTTPS 나중에 활성화
-
     networks:
       - dollar-insight-network
     depends_on:
@@ -182,4 +172,3 @@ volumes:
     driver: local
   ai_service_models:
     driver: local
-
