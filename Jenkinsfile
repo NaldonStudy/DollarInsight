@@ -49,13 +49,13 @@ pipeline {
                             sh '''
                                 chmod +x gradlew
                                 ./gradlew clean test --no-daemon \
-                                    -Dspring.datasource.url=jdbc:postgresql://localhost:5433/testdb \
+                                    -Dspring.datasource.url=jdbc:postgresql://test-postgres:5432/testdb \
                                     -Dspring.datasource.username=test \
                                     -Dspring.datasource.password=test \
-                                    -Dspring.data.redis.host=localhost \
-                                    -Dspring.data.redis.port=6380 \
+                                    -Dspring.data.redis.host=test-redis \
+                                    -Dspring.data.redis.port=6379 \
                                     -Dspring.data.redis.password=test \
-                                    -Dspring.data.mongodb.uri=mongodb://test:test@localhost:27018/testdb?authSource=admin
+                                    -Dspring.data.mongodb.uri=mongodb://test:test@test-mongodb:27017/testdb?authSource=admin
                             '''
                         }
                         
