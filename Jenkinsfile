@@ -2,16 +2,13 @@ pipeline {
     agent any
     
     environment {
-        // DockerHub 정보 (필요시 사용)
-        DOCKERHUB_USERNAME = 'imtaewon'
-
         // Git 정보
         GIT_CREDENTIAL = 'gitlab-credential'
         
-        // Docker Registry 정보 (GitLab Container Registry)
-        REGISTRY = 'registry.lab.ssafy.com'
-        REGISTRY_CREDENTIAL = 'gitlab-registry-credential'
-        IMAGE_BASE = "${REGISTRY}/s13-final/s13p31b205"
+        // Docker Hub 정보
+        DOCKERHUB_USERNAME = 'imtaewon'
+        DOCKERHUB_CREDENTIAL = 'dockerhub-credential'
+        IMAGE_BASE = "${DOCKERHUB_USERNAME}"
         
         // 배포 서버 정보
         DEPLOY_SERVER = 'ubuntu@k13b205.p.ssafy.io'
@@ -78,36 +75,36 @@ pipeline {
                 echo '=== Building Docker Images in Jenkins ==='
                 script {
                     // Backend 이미지 빌드
-                    docker.build("${IMAGE_BASE}/backend:${IMAGE_TAG}", "./backend")
-                    docker.build("${IMAGE_BASE}/backend:latest", "./backend")
+                    docker.build("${IMAGE_BASE}/dollar-backend:${IMAGE_TAG}", "./backend")
+                    docker.build("${IMAGE_BASE}/dollar-backend:latest", "./backend")
                     
                     // AI Service 이미지 빌드
-                    docker.build("${IMAGE_BASE}/ai-service:${IMAGE_TAG}", "./ai-service")
-                    docker.build("${IMAGE_BASE}/ai-service:latest", "./ai-service")
+                    docker.build("${IMAGE_BASE}/dollar-ai:${IMAGE_TAG}", "./ai-service")
+                    docker.build("${IMAGE_BASE}/dollar-ai:latest", "./ai-service")
                     
                     // Nginx 이미지 빌드
-                    docker.build("${IMAGE_BASE}/nginx:${IMAGE_TAG}", "./nginx")
-                    docker.build("${IMAGE_BASE}/nginx:latest", "./nginx")
+                    docker.build("${IMAGE_BASE}/dollar-nginx:${IMAGE_TAG}", "./nginx")
+                    docker.build("${IMAGE_BASE}/dollar-nginx:latest", "./nginx")
                 }
             }
         }
         
         stage('Push to Registry') {
             steps {
-                echo '=== Pushing Images to GitLab Registry ==='
+                echo '=== Pushing Images to Docker Hub ==='
                 script {
-                    docker.withRegistry("https://${REGISTRY}", REGISTRY_CREDENTIAL) {
+                    docker.withRegistry('https://index.docker.io/v1/', DOCKERHUB_CREDENTIAL) {
                         // Backend 푸시
-                        docker.image("${IMAGE_BASE}/backend:${IMAGE_TAG}").push()
-                        docker.image("${IMAGE_BASE}/backend:latest").push()
+                        docker.image("${IMAGE_BASE}/dollar-backend:${IMAGE_TAG}").push()
+                        docker.image("${IMAGE_BASE}/dollar-backend:latest").push()
                         
                         // AI Service 푸시
-                        docker.image("${IMAGE_BASE}/ai-service:${IMAGE_TAG}").push()
-                        docker.image("${IMAGE_BASE}/ai-service:latest").push()
+                        docker.image("${IMAGE_BASE}/dollar-ai:${IMAGE_TAG}").push()
+                        docker.image("${IMAGE_BASE}/dollar-ai:latest").push()
                         
                         // Nginx 푸시
-                        docker.image("${IMAGE_BASE}/nginx:${IMAGE_TAG}").push()
-                        docker.image("${IMAGE_BASE}/nginx:latest").push()
+                        docker.image("${IMAGE_BASE}/dollar-nginx:${IMAGE_TAG}").push()
+                        docker.image("${IMAGE_BASE}/dollar-nginx:latest").push()
                     }
                 }
             }
@@ -132,19 +129,19 @@ pipeline {
                                 exit 1
                             fi
                             
-                            # Docker Registry 로그인
-                            echo "=== Login to Docker Registry ==="
-                            echo \${REGISTRY_PASSWORD} | docker login ${REGISTRY} -u \${REGISTRY_USER} --password-stdin
+                            # Docker Hub 로그인
+                            echo "=== Login to Docker Hub ==="
+                            echo \${DOCKERHUB_PASSWORD} | docker login -u \${DOCKERHUB_USERNAME} --password-stdin
                             
                             # 기존 컨테이너 중지
                             echo "=== Stopping old containers ==="
                             docker compose down
                             
                             # 최신 이미지 Pull
-                            echo "=== Pulling latest images from Registry ==="
-                            docker pull ${IMAGE_BASE}/backend:latest
-                            docker pull ${IMAGE_BASE}/ai-service:latest
-                            docker pull ${IMAGE_BASE}/nginx:latest
+                            echo "=== Pulling latest images from Docker Hub ==="
+                            docker pull ${IMAGE_BASE}/dollar-backend:latest
+                            docker pull ${IMAGE_BASE}/dollar-ai:latest
+                            docker pull ${IMAGE_BASE}/dollar-nginx:latest
                             
                             # 컨테이너 실행
                             echo "=== Starting containers ==="
