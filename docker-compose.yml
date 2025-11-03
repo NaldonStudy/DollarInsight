@@ -81,7 +81,7 @@ services:
 
   # Backend Service (Spring Boot) - Registry에서 이미지 가져오기
   backend:
-    image: registry.lab.ssafy.com/s13-final/s13p31b205/backend:latest
+    image: imtaewon/dollar-backend:latest
     container_name: dollar-insight-backend
     restart: unless-stopped
     env_file:
@@ -106,7 +106,7 @@ services:
 
   # AI Service (Python/FastAPI) - Registry에서 이미지 가져오기
   ai-service:
-    image: registry.lab.ssafy.com/s13-final/s13p31b205/ai-service:latest
+    image: imtaewon/dollar-ai:latest
     container_name: dollar-insight-ai-service
     restart: unless-stopped
     env_file:
@@ -130,7 +130,7 @@ services:
 
   # Nginx (리버스 프록시) - Registry에서 이미지 가져오기
   nginx:
-    image: registry.lab.ssafy.com/s13-final/s13p31b205/nginx:latest
+    image: imtaewon/dollar-nginx:latest
     container_name: dollar-insight-nginx
     restart: unless-stopped
     ports:

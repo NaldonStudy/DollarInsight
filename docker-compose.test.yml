@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database (테스트용)
+  test-postgres:
+    image: postgres:15-alpine
+    container_name: test-postgres
+    network_mode: "host"
+    environment:
+      POSTGRES_DB: testdb
+      POSTGRES_USER: test
+      POSTGRES_PASSWORD: test
+      PGPORT: 5433
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U test -p 5433"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # Redis (테스트용)
+  test-redis:
+    image: redis:7-alpine
+    container_name: test-redis
+    network_mode: "host"
+    command: redis-server --port 6380 --requirepass test
+    healthcheck:
+      test: ["CMD", "redis-cli", "-p", "6380", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # MongoDB (테스트용)
+  test-mongodb:
+    image: mongo:7
+    container_name: test-mongodb
+    network_mode: "host"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: test
+      MONGO_INITDB_ROOT_PASSWORD: test
+      MONGO_INITDB_DATABASE: testdb
+    command: mongod --port 27018
+    healthcheck:
+      test: ["CMD", "mongosh", "--port", "27018", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ChromaDB (테스트용)
+  test-chromadb:
+    image: chromadb/chroma:latest
+    container_name: test-chromadb
+    network_mode: "host"
+    command: run --host 0.0.0.0 --port 9001 --path /data
+    environment:
+      - ANONYMIZED_TELEMETRY=False
