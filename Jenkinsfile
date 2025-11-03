@@ -44,9 +44,30 @@ pipeline {
                             # 테스트 DB 컨테이너 시작
                             docker compose -f docker-compose.test.yml up -d
                             
-                            # DB 초기화 대기 (health check)
-                            echo "Waiting for databases to be ready..."
-                            sleep 20
+                            # DB Health Check 대기
+                            echo "Waiting for PostgreSQL..."
+                            until docker exec test-postgres pg_isready -U test > /dev/null 2>&1; do
+                                echo "PostgreSQL is unavailable - sleeping"
+                                sleep 2
+                            done
+                            echo "PostgreSQL is ready!"
+                            
+                            echo "Waiting for Redis..."
+                            until docker exec test-redis redis-cli ping > /dev/null 2>&1; do
+                                echo "Redis is unavailable - sleeping"
+                                sleep 2
+                            done
+                            echo "Redis is ready!"
+                            
+                            echo "Waiting for MongoDB..."
+                            until docker exec test-mongodb mongosh --eval "db.adminCommand('ping')" > /dev/null 2>&1; do
+                                echo "MongoDB is unavailable - sleeping"
+                                sleep 2
+                            done
+                            echo "MongoDB is ready!"
+                            
+                            echo "All databases are ready!"
+                            sleep 5
                         '''
                         
                         // Backend 테스트 실행
