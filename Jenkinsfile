@@ -35,40 +35,13 @@ pipeline {
                 echo '=== Backend & AI Service Tests ==='
                 script {
                     try {
-                        // 테스트용 임시 DB 컨테이너들 실행
+                        // 테스트용 DB 컨테이너 실행 (docker-compose.test.yml 사용)
                         sh '''
-                            # PostgreSQL
-                            docker run -d \
-                                --name test-postgres \
-                                -e POSTGRES_USER=test \
-                                -e POSTGRES_PASSWORD=test \
-                                -e POSTGRES_DB=testdb \
-                                -p 5433:5432 \
-                                postgres:15-alpine
+                            docker compose -f docker-compose.test.yml up -d
                             
-                            # Redis
-                            docker run -d \
-                                --name test-redis \
-                                -p 6380:6379 \
-                                redis:7-alpine redis-server --requirepass test
-                            
-                            # MongoDB
-                            docker run -d \
-                                --name test-mongodb \
-                                -e MONGO_INITDB_ROOT_USERNAME=test \
-                                -e MONGO_INITDB_ROOT_PASSWORD=test \
-                                -p 27018:27017 \
-                                mongo:7
-                            
-                            # ChromaDB (AI Service용)
-                            docker run -d \
-                                --name test-chromadb \
-                                -e ANONYMIZED_TELEMETRY=False \
-                                -p 9001:8000 \
-                                chromadb/chroma:latest
-                            
-                            # DB 초기화 대기
-                            sleep 15
+                            # DB 초기화 대기 (health check)
+                            echo "Waiting for databases to be ready..."
+                            sleep 20
                         '''
                         
                         // Backend 테스트 실행
@@ -92,12 +65,7 @@ pipeline {
                         }
                     } finally {
                         // 테스트용 컨테이너 정리
-                        sh '''
-                            docker rm -f test-postgres || true
-                            docker rm -f test-redis || true
-                            docker rm -f test-mongodb || true
-                            docker rm -f test-chromadb || true
-                        '''
+                        sh 'docker compose -f docker-compose.test.yml down -v'
                     }
                 }
             }
