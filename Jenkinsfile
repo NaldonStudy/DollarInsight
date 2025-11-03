@@ -30,14 +30,43 @@ pipeline {
             }
         }
         
-        stage('Backend - Test') {
+        stage('Run Tests') {
             steps {
-                echo '=== Backend Unit Test ==='
-                dir('backend') {
-                    sh '''
-                        chmod +x gradlew
-                        ./gradlew clean test --no-daemon
-                    '''
+                echo '=== Backend & AI Service Tests ==='
+                script {
+                    try {
+                        // 테스트용 DB 컨테이너 실행 (docker-compose.test.yml 사용)
+                        sh '''
+                            docker compose -f docker-compose.test.yml up -d
+                            
+                            # DB 초기화 대기 (health check)
+                            echo "Waiting for databases to be ready..."
+                            sleep 20
+                        '''
+                        
+                        // Backend 테스트 실행
+                        dir('backend') {
+                            sh '''
+                                chmod +x gradlew
+                                ./gradlew clean test --no-daemon \
+                                    -Dspring.datasource.url=jdbc:postgresql://localhost:5433/testdb \
+                                    -Dspring.datasource.username=test \
+                                    -Dspring.datasource.password=test \
+                                    -Dspring.data.redis.host=localhost \
+                                    -Dspring.data.redis.port=6380 \
+                                    -Dspring.data.redis.password=test \
+                                    -Dspring.data.mongodb.uri=mongodb://test:test@localhost:27018/testdb?authSource=admin
+                            '''
+                        }
+                        
+                        // AI Service 테스트 실행
+                        dir('ai-service') {
+                            sh 'python3 -m py_compile main.py'
+                        }
+                    } finally {
+                        // 테스트용 컨테이너 정리
+                        sh 'docker compose -f docker-compose.test.yml down -v'
+                    }
                 }
             }
             post {
@@ -54,17 +83,6 @@ pipeline {
                     sh '''
                         ./gradlew clean build -x test --no-daemon
                         ls -lh build/libs/
-                    '''
-                }
-            }
-        }
-        
-        stage('AI Service - Test') {
-            steps {
-                echo '=== AI Service Syntax Check ==='
-                dir('ai-service') {
-                    sh '''
-                        python3 -m py_compile main.py
                     '''
                 }
             }
