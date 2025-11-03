@@ -37,6 +37,11 @@ pipeline {
                     try {
                         // 테스트용 DB 컨테이너 실행 (docker-compose.test.yml 사용)
                         sh '''
+                            # 테스트 네트워크에 Jenkins 컨테이너 연결
+                            docker network ls | grep s13p31b205_test-network || docker compose -f docker-compose.test.yml up --no-start
+                            docker network connect s13p31b205_test-network jenkins || true
+                            
+                            # 테스트 DB 컨테이너 시작
                             docker compose -f docker-compose.test.yml up -d
                             
                             # DB 초기화 대기 (health check)
@@ -65,7 +70,10 @@ pipeline {
                         }
                     } finally {
                         // 테스트용 컨테이너 정리
-                        sh 'docker compose -f docker-compose.test.yml down -v'
+                        sh '''
+                            docker compose -f docker-compose.test.yml down -v
+                            docker network disconnect s13p31b205_test-network jenkins || true
+                        '''
                     }
                 }
             }

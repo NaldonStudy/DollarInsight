@@ -1,15 +1,16 @@
 version: '3.8'
 
 networks:
-  default:
-    external: true
-    name: bridge  # Jenkins 컨테이너가 사용하는 기본 bridge 네트워크
+  test-network:
+    driver: bridge
 
 services:
   # PostgreSQL Database (테스트용)
   test-postgres:
     image: postgres:15-alpine
     container_name: test-postgres
+    networks:
+      - test-network
     environment:
       POSTGRES_DB: testdb
       POSTGRES_USER: test
@@ -26,6 +27,8 @@ services:
   test-redis:
     image: redis:7-alpine
     container_name: test-redis
+    networks:
+      - test-network
     command: redis-server --requirepass test
     ports:
       - "6380:6379"
@@ -39,6 +42,8 @@ services:
   test-mongodb:
     image: mongo:7
     container_name: test-mongodb
+    networks:
+      - test-network
     environment:
       MONGO_INITDB_ROOT_USERNAME: test
       MONGO_INITDB_ROOT_PASSWORD: test
@@ -55,6 +60,8 @@ services:
   test-chromadb:
     image: chromadb/chroma:latest
     container_name: test-chromadb
+    networks:
+      - test-network
     command: run --host 0.0.0.0 --port 8000 --path /data
     environment:
       - ANONYMIZED_TELEMETRY=False
