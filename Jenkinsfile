@@ -137,6 +137,8 @@ pipeline {
                     withCredentials([sshUserPrivateKey(credentialsId: SSH_CREDENTIAL, keyFileVariable: 'SSH_KEY')]) {
                         sh """
                             ssh -i \${SSH_KEY} -o StrictHostKeyChecking=no ${DEPLOY_SERVER} '
+                                cd ${DEPLOY_PATH}
+                                
                                 # Backend Health Check
                                 echo "=== Backend Health Check ==="
                                 for i in {1..30}; do
