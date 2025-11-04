@@ -50,24 +50,6 @@ check_permissions() {
     fi
 }
 
-# Check if required tools are installed
-check_dependencies() {
-    log "Checking dependencies..."
-    
-    local deps=("docker" "docker compose")
-    for dep in "${deps[@]}"; do
-        if ! command -v "$dep" &> /dev/null; then
-            error "$dep is not installed. Please install it first."
-        fi
-    done
-    
-    # Check Docker daemon
-    if ! docker info &> /dev/null; then
-        error "Docker daemon is not running. Please start Docker first."
-    fi
-    
-    log "All dependencies are installed ✓"
-}
 
 # Create necessary directories
 create_directories() {
@@ -330,7 +312,6 @@ deploy() {
     log "========================================="
     
     check_permissions
-    check_dependencies
     create_directories
     backup_current_deployment
     pull_images
