@@ -14,6 +14,9 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
+      theme: ThemeData(
+          fontFamily: "Pretendard",
+      ),
       routerConfig: AppRouter.router,
       debugShowCheckedModeBanner: false,
     );
