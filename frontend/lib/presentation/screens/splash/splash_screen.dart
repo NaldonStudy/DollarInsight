@@ -1,7 +1,27 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
-class SplashScreen extends StatelessWidget {
+class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
+
+  @override
+  State<SplashScreen> createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends State<SplashScreen> {
+  @override
+  void initState() {
+    super.initState();
+
+    // ✅ 위젯이 완전히 빌드된 후 실행되도록 보장
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(seconds: 3), () {
+        if (mounted) {
+          context.go('/landing'); // ✅ 랜딩 페이지로 이동하도록 수정
+        }
+      });
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -19,13 +39,12 @@ class SplashScreen extends StatelessWidget {
         ),
         child: Stack(
           children: [
-            /// ✅ 배경 원 이미지 (onboard1.png)
             Positioned(
-              left: width * -0.26,     // (-94 / 360)
-              top: height * 0.45,      // (362 / 800)
+              left: width * -0.26,
+              top: height * 0.45,
               child: Container(
-                width: width * 2.06,   // (744 / 360)
-                height: width * 2.06,  // 정사각형 유지
+                width: width * 2.06,
+                height: width * 2.06,
                 decoration: const BoxDecoration(
                   image: DecorationImage(
                     image: AssetImage('assets/images/onboard1.png'),
@@ -34,14 +53,12 @@ class SplashScreen extends StatelessWidget {
                 ),
               ),
             ),
-
-            /// ✅ 중앙 로고 (logo.png)
             Positioned(
-              left: width * 0.094,     // (34 / 360)
-              top: height * 0.23,      // (186 / 800)
+              left: width * 0.094,
+              top: height * 0.23,
               child: Container(
-                width: width * 0.81,   // (293 / 360)
-                height: height * 0.22, // (176 / 800)
+                width: width * 0.81,
+                height: height * 0.22,
                 decoration: const BoxDecoration(
                   image: DecorationImage(
                     image: AssetImage('assets/images/logo.png'),
