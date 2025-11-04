@@ -1,92 +1,70 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../widgets/common/custom_back_button.dart';
+import '../../widgets/common/custom_text_field.dart';
+import '../../widgets/common/custom_button.dart';
 
 class LoginScreen extends StatelessWidget {
   const LoginScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final width = MediaQuery.of(context).size.width;
-    final height = MediaQuery.of(context).size.height;
+    final emailController = TextEditingController();
+    final passwordController = TextEditingController();
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FB),
       appBar: AppBar(
         elevation: 0,
         backgroundColor: const Color(0xFFF7F8FB),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => context.pop(), // ✅ 이전 화면으로 돌아가기
-        ),
+        leading: const CustomBackButton(),
       ),
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              '로그인',
-              style: TextStyle(
-                fontSize: 30,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            SizedBox(height: height * 0.04),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 33),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 20),
 
-            /// 이메일 입력
-            TextField(
-              decoration: InputDecoration(
+              // 로그인 타이틀
+              const Text(
+                '로그인',
+                style: TextStyle(
+                  fontSize: 30,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 32),
+
+              // 이메일 입력
+              CustomTextField(
                 hintText: '이메일',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                contentPadding:
-                const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                controller: emailController,
+                keyboardType: TextInputType.emailAddress,
               ),
-              keyboardType: TextInputType.emailAddress, // ✅ 키보드 자동 이메일 형식
-            ),
-            SizedBox(height: height * 0.02),
+              const SizedBox(height: 16),
 
-            /// 비밀번호 입력
-            TextField(
-              decoration: InputDecoration(
+              // 비밀번호 입력
+              CustomTextField(
                 hintText: '비밀번호',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                contentPadding:
-                const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                controller: passwordController,
+                obscureText: true,
+                showPasswordToggle: true,
               ),
-              obscureText: true, // ✅ 비밀번호 가리기
-            ),
-            SizedBox(height: height * 0.05),
 
-            /// 로그인 버튼
-            SizedBox(
-              width: double.infinity,
-              height: height * 0.065,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF143D60),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                ),
+              const Spacer(), // 🔽 남는 공간을 채워서 버튼을 아래로 밀어냄
+
+              // 로그인 버튼
+              CustomButton(
+                text: '로그인',
                 onPressed: () {
-                  // ✅ 로그인 처리 후 페이지 쌓기
                   context.push('/persona-intro');
                 },
-                child: const Text(
-                  '로그인',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
-                ),
               ),
-            ),
-          ],
+              const SizedBox(height: 32), // 하단 여백
+            ],
+          ),
         ),
       ),
     );
