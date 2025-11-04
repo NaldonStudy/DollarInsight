@@ -86,9 +86,9 @@ pipeline {
         stage('Deploy to EC2') {
             steps {
                 echo '=== Deploy to Production Server using deploy.sh ==='
-                sshagent(credentials: [SSH_CREDENTIAL]) {
+                withCredentials([sshUserPrivateKey(credentialsId: SSH_CREDENTIAL, keyFileVariable: 'SSH_KEY')]) {
                     sh """
-                        ssh -o StrictHostKeyChecking=no ${DEPLOY_SERVER} '
+                        ssh -i \${SSH_KEY} -o StrictHostKeyChecking=no ${DEPLOY_SERVER} '
                             cd ${DEPLOY_PATH}
                             
                             # Git Pull from develop branch
@@ -118,9 +118,9 @@ pipeline {
         stage('Verify Deployment') {
             steps {
                 echo '=== Verifying Deployment ==='
-                sshagent(credentials: [SSH_CREDENTIAL]) {
+                withCredentials([sshUserPrivateKey(credentialsId: SSH_CREDENTIAL, keyFileVariable: 'SSH_KEY')]) {
                     sh """
-                        ssh -o StrictHostKeyChecking=no ${DEPLOY_SERVER} '
+                        ssh -i \${SSH_KEY} -o StrictHostKeyChecking=no ${DEPLOY_SERVER} '
                             cd ${DEPLOY_PATH}
                             
                             # 배포 상태 확인
@@ -172,9 +172,9 @@ pipeline {
                     """
                 }
                 
-                sshagent(credentials: [SSH_CREDENTIAL]) {
+                withCredentials([sshUserPrivateKey(credentialsId: SSH_CREDENTIAL, keyFileVariable: 'SSH_KEY')]) {
                     sh """
-                        ssh -o StrictHostKeyChecking=no ${DEPLOY_SERVER} '
+                        ssh -i \${SSH_KEY} -o StrictHostKeyChecking=no ${DEPLOY_SERVER} '
                             cd ${DEPLOY_PATH}
                             
                             # deploy.sh의 cleanup 기능 사용
@@ -193,12 +193,12 @@ pipeline {
             echo "Image Tag: ${IMAGE_TAG}"
             echo "Deployed at: ${new Date()}"
             
-            sshagent(credentials: [SSH_CREDENTIAL]) {
+            withCredentials([sshUserPrivateKey(credentialsId: SSH_CREDENTIAL, keyFileVariable: 'SSH_KEY')]) {
                 sh """
-                    ssh -o StrictHostKeyChecking=no ${DEPLOY_SERVER} '
+                    ssh -i \${SSH_KEY} -o StrictHostKeyChecking=no ${DEPLOY_SERVER} '
                         echo "=== 📊 Current Service Status ==="
                         cd ${DEPLOY_PATH}
-                        sudo docker-compose ps
+                        sudo docker compose ps
                     '
                 """
             }
@@ -222,12 +222,12 @@ pipeline {
             echo '=== ❌ Deployment Failed ==='
             
             // 실패 시 로그 수집
-            sshagent(credentials: [SSH_CREDENTIAL]) {
+            withCredentials([sshUserPrivateKey(credentialsId: SSH_CREDENTIAL, keyFileVariable: 'SSH_KEY')]) {
                 sh """
-                    ssh -o StrictHostKeyChecking=no ${DEPLOY_SERVER} '
+                    ssh -i \${SSH_KEY} -o StrictHostKeyChecking=no ${DEPLOY_SERVER} '
                         echo "=== 📋 Service Logs (Last 50 lines) ==="
                         cd ${DEPLOY_PATH}
-                        sudo docker-compose logs --tail=50
+                        sudo docker compose logs --tail=50
                     ' || true
                 """
             }
