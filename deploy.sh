@@ -54,7 +54,7 @@ check_permissions() {
 check_dependencies() {
     log "Checking dependencies..."
     
-    local deps=("docker" "docker-compose")
+    local deps=("docker" "docker compose")
     for dep in "${deps[@]}"; do
         if ! command -v "$dep" &> /dev/null; then
             error "$dep is not installed. Please install it first."
@@ -90,7 +90,7 @@ backup_current_deployment() {
         
         mkdir -p "$backup_path"
         
-        # Backup docker-compose.yml and .env files
+        # Backup docker compose.yml and .env files
         cp -r "$DEPLOY_DIR/$COMPOSE_FILE" "$backup_path/" 2>/dev/null || true
         cp -r "$DEPLOY_DIR/.env" "$backup_path/" 2>/dev/null || true
         cp -r "$DEPLOY_DIR/backend/.env" "$backup_path/backend.env" 2>/dev/null || true
@@ -122,7 +122,7 @@ pull_images() {
     
     cd "$DEPLOY_DIR"
     
-    if ! docker-compose pull; then
+    if ! docker compose pull; then
         error "Failed to pull Docker images"
     fi
     
@@ -135,9 +135,9 @@ stop_services() {
     
     cd "$DEPLOY_DIR"
     
-    if docker-compose ps | grep -q "Up"; then
+    if docker compose ps | grep -q "Up"; then
         info "Stopping containers gracefully..."
-        docker-compose down --timeout 30 || warn "Some services may not have stopped gracefully"
+        docker compose down --timeout 30 || warn "Some services may not have stopped gracefully"
         log "Services stopped ✓"
     else
         log "No running services found"
@@ -150,7 +150,7 @@ start_services() {
     
     cd "$DEPLOY_DIR"
     
-    if ! docker-compose up -d; then
+    if ! docker compose up -d; then
         error "Failed to start services"
     fi
     
@@ -215,7 +215,7 @@ health_check() {
     done
     
     if [ "$all_healthy" = false ]; then
-        error "Health check failed after $max_attempts attempts. Please check logs: docker-compose logs"
+        error "Health check failed after $max_attempts attempts. Please check logs: docker compose logs"
     fi
     
     log "All critical services are healthy ✓"
@@ -227,12 +227,12 @@ show_status() {
     echo ""
     
     cd "$DEPLOY_DIR"
-    docker-compose ps
+    docker compose ps
     
     echo ""
     log "Container resource usage:"
     docker stats --no-stream --format "table {{.Container}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.NetIO}}" \
-        $(docker-compose ps -q)
+        $(docker compose ps -q)
 }
 
 # View logs
@@ -243,10 +243,10 @@ view_logs() {
     
     if [ -z "$service" ]; then
         info "Showing logs for all services..."
-        docker-compose logs -f --tail=100
+        docker compose logs -f --tail=100
     else
         info "Showing logs for $service..."
-        docker-compose logs -f --tail=100 "$service"
+        docker compose logs -f --tail=100 "$service"
     fi
 }
 
@@ -264,7 +264,7 @@ rollback() {
     
     # Stop current services
     cd "$DEPLOY_DIR"
-    docker-compose down --timeout 30 || true
+    docker compose down --timeout 30 || true
     
     # Restore backup files
     if [ -f "$latest_backup/$COMPOSE_FILE" ]; then
@@ -281,7 +281,7 @@ rollback() {
     
     # Start services
     cd "$DEPLOY_DIR"
-    docker-compose up -d
+    docker compose up -d
     
     log "Rollback completed ✓"
     
@@ -318,7 +318,7 @@ restart_service() {
     log "Restarting service: $service"
     
     cd "$DEPLOY_DIR"
-    docker-compose restart "$service"
+    docker compose restart "$service"
     
     log "Service $service restarted ✓"
 }
