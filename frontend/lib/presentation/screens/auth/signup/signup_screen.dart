@@ -11,11 +11,9 @@ class SignupScreen extends StatelessWidget {
   const SignupScreen({super.key});
 
   void _handleSignup(BuildContext context, SignupFormProvider provider) {
-    // 모든 필드 유효성 검증
     if (provider.validateAll()) {
       context.push('/signup/watchlist');
     } else {
-      // 유효하지 않은 경우 스낵바로 안내
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('모든 필드를 올바르게 입력해주세요'),
@@ -38,15 +36,16 @@ class SignupScreen extends StatelessWidget {
               backgroundColor: const Color(0xFFF7F8FB),
               leading: const CustomBackButton(),
             ),
-            body: SingleChildScrollView(
+
+            /// ✅ 버튼을 하단 고정시키기 위해 Column 재구성
+            body: SafeArea(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 33),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    /// ✅ 상단 여백 + 타이틀
                     const SizedBox(height: 20),
-
-                    // 회원가입 타이틀
                     const Text(
                       '회원가입',
                       style: TextStyle(
@@ -56,48 +55,58 @@ class SignupScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 32),
 
-                    // 닉네임 입력
-                    CustomTextField(
-                      hintText: '닉네임',
-                      controller: provider.nicknameController,
-                      onChanged: provider.validateNickname,
-                    ),
-                    _buildValidationFeedback(provider.state.nickname),
-                    const SizedBox(height: 16),
+                    /// ✅ 입력폼은 스크롤 가능 영역
+                    Expanded(
+                      child: SingleChildScrollView(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // 닉네임
+                            CustomTextField(
+                              hintText: '닉네임',
+                              controller: provider.nicknameController,
+                              onChanged: provider.validateNickname,
+                            ),
+                            _buildValidationFeedback(provider.state.nickname),
+                            const SizedBox(height: 16),
 
-                    // 이메일 입력
-                    CustomTextField(
-                      hintText: '이메일',
-                      controller: provider.emailController,
-                      keyboardType: TextInputType.emailAddress,
-                      onChanged: provider.validateEmail,
-                    ),
-                    _buildValidationFeedback(provider.state.email),
-                    const SizedBox(height: 16),
+                            // 이메일
+                            CustomTextField(
+                              hintText: '이메일',
+                              controller: provider.emailController,
+                              keyboardType: TextInputType.emailAddress,
+                              onChanged: provider.validateEmail,
+                            ),
+                            _buildValidationFeedback(provider.state.email),
+                            const SizedBox(height: 16),
 
-                    // 비밀번호 입력
-                    CustomTextField(
-                      hintText: '비밀번호',
-                      controller: provider.passwordController,
-                      obscureText: true,
-                      showPasswordToggle: true,
-                      onChanged: provider.validatePassword,
-                    ),
-                    _buildValidationFeedback(provider.state.password),
-                    const SizedBox(height: 16),
+                            // 비밀번호
+                            CustomTextField(
+                              hintText: '비밀번호',
+                              controller: provider.passwordController,
+                              obscureText: true,
+                              showPasswordToggle: true,
+                              onChanged: provider.validatePassword,
+                            ),
+                            _buildValidationFeedback(provider.state.password),
+                            const SizedBox(height: 16),
 
-                    // 비밀번호 확인 입력
-                    CustomTextField(
-                      hintText: '비밀번호 확인',
-                      controller: provider.passwordConfirmController,
-                      obscureText: true,
-                      showPasswordToggle: true,
-                      onChanged: provider.validatePasswordConfirm,
+                            // 비밀번호 확인
+                            CustomTextField(
+                              hintText: '비밀번호 확인',
+                              controller: provider.passwordConfirmController,
+                              obscureText: true,
+                              showPasswordToggle: true,
+                              onChanged: provider.validatePasswordConfirm,
+                            ),
+                            _buildValidationFeedback(provider.state.passwordConfirm),
+                            const SizedBox(height: 24),
+                          ],
+                        ),
+                      ),
                     ),
-                    _buildValidationFeedback(provider.state.passwordConfirm),
-                    const SizedBox(height: 56),
 
-                    // 회원가입 버튼
+                    /// ✅ 하단 버튼 고정
                     CustomButton(
                       text: '회원가입',
                       onPressed: () => _handleSignup(context, provider),
@@ -113,19 +122,14 @@ class SignupScreen extends StatelessWidget {
     );
   }
 
-  /// 유효성 검증 피드백을 표시하는 위젯
   Widget _buildValidationFeedback(FieldValidationState state) {
-    // 입력을 시작하지 않았거나 유효한 경우에는 아무것도 표시하지 않음
-    if (!state.hasBeenTouched) {
-      return const SizedBox.shrink();
-    }
+    if (!state.hasBeenTouched) return const SizedBox.shrink();
 
     if (state.isValid) {
-      // 유효한 경우 초록색 체크 아이콘 표시
-      return Padding(
-        padding: const EdgeInsets.only(top: 8, left: 2),
+      return const Padding(
+        padding: EdgeInsets.only(top: 8, left: 2),
         child: Row(
-          children: const [
+          children: [
             Icon(
               Icons.check_circle,
               color: Color(0xFF31C275),
@@ -135,7 +139,6 @@ class SignupScreen extends StatelessWidget {
         ),
       );
     } else if (state.errorMessage != null) {
-      // 유효하지 않은 경우 빨간색 에러 메시지 표시
       return Padding(
         padding: const EdgeInsets.only(top: 8, left: 2),
         child: Text(
@@ -149,7 +152,6 @@ class SignupScreen extends StatelessWidget {
         ),
       );
     }
-
     return const SizedBox.shrink();
   }
 }
