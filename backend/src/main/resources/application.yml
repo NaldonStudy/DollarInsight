@@ -48,6 +48,12 @@ spring:
     redis:
       time-to-live: 5m
 
+# 앱에서 활용할 토큰 시간
+app:
+  jwt:
+    secret: ${APP_JWT_SECRET:please-change-min-32bytes}
+    access-ttl-seconds: 900
+
 # Actuator 헬스체크 설정
 management:
   endpoints:
