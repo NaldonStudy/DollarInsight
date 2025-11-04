@@ -6,9 +6,9 @@ class ChatRoomScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('D)')),
+      appBar: AppBar(title: const Text('차트상세')),
       body: const Center(
-        child: Text('TODO: D)'),
+        child: Text('차트상세'),
       ),
     );
   }

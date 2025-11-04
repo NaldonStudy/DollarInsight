@@ -6,9 +6,9 @@ class ChatListScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('D �]')),
+      appBar: AppBar(title: const Text('차트목록')),
       body: const Center(
-        child: Text('TODO: D �]'),
+        child: Text('TODO:차트목록'),
       ),
     );
   }
