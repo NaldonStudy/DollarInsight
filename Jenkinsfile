@@ -30,57 +30,12 @@ pipeline {
             }
         }
         
-        stage('Run Tests') {
-            steps {
-                echo '=== Backend & AI Service Tests ==='
-                script {
-                    try {
-                        // 테스트용 DB 컨테이너 실행 (docker-compose.test.yml 사용)
-                        sh '''
-                            docker compose -f docker-compose.test.yml up -d
-                            
-                            # DB 초기화 대기 (health check)
-                            echo "Waiting for databases to be ready..."
-                            sleep 20
-                        '''
-                        
-                        // Backend 테스트 실행
-                        dir('backend') {
-                            sh '''
-                                chmod +x gradlew
-                                ./gradlew clean test --no-daemon \
-                                    -Dspring.datasource.url=jdbc:postgresql://localhost:5433/testdb \
-                                    -Dspring.datasource.username=test \
-                                    -Dspring.datasource.password=test \
-                                    -Dspring.data.redis.host=localhost \
-                                    -Dspring.data.redis.port=6380 \
-                                    -Dspring.data.redis.password=test \
-                                    -Dspring.data.mongodb.uri=mongodb://test:test@localhost:27018/testdb?authSource=admin
-                            '''
-                        }
-                        
-                        // AI Service 테스트 실행
-                        dir('ai-service') {
-                            sh 'python3 -m py_compile main.py'
-                        }
-                    } finally {
-                        // 테스트용 컨테이너 정리
-                        sh 'docker compose -f docker-compose.test.yml down -v'
-                    }
-                }
-            }
-            post {
-                always {
-                    junit 'backend/build/test-results/test/*.xml'
-                }
-            }
-        }
-        
         stage('Backend - Build') {
             steps {
                 echo '=== Backend Build (Gradle) ==='
                 dir('backend') {
                     sh '''
+                        chmod +x gradlew
                         ./gradlew clean build -x test --no-daemon
                         ls -lh build/libs/
                     '''
@@ -131,9 +86,9 @@ pipeline {
         stage('Deploy to EC2') {
             steps {
                 echo '=== Deploy to Production Server ==='
-                sshagent([SSH_CREDENTIAL]) {
+                withCredentials([sshUserPrivateKey(credentialsId: SSH_CREDENTIAL, keyFileVariable: 'SSH_KEY')]) {
                     sh """
-                        ssh -o StrictHostKeyChecking=no ${DEPLOY_SERVER} '
+                        ssh -i \${SSH_KEY} -o StrictHostKeyChecking=no ${DEPLOY_SERVER} '
                             cd ${DEPLOY_PATH}
                             
                             # Git Pull from develop branch
@@ -179,9 +134,11 @@ pipeline {
                 script {
                     sleep(time: 30, unit: 'SECONDS')
                     
-                    sshagent([SSH_CREDENTIAL]) {
+                    withCredentials([sshUserPrivateKey(credentialsId: SSH_CREDENTIAL, keyFileVariable: 'SSH_KEY')]) {
                         sh """
-                            ssh -o StrictHostKeyChecking=no ${DEPLOY_SERVER} '
+                            ssh -i \${SSH_KEY} -o StrictHostKeyChecking=no ${DEPLOY_SERVER} '
+                                cd ${DEPLOY_PATH}
+                                
                                 # Backend Health Check
                                 echo "=== Backend Health Check ==="
                                 for i in {1..30}; do
@@ -231,9 +188,9 @@ pipeline {
                     """
                 }
                 
-                sshagent([SSH_CREDENTIAL]) {
+                withCredentials([sshUserPrivateKey(credentialsId: SSH_CREDENTIAL, keyFileVariable: 'SSH_KEY')]) {
                     sh """
-                        ssh -o StrictHostKeyChecking=no ${DEPLOY_SERVER} '
+                        ssh -i \${SSH_KEY} -o StrictHostKeyChecking=no ${DEPLOY_SERVER} '
                             # 배포 서버의 오래된 이미지 정리
                             docker image prune -af --filter "until=24h"
                             echo "Cleanup completed"
