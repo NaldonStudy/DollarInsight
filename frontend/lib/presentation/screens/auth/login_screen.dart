@@ -74,13 +74,14 @@ class LoginScreen extends StatelessWidget {
                 ),
                 onPressed: () {
                   // ✅ 로그인 처리 후 페이지 쌓기
-                  context.push('/main');
+                  context.push('/persona-intro');
                 },
                 child: const Text(
                   '로그인',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
+                    color: Colors.white,
                   ),
                 ),
               ),
