@@ -17,7 +17,7 @@ class _SplashScreenState extends State<SplashScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Future.delayed(const Duration(seconds: 3), () {
         if (mounted) {
-          context.go('/login'); // ✅ GoRouter 기반 이동
+          context.go('/landing'); // ✅ 랜딩 페이지로 이동하도록 수정
         }
       });
     });
