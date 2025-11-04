@@ -53,7 +53,9 @@ class AppRouter {
       GoRoute(
         path: '/landing',
         name: 'landing',
-        builder: (context, state) => const LandingScreen(),
+        pageBuilder: (context, state) => const NoTransitionPage(
+          child: LandingScreen(),
+        ),
       ),
 
       /// 페르소나 소개
