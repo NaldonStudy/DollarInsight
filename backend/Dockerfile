@@ -47,7 +47,7 @@ RUN chown spring:spring app.jar
 USER spring:spring
 
 # 포트 노출
-EXPOSE 8080
+EXPOSE 9090
 
 # 헬스체크 설정
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
