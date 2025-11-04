@@ -21,6 +21,7 @@ import '../presentation/screens/mypage/mypage_screen.dart';
 import '../presentation/screens/mypage/watchlist_screen.dart';
 import '../presentation/screens/mypage/watchlist_edit_screen.dart';
 import '../presentation/screens/mypage/password_change_screen.dart';
+import '../presentation/screens/mypage/password_change_new_screen.dart';
 import '../presentation/screens/mypage/ai_friend_change_screen.dart';
 
 // Route Guards
@@ -219,7 +220,13 @@ class AppRouter {
         builder: (context, state) => const PasswordChangeScreen(),
         redirect: (context, state) => RouteGuards.requireAuth(context, state),
       ),
-
+      /// 비밀번호 변경
+      GoRoute(
+        path: '/mypage/password-change/password-change-new',
+        name: 'password-change-new',
+        builder: (context, state) => const PasswordChangeNewScreen(),
+        redirect: (context, state) => RouteGuards.requireAuth(context, state),
+      ),
       /// AI 친구 변경
       GoRoute(
         path: '/mypage/ai-friend',
