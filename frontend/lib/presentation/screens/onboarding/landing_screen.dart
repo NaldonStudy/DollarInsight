@@ -17,13 +17,11 @@ class _LandingScreenState extends State<LandingScreen>
   void initState() {
     super.initState();
 
-    // ✅ 애니메이션 컨트롤러 설정
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
     );
 
-    // ✅ 아래 → 제자리 슬라이드
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, 1),
       end: Offset.zero,
@@ -31,7 +29,6 @@ class _LandingScreenState extends State<LandingScreen>
       CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
     );
 
-    // ✅ 빌드 후 자동 실행
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _controller.forward();
     });
@@ -119,7 +116,7 @@ class _LandingScreenState extends State<LandingScreen>
                         /// 🔹 로그인 버튼
                         Positioned(
                           left: width * 0.091,
-                          top: height * 0.057,
+                          top: height * 0.055, // ✅ 비율로 조정 (약 5.5%)
                           child: GestureDetector(
                             onTap: () => context.push('/login'),
                             child: Container(
@@ -146,7 +143,7 @@ class _LandingScreenState extends State<LandingScreen>
                         /// 🔹 회원가입 버튼
                         Positioned(
                           left: width * 0.091,
-                          top: height * 0.151,
+                          top: height * 0.155, // ✅ 비율 조정 (로그인보다 약 10% 아래)
                           child: GestureDetector(
                             onTap: () => context.push('/signup'),
                             child: Container(
@@ -173,10 +170,10 @@ class _LandingScreenState extends State<LandingScreen>
                         /// 🔹 구분선
                         Positioned(
                           left: width * 0.091,
-                          top: height * 0.245,
+                          top: height * 0.255, // ✅ 이전보다 약간 아래로 비율 조정
                           child: Container(
                             width: width * 0.82,
-                            height: 1,
+                            height: height * 0.001, // ✅ 1px 대신 비율
                             color: Colors.black.withOpacity(0.1),
                           ),
                         ),
@@ -184,7 +181,7 @@ class _LandingScreenState extends State<LandingScreen>
                         /// 🔹 소셜 로그인 아이콘들
                         Positioned(
                           left: width * 0.266,
-                          top: height * 0.295,
+                          top: height * 0.305, // ✅ 비율 기반
                           child: Image.asset(
                             'assets/images/kakao.png',
                             width: width * 0.136,
@@ -194,7 +191,7 @@ class _LandingScreenState extends State<LandingScreen>
                         ),
                         Positioned(
                           left: width * 0.594,
-                          top: height * 0.294,
+                          top: height * 0.305, // ✅ 통일
                           child: Image.asset(
                             'assets/images/google.png',
                             width: width * 0.139,
