@@ -1,8 +1,47 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart'; // ✅ GoRouter import 추가
+import 'package:go_router/go_router.dart';
 
-class LandingScreen extends StatelessWidget {
+class LandingScreen extends StatefulWidget {
   const LandingScreen({super.key});
+
+  @override
+  State<LandingScreen> createState() => _LandingScreenState();
+}
+
+class _LandingScreenState extends State<LandingScreen>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<Offset> _slideAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // ✅ 애니메이션 컨트롤러 설정
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+
+    // ✅ 아래 → 제자리 슬라이드
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 1),
+      end: Offset.zero,
+    ).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
+    );
+
+    // ✅ 빌드 후 자동 실행
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _controller.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -13,127 +52,163 @@ class LandingScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FB),
       body: SafeArea(
-        top: false, // ✅ 온보딩과 로고 위치를 동일하게 유지
-        child: Stack(
-          children: [
-            /// ✅ 로고
-            Positioned(
-              left: width * 0.094,
-              top: height * 0.23,
-              child: Container(
-                width: width * 0.81,
-                height: height * 0.22,
-                decoration: const BoxDecoration(
-                  image: DecorationImage(
-                    image: AssetImage('assets/images/logo.png'),
-                    fit: BoxFit.contain,
+        top: false,
+        child: Container(
+          width: width,
+          height: height,
+          clipBehavior: Clip.antiAlias,
+          decoration: const BoxDecoration(
+            color: Color(0xFFF7F8FB),
+          ),
+          child: Stack(
+            children: [
+              /// 🦉 배경 부엉이 (로그인 박스 뒤)
+              Positioned(
+                left: width * -0.26,
+                top: height * 0.45,
+                child: Container(
+                  width: width * 2.06,
+                  height: width * 2.06,
+                  decoration: const BoxDecoration(
+                    image: DecorationImage(
+                      image: AssetImage('assets/images/onboard1.png'),
+                      fit: BoxFit.cover,
+                    ),
                   ),
                 ),
               ),
-            ),
 
-            /// ✅ 로그인/회원가입 박스
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: Container(
-                width: width,
-                height: height * 0.41,
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(20),
-                    topRight: Radius.circular(20),
+              /// 💬 로고
+              Positioned(
+                left: width * 0.094,
+                top: height * 0.23,
+                child: Container(
+                  width: width * 0.81,
+                  height: height * 0.22,
+                  decoration: const BoxDecoration(
+                    image: DecorationImage(
+                      image: AssetImage('assets/images/logo.png'),
+                      fit: BoxFit.contain,
+                    ),
                   ),
                 ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    /// 🔹 로그인 버튼
-                    SizedBox(
-                      width: width * 0.82,
-                      height: height * 0.066,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF143D60),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30),
-                          ),
-                        ),
-                        onPressed: () {
-                          context.push('/login'); // ✅ 로그인 화면으로 이동
-                        },
-                        child: const Text(
-                          '로그인',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.48,
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: height * 0.02),
+              ),
 
-                    /// 🔹 회원가입 버튼
-                    SizedBox(
-                      width: width * 0.82,
-                      height: height * 0.066,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF60A4DA),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30),
-                          ),
-                        ),
-                        onPressed: () {
-                          context.push('/signup'); // ✅ 회원가입 화면 이동
-                        },
-                        child: const Text(
-                          '회원가입',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.48,
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: height * 0.04),
-
-                    /// 🔹 구분선
-                    Container(
-                      width: width * 0.82,
-                      height: 1,
-                      color: Colors.black.withOpacity(0.1),
-                    ),
-                    SizedBox(height: height * 0.03),
-
-                    /// 🔹 카카오 / 구글 로그인 아이콘
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Image.asset(
-                          'assets/images/kakao.png',
-                          width: width * 0.14,
-                          height: width * 0.14,
-                        ),
-                        SizedBox(width: width * 0.1),
-                        Image.asset(
-                          'assets/images/google.png',
-                          width: width * 0.14,
-                          height: width * 0.14,
+              /// 🤍 로그인 박스 (SlideTransition 적용)
+              Align(
+                alignment: Alignment.bottomCenter,
+                child: SlideTransition(
+                  position: _slideAnimation,
+                  child: Container(
+                    width: width,
+                    height: height * 0.41,
+                    clipBehavior: Clip.antiAlias,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(10),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 8,
+                          offset: const Offset(0, -2),
                         ),
                       ],
                     ),
-                  ],
+                    child: Stack(
+                      children: [
+                        /// 🔹 로그인 버튼
+                        Positioned(
+                          left: width * 0.091,
+                          top: height * 0.057,
+                          child: GestureDetector(
+                            onTap: () => context.push('/login'),
+                            child: Container(
+                              width: width * 0.816,
+                              height: height * 0.066,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF143D60),
+                                borderRadius: BorderRadius.circular(30),
+                              ),
+                              alignment: Alignment.center,
+                              child: const Text(
+                                '로그인',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 0.48,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        /// 🔹 회원가입 버튼
+                        Positioned(
+                          left: width * 0.091,
+                          top: height * 0.151,
+                          child: GestureDetector(
+                            onTap: () => context.push('/signup'),
+                            child: Container(
+                              width: width * 0.816,
+                              height: height * 0.066,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF60A4DA),
+                                borderRadius: BorderRadius.circular(30),
+                              ),
+                              alignment: Alignment.center,
+                              child: const Text(
+                                '회원가입',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 0.48,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        /// 🔹 구분선
+                        Positioned(
+                          left: width * 0.091,
+                          top: height * 0.245,
+                          child: Container(
+                            width: width * 0.82,
+                            height: 1,
+                            color: Colors.black.withOpacity(0.1),
+                          ),
+                        ),
+
+                        /// 🔹 소셜 로그인 아이콘들
+                        Positioned(
+                          left: width * 0.266,
+                          top: height * 0.295,
+                          child: Image.asset(
+                            'assets/images/kakao.png',
+                            width: width * 0.136,
+                            height: width * 0.136,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                        Positioned(
+                          left: width * 0.594,
+                          top: height * 0.294,
+                          child: Image.asset(
+                            'assets/images/google.png',
+                            width: width * 0.139,
+                            height: width * 0.139,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
