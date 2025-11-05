@@ -85,16 +85,14 @@ pipeline {
         
         stage('Deploy to EC2') {
             steps {
-                echo '=== Deploy to Production Server using deploy.sh ==='
+                echo '=== Deploy to Production Server using Docker Hub Images ==='
                 withCredentials([sshUserPrivateKey(credentialsId: SSH_CREDENTIAL, keyFileVariable: 'SSH_KEY')]) {
                     sh """
+                        # docker-compose.yml 파일을 EC2로 전송
+                        scp -i \${SSH_KEY} -o StrictHostKeyChecking=no docker-compose.yml ${DEPLOY_SERVER}:${DEPLOY_PATH}/
+                        
                         ssh -i \${SSH_KEY} -o StrictHostKeyChecking=no ${DEPLOY_SERVER} '
                             cd ${DEPLOY_PATH}
-                            
-                            # Git Pull from develop branch
-                            echo "=== Pulling latest develop branch ==="
-                            git checkout develop
-                            git pull origin develop
                             
                             # 환경 변수 파일 확인
                             if [ ! -f backend/.env ] || [ ! -f ai-service/.env ]; then
@@ -103,12 +101,22 @@ pipeline {
                                 exit 1
                             fi
                             
-                            # deploy.sh 실행 권한 부여
-                            chmod +x deploy.sh
+                            # Docker Hub에서 최신 이미지 pull
+                            echo "=== Pulling latest images from Docker Hub ==="
+                            docker compose pull
                             
-                            # deploy.sh를 사용한 배포
-                            echo "=== Running deployment script ==="
-                            sudo ./deploy.sh deploy
+                            # 기존 컨테이너 중지 및 제거
+                            echo "=== Stopping and removing old containers ==="
+                            docker compose down --timeout 30 || true
+                            
+                            # 새 컨테이너 시작
+                            echo "=== Starting new containers ==="
+                            docker compose up -d
+                            
+                            # 잠시 대기 (컨테이너 초기화)
+                            sleep 10
+                            
+                            echo "=== Deployment completed ==="
                         '
                     """
                 }
@@ -125,37 +133,57 @@ pipeline {
                             
                             # 배포 상태 확인
                             echo "=== Checking deployment status ==="
-                            sudo ./deploy.sh status
+                            docker compose ps
                             
-                            # 서비스별 상태 확인
-                            echo ""
-                            echo "=== Service Health Check Results ==="
-                            
-                            # Backend
-                            if curl -f http://localhost:9090/actuator/health > /dev/null 2>&1; then
-                                echo "✅ Backend: HEALTHY"
-                            else
-                                echo "❌ Backend: UNHEALTHY"
-                                exit 1
-                            fi
-                            
-                            # AI Service
-                            if curl -f http://localhost:8000/health > /dev/null 2>&1; then
-                                echo "✅ AI Service: HEALTHY"
-                            else
-                                echo "❌ AI Service: UNHEALTHY"
-                                exit 1
-                            fi
-                            
-                            # Nginx
-                            if curl -f http://localhost:80/health > /dev/null 2>&1; then
-                                echo "✅ Nginx: HEALTHY"
-                            else
-                                echo "⚠️  Nginx: UNHEALTHY (non-critical)"
-                            fi
+                            # Health check 시도 (최대 30회)
+                            max_attempts=30
+                            attempt=0
                             
                             echo ""
-                            echo "=== Deployment Verification Complete ==="
+                            echo "=== Running Health Checks ==="
+                            
+                            while [ \$attempt -lt \$max_attempts ]; do
+                                attempt=\$((attempt + 1))
+                                echo "Attempt \$attempt/\$max_attempts..."
+                                
+                                backend_healthy=false
+                                ai_healthy=false
+                                
+                                # Backend
+                                if curl -f -s http://localhost:9090/actuator/health > /dev/null 2>&1; then
+                                    backend_healthy=true
+                                fi
+                                
+                                # AI Service
+                                if curl -f -s http://localhost:8000/health > /dev/null 2>&1; then
+                                    ai_healthy=true
+                                fi
+                                
+                                if [ "\$backend_healthy" = true ] && [ "\$ai_healthy" = true ]; then
+                                    echo ""
+                                    echo "✅ Backend: HEALTHY"
+                                    echo "✅ AI Service: HEALTHY"
+                                    
+                                    # Nginx (선택사항)
+                                    if curl -f -s http://localhost:80/health > /dev/null 2>&1; then
+                                        echo "✅ Nginx: HEALTHY"
+                                    else
+                                        echo "⚠️  Nginx: UNHEALTHY (non-critical)"
+                                    fi
+                                    
+                                    echo ""
+                                    echo "=== All Critical Services are Healthy ==="
+                                    exit 0
+                                fi
+                                
+                                sleep 10
+                            done
+                            
+                            echo ""
+                            echo "❌ Health check failed after \$max_attempts attempts"
+                            echo "=== Container Logs ==="
+                            docker compose logs --tail=50
+                            exit 1
                         '
                     """
                 }
@@ -175,10 +203,10 @@ pipeline {
                 withCredentials([sshUserPrivateKey(credentialsId: SSH_CREDENTIAL, keyFileVariable: 'SSH_KEY')]) {
                     sh """
                         ssh -i \${SSH_KEY} -o StrictHostKeyChecking=no ${DEPLOY_SERVER} '
-                            cd ${DEPLOY_PATH}
-                            
-                            # deploy.sh의 cleanup 기능 사용
-                            sudo ./deploy.sh cleanup
+                            # EC2의 오래된 이미지 정리
+                            echo "=== Cleaning up unused Docker resources ==="
+                            docker image prune -f
+                            docker network prune -f
                         '
                     """
                 }
@@ -198,7 +226,7 @@ pipeline {
                     ssh -i \${SSH_KEY} -o StrictHostKeyChecking=no ${DEPLOY_SERVER} '
                         echo "=== 📊 Current Service Status ==="
                         cd ${DEPLOY_PATH}
-                        sudo docker compose ps
+                        docker compose ps
                     '
                 """
             }
