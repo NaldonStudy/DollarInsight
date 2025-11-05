@@ -95,7 +95,12 @@ class AppRouter {
       GoRoute(
         path: '/signup/watchlist-company',
         name: 'signup-watchlist-company',
-        builder: (context, state) => const SignupWatchlistCompanyScreen(),
+        builder: (context, state) {
+          final selectedIndustries = state.extra as Set<String>?;
+          return SignupWatchlistCompanyScreen(
+            selectedIndustries: selectedIndustries,
+          );
+        },
       ),
 
       /// 관심 종목 선택 결과
