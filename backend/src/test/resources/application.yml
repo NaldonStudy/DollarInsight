@@ -1,43 +1,62 @@
 spring:
-  config:
-    activate:
-      on-profile: test
-
   # H2 인메모리 데이터베이스 설정
   datasource:
-    driver-class-name: org.h2.Driver
-    url: jdbc:h2:mem:testdb;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH
+    url: jdbc:h2:mem:testdb;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE
     username: sa
     password: 
+    driver-class-name: org.h2.Driver
   
   # JPA 설정
   jpa:
-    database-platform: org.hibernate.dialect.H2Dialect
     hibernate:
       ddl-auto: create-drop
+    open-in-view: false
     show-sql: false
     properties:
       hibernate:
+        jdbc:
+          time_zone: UTC
+        dialect: org.hibernate.dialect.H2Dialect
         format_sql: true
   
   # Flyway 비활성화 (테스트에서는 JPA가 스키마 자동 생성)
   flyway:
     enabled: false
   
-  # MongoDB 테스트 설정 - 비활성화
+  # MongoDB, Redis 자동 설정 제외
   autoconfigure:
     exclude:
       - org.springframework.boot.autoconfigure.mongo.MongoAutoConfiguration
       - org.springframework.boot.autoconfigure.data.mongo.MongoDataAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
   
-  # Redis 테스트 설정 - 비활성화
-  data:
+  # 캐시 비활성화
+  cache:
+    type: none
+
+# JWT 테스트 설정 (운영 설정과 동일한 구조)
+app:
+  jwt:
+    secret: test-secret-key-for-junit-must-be-at-least-32-bytes-long-here
+    access-ttl-seconds: 900
+
+# Actuator 비활성화 (테스트에서 불필요)
+management:
+  endpoints:
+    enabled-by-default: false
+  health:
     redis:
-      repositories:
-        enabled: false
+      enabled: false
+    mongo:
+      enabled: false
+    db:
+      enabled: false
 
 # 로그 레벨
 logging:
   level:
+    root: WARN
     com.ssafy.b205: INFO
     org.springframework: WARN
+    org.hibernate: WARN
