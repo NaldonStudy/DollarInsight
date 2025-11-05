@@ -1,3 +1,6 @@
+//SignupWatchlistCompanyScreen
+// context.push('/signup/watchlist-result'); 로 이동
+
 import 'package:flutter/material.dart';
 
 class SignupWatchlistCompanyScreen extends StatelessWidget {
