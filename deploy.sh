@@ -4,6 +4,7 @@
 # Dollar In$ight - Deployment Script
 # 
 # This script handles the deployment of Dollar In$ight services
+# Uses Docker Hub images (no local build required)
 # Can be used both manually and by Jenkins CI/CD pipeline
 ################################################################################
 
@@ -18,13 +19,13 @@ NC='\033[0m' # No Color
 
 # Configuration
 DEPLOY_DIR="/opt/S13P31B205"
-BACKUP_DIR="/opt/dollar-insight-backups"
+BACKUP_DIR="${DEPLOY_DIR}/backups"  # 프로젝트 내부로 변경
 MAX_BACKUPS=5
 COMPOSE_FILE="docker-compose.yml"
 ENV_FILE=".env"
 
-# Logging
-LOG_FILE="/var/log/dollar-insight-deploy.log"
+# Logging - 프로젝트 디렉토리 내부로 변경
+LOG_FILE="${DEPLOY_DIR}/deploy.log"
 
 log() {
     echo -e "${GREEN}[$(date +'%Y-%m-%d %H:%M:%S')]${NC} $1" | tee -a "$LOG_FILE"
@@ -45,8 +46,9 @@ info() {
 
 # Check if running as root or with sudo
 check_permissions() {
-    if [[ $EUID -ne 0 ]]; then
-        error "This script must be run as root or with sudo"
+    # Docker Hub 방식에서는 sudo 불필요 (docker 그룹 권한만 있으면 됨)
+    if ! docker info > /dev/null 2>&1; then
+        error "Cannot connect to Docker daemon. Please ensure:\n  1. Docker is running\n  2. Current user is in 'docker' group: sudo usermod -aG docker \$USER"
     fi
 }
 
@@ -100,15 +102,21 @@ cleanup_old_backups() {
 
 # Pull latest Docker images
 pull_images() {
-    log "Pulling latest Docker images..."
+    log "Pulling latest Docker images from Docker Hub..."
     
     cd "$DEPLOY_DIR"
     
-    if ! docker compose pull; then
-        error "Failed to pull Docker images"
+    # .env 파일이 있는지 확인
+    if [ ! -f backend/.env ] || [ ! -f ai-service/.env ]; then
+        error "Environment files not found!\n  Please create:\n  - $DEPLOY_DIR/backend/.env\n  - $DEPLOY_DIR/ai-service/.env"
     fi
     
-    log "Docker images pulled ✓"
+    # Docker Compose로 이미지 pull
+    if ! docker compose pull; then
+        error "Failed to pull Docker images from Docker Hub\n  Check:\n  1. Internet connection\n  2. Docker Hub image availability\n  3. docker-compose.yml configuration"
+    fi
+    
+    log "Docker images pulled successfully ✓"
 }
 
 # Stop running services
@@ -209,12 +217,22 @@ show_status() {
     echo ""
     
     cd "$DEPLOY_DIR"
-    docker compose ps
+    
+    if ! docker compose ps 2>/dev/null; then
+        warn "No services running or docker-compose.yml not found"
+        return
+    fi
     
     echo ""
     log "Container resource usage:"
-    docker stats --no-stream --format "table {{.Container}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.NetIO}}" \
-        $(docker compose ps -q)
+    local running_containers=$(docker compose ps -q 2>/dev/null)
+    
+    if [ -n "$running_containers" ]; then
+        docker stats --no-stream --format "table {{.Container}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.NetIO}}" \
+            $running_containers
+    else
+        warn "No running containers found"
+    fi
 }
 
 # View logs
@@ -309,6 +327,7 @@ restart_service() {
 deploy() {
     log "========================================="
     log "Starting Dollar In\$ight Deployment"
+    log "Using Docker Hub Images (No Local Build)"
     log "========================================="
     
     check_permissions
@@ -330,6 +349,11 @@ deploy() {
     log "  - Nginx Gateway: http://localhost:80"
     log "  - Backend Health: http://localhost:9090/actuator/health"
     log "  - AI Health: http://localhost:8000/health"
+    echo ""
+    log "Images from Docker Hub:"
+    log "  - imtaewon/dollar-backend:latest"
+    log "  - imtaewon/dollar-ai:latest"
+    log "  - imtaewon/dollar-nginx:latest"
 }
 
 # Parse command line arguments
@@ -338,29 +362,24 @@ case "${1:-deploy}" in
         deploy
         ;;
     rollback)
-        check_permissions
         rollback
         ;;
     status)
         show_status
         ;;
     stop)
-        check_permissions
         stop_services
         ;;
     start)
-        check_permissions
         start_services
         health_check
         ;;
     restart)
-        check_permissions
         stop_services
         start_services
         health_check
         ;;
     restart-service)
-        check_permissions
         restart_service "$2"
         ;;
     logs)
@@ -370,16 +389,16 @@ case "${1:-deploy}" in
         health_check
         ;;
     cleanup)
-        check_permissions
         cleanup_docker
         ;;
     *)
         echo "Dollar In\$ight Deployment Script"
+        echo "Using Docker Hub Images (No Local Build Required)"
         echo ""
         echo "Usage: $0 {command} [options]"
         echo ""
         echo "Commands:"
-        echo "  deploy              - Full deployment (pull, stop, start, health check)"
+        echo "  deploy              - Full deployment (pull from Docker Hub, stop, start, health check)"
         echo "  rollback            - Rollback to previous version"
         echo "  status              - Show service status and resource usage"
         echo "  stop                - Stop all services"
@@ -391,10 +410,18 @@ case "${1:-deploy}" in
         echo "  cleanup             - Clean up unused Docker resources"
         echo ""
         echo "Examples:"
-        echo "  sudo ./deploy.sh deploy"
-        echo "  sudo ./deploy.sh rollback"
-        echo "  sudo ./deploy.sh logs backend"
-        echo "  sudo ./deploy.sh restart-service ai-service"
+        echo "  ./deploy.sh deploy                    # Deploy from Docker Hub (no sudo needed)"
+        echo "  ./deploy.sh rollback                  # Rollback to previous version"
+        echo "  ./deploy.sh logs backend              # View backend logs"
+        echo "  ./deploy.sh restart-service ai-service # Restart AI service"
+        echo ""
+        echo "Prerequisites:"
+        echo "  1. Docker installed and running"
+        echo "  2. Current user in 'docker' group: sudo usermod -aG docker \$USER"
+        echo "  3. Environment files exist:"
+        echo "     - /opt/S13P31B205/backend/.env"
+        echo "     - /opt/S13P31B205/ai-service/.env"
+        echo "  4. docker-compose.yml exists in /opt/S13P31B205"
         exit 1
         ;;
 esac

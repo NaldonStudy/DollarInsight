@@ -30,13 +30,17 @@ pipeline {
             }
         }
         
+        // ========================================
+        // CD: Continuous Deployment (빌드 & 배포)
+        // ========================================
+        
         stage('Backend - Build') {
             steps {
                 echo '=== Backend Build (Gradle) ==='
                 dir('backend') {
                     sh '''
                         chmod +x gradlew
-                        ./gradlew clean build -x test --no-daemon
+                        ./gradlew build -x test --no-daemon
                         ls -lh build/libs/
                     '''
                 }
@@ -88,27 +92,19 @@ pipeline {
                 echo '=== Deploy to Production Server using deploy.sh ==='
                 withCredentials([sshUserPrivateKey(credentialsId: SSH_CREDENTIAL, keyFileVariable: 'SSH_KEY')]) {
                     sh """
+                        # 필요한 파일들을 EC2로 전송
+                        scp -i \${SSH_KEY} -o StrictHostKeyChecking=no docker-compose.yml ${DEPLOY_SERVER}:${DEPLOY_PATH}/
+                        scp -i \${SSH_KEY} -o StrictHostKeyChecking=no deploy.sh ${DEPLOY_SERVER}:${DEPLOY_PATH}/
+                        
                         ssh -i \${SSH_KEY} -o StrictHostKeyChecking=no ${DEPLOY_SERVER} '
                             cd ${DEPLOY_PATH}
-                            
-                            # Git Pull from develop branch
-                            echo "=== Pulling latest develop branch ==="
-                            git checkout develop
-                            git pull origin develop
-                            
-                            # 환경 변수 파일 확인
-                            if [ ! -f backend/.env ] || [ ! -f ai-service/.env ]; then
-                                echo "ERROR: .env files not found!"
-                                echo "Please create .env files in backend/ and ai-service/ directories"
-                                exit 1
-                            fi
                             
                             # deploy.sh 실행 권한 부여
                             chmod +x deploy.sh
                             
-                            # deploy.sh를 사용한 배포
+                            # deploy.sh를 사용한 배포 (Docker Hub 방식)
                             echo "=== Running deployment script ==="
-                            sudo ./deploy.sh deploy
+                            ./deploy.sh deploy
                         '
                     """
                 }
@@ -123,37 +119,11 @@ pipeline {
                         ssh -i \${SSH_KEY} -o StrictHostKeyChecking=no ${DEPLOY_SERVER} '
                             cd ${DEPLOY_PATH}
                             
-                            # 배포 상태 확인
+                            # deploy.sh의 status 명령으로 배포 상태 확인
                             echo "=== Checking deployment status ==="
-                            sudo ./deploy.sh status
+                            ./deploy.sh status
                             
-                            # 서비스별 상태 확인
-                            echo ""
-                            echo "=== Service Health Check Results ==="
-                            
-                            # Backend
-                            if curl -f http://localhost:9090/actuator/health > /dev/null 2>&1; then
-                                echo "✅ Backend: HEALTHY"
-                            else
-                                echo "❌ Backend: UNHEALTHY"
-                                exit 1
-                            fi
-                            
-                            # AI Service
-                            if curl -f http://localhost:8000/health > /dev/null 2>&1; then
-                                echo "✅ AI Service: HEALTHY"
-                            else
-                                echo "❌ AI Service: UNHEALTHY"
-                                exit 1
-                            fi
-                            
-                            # Nginx
-                            if curl -f http://localhost:80/health > /dev/null 2>&1; then
-                                echo "✅ Nginx: HEALTHY"
-                            else
-                                echo "⚠️  Nginx: UNHEALTHY (non-critical)"
-                            fi
-                            
+                            # Health check는 deploy.sh에서 이미 수행됨
                             echo ""
                             echo "=== Deployment Verification Complete ==="
                         '
@@ -178,7 +148,7 @@ pipeline {
                             cd ${DEPLOY_PATH}
                             
                             # deploy.sh의 cleanup 기능 사용
-                            sudo ./deploy.sh cleanup
+                            ./deploy.sh cleanup
                         '
                     """
                 }
@@ -188,9 +158,10 @@ pipeline {
     
     post {
         success {
-            echo '=== ✅ Deployment Success ==='
+            echo '=== ✅ CD Pipeline Success ==='
             echo "Build Number: ${BUILD_NUMBER}"
             echo "Image Tag: ${IMAGE_TAG}"
+            echo "Deployment completed successfully"
             echo "Deployed at: ${new Date()}"
             
             withCredentials([sshUserPrivateKey(credentialsId: SSH_CREDENTIAL, keyFileVariable: 'SSH_KEY')]) {
@@ -198,28 +169,14 @@ pipeline {
                     ssh -i \${SSH_KEY} -o StrictHostKeyChecking=no ${DEPLOY_SERVER} '
                         echo "=== 📊 Current Service Status ==="
                         cd ${DEPLOY_PATH}
-                        sudo docker compose ps
+                        docker compose ps
                     '
                 """
             }
-            
-            // Slack 알림 (Slack 플러그인 설치 및 설정 후 활성화)
-            // slackSend(
-            //     channel: '#deployments',
-            //     color: 'good',
-            //     message: """
-            //         ✅ *Deployment Success*
-            //         Project: ${PROJECT_NAME}
-            //         Build: #${env.BUILD_NUMBER}
-            //         Tag: ${IMAGE_TAG}
-            //         Branch: ${env.GIT_BRANCH}
-            //         Deployed by: ${env.BUILD_USER}
-            //     """
-            // )
         }
         
         failure {
-            echo '=== ❌ Deployment Failed ==='
+            echo '=== ❌ CD Pipeline Failed ==='
             
             // 실패 시 로그 수집
             withCredentials([sshUserPrivateKey(credentialsId: SSH_CREDENTIAL, keyFileVariable: 'SSH_KEY')]) {
@@ -227,39 +184,15 @@ pipeline {
                     ssh -i \${SSH_KEY} -o StrictHostKeyChecking=no ${DEPLOY_SERVER} '
                         echo "=== 📋 Service Logs (Last 50 lines) ==="
                         cd ${DEPLOY_PATH}
-                        sudo docker compose logs --tail=50
+                        ./deploy.sh logs || docker compose logs --tail=50
                     ' || true
                 """
             }
-            
-            // Slack 알림 (Slack 플러그인 설치 및 설정 후 활성화)
-            // slackSend(
-            //     channel: '#deployments',
-            //     color: 'danger',
-            //     message: """
-            //         ❌ *Deployment Failed*
-            //         Project: ${PROJECT_NAME}
-            //         Build: #${env.BUILD_NUMBER}
-            //         Branch: ${env.GIT_BRANCH}
-            //         Check Jenkins: ${env.BUILD_URL}
-            //     """
-            // )
         }
         
         unstable {
-            echo '=== ⚠️ Deployment Unstable ==='
-            
-            // Slack 알림
-            // slackSend(
-            //     channel: '#deployments',
-            //     color: 'warning',
-            //     message: """
-            //         ⚠️ *Deployment Unstable*
-            //         Project: ${PROJECT_NAME}
-            //         Build: #${env.BUILD_NUMBER}
-            //         Some tests may have failed
-            //     """
-            // )
+            echo '=== ⚠️ CD Pipeline Unstable ==='
+            echo 'Deployment may be incomplete'
         }
         
         always {
