@@ -49,7 +49,7 @@ pipeline {
         
         stage('Build Docker Images') {
             steps {
-                echo '=== Building Docker Images in Jenkins ==='
+                echo '=== Building Docker Images in Jenkins (Backend & AI Service Only) ==='
                 script {
                     // Backend 이미지 빌드
                     docker.build("${IMAGE_BASE}/dollar-backend:${IMAGE_TAG}", "./backend")
@@ -59,16 +59,14 @@ pipeline {
                     docker.build("${IMAGE_BASE}/dollar-ai:${IMAGE_TAG}", "./ai-service")
                     docker.build("${IMAGE_BASE}/dollar-ai:latest", "./ai-service")
                     
-                    // Nginx 이미지 빌드
-                    docker.build("${IMAGE_BASE}/dollar-nginx:${IMAGE_TAG}", "./nginx")
-                    docker.build("${IMAGE_BASE}/dollar-nginx:latest", "./nginx")
+                    // Note: Nginx 이미지는 빌드하지 않음 (설정 변경 시에만 별도 빌드 필요)
                 }
             }
         }
         
         stage('Push to Registry') {
             steps {
-                echo '=== Pushing Images to Docker Hub ==='
+                echo '=== Pushing Images to Docker Hub (Backend & AI Service Only) ==='
                 script {
                     docker.withRegistry('https://index.docker.io/v1/', DOCKERHUB_CREDENTIAL) {
                         // Backend 푸시
@@ -79,9 +77,7 @@ pipeline {
                         docker.image("${IMAGE_BASE}/dollar-ai:${IMAGE_TAG}").push()
                         docker.image("${IMAGE_BASE}/dollar-ai:latest").push()
                         
-                        // Nginx 푸시
-                        docker.image("${IMAGE_BASE}/dollar-nginx:${IMAGE_TAG}").push()
-                        docker.image("${IMAGE_BASE}/dollar-nginx:latest").push()
+                        // Note: Nginx 이미지는 푸시하지 않음
                     }
                 }
             }
@@ -95,7 +91,6 @@ pipeline {
                         # 필요한 파일들을 EC2로 전송
                         scp -i \${SSH_KEY} -o StrictHostKeyChecking=no docker-compose.yml ${DEPLOY_SERVER}:${DEPLOY_PATH}/
                         scp -i \${SSH_KEY} -o StrictHostKeyChecking=no deploy.sh ${DEPLOY_SERVER}:${DEPLOY_PATH}/
-                        scp -i \${SSH_KEY} -o StrictHostKeyChecking=no -r nginx ${DEPLOY_SERVER}:${DEPLOY_PATH}/
 
                         ssh -i \${SSH_KEY} -o StrictHostKeyChecking=no ${DEPLOY_SERVER} '
                             cd ${DEPLOY_PATH}
@@ -103,8 +98,8 @@ pipeline {
                             # deploy.sh 실행 권한 부여
                             chmod +x deploy.sh
                             
-                            # deploy.sh를 사용한 배포 (Docker Hub 방식)
-                            echo "=== Running deployment script ==="
+                            # deploy.sh를 사용한 배포 (Backend & AI Service만 업데이트)
+                            echo "=== Running deployment script (backend, ai-service only) ==="
                             ./deploy.sh deploy
                         '
                     """
@@ -162,6 +157,8 @@ pipeline {
             echo '=== ✅ CD Pipeline Success ==='
             echo "Build Number: ${BUILD_NUMBER}"
             echo "Image Tag: ${IMAGE_TAG}"
+            echo "Deployed Services: backend, ai-service"
+            echo "Preserved Services: postgres, mongodb, redis, chromadb, nginx, admin tools"
             echo "Deployment completed successfully"
             echo "Deployed at: ${new Date()}"
             
