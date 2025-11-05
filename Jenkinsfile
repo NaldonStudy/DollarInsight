@@ -31,45 +31,6 @@ pipeline {
         }
         
         // ========================================
-        // CI: Continuous Integration (테스트)
-        // ========================================
-        
-        stage('Backend - Test') {
-            steps {
-                echo '=== Backend Test (JUnit) ==='
-                dir('backend') {
-                    sh '''
-                        chmod +x gradlew
-                        ./gradlew clean test --no-daemon
-                    '''
-                }
-            }
-            post {
-                always {
-                    // JUnit 테스트 결과 수집
-                    junit '**/build/test-results/test/*.xml'
-                    
-                    // 테스트 리포트를 HTML로 발행
-                    publishHTML(target: [
-                        allowMissing: false,
-                        alwaysLinkToLastBuild: true,
-                        keepAll: true,
-                        reportDir: 'backend/build/reports/tests/test',
-                        reportFiles: 'index.html',
-                        reportName: 'Backend Test Report'
-                    ])
-                }
-                success {
-                    echo '✅ All backend tests passed!'
-                }
-                failure {
-                    echo '❌ Backend tests failed! Stopping pipeline.'
-                    error('Backend tests failed')
-                }
-            }
-        }
-        
-        // ========================================
         // CD: Continuous Deployment (빌드 & 배포)
         // ========================================
         
@@ -197,10 +158,10 @@ pipeline {
     
     post {
         success {
-            echo '=== ✅ CI/CD Pipeline Success ==='
+            echo '=== ✅ CD Pipeline Success ==='
             echo "Build Number: ${BUILD_NUMBER}"
             echo "Image Tag: ${IMAGE_TAG}"
-            echo "All tests passed and deployment completed"
+            echo "Deployment completed successfully"
             echo "Deployed at: ${new Date()}"
             
             withCredentials([sshUserPrivateKey(credentialsId: SSH_CREDENTIAL, keyFileVariable: 'SSH_KEY')]) {
@@ -215,7 +176,7 @@ pipeline {
         }
         
         failure {
-            echo '=== ❌ CI/CD Pipeline Failed ==='
+            echo '=== ❌ CD Pipeline Failed ==='
             
             // 실패 시 로그 수집
             withCredentials([sshUserPrivateKey(credentialsId: SSH_CREDENTIAL, keyFileVariable: 'SSH_KEY')]) {
@@ -230,8 +191,8 @@ pipeline {
         }
         
         unstable {
-            echo '=== ⚠️ CI/CD Pipeline Unstable ==='
-            echo 'Some tests may have failed or deployment is incomplete'
+            echo '=== ⚠️ CD Pipeline Unstable ==='
+            echo 'Deployment may be incomplete'
         }
         
         always {

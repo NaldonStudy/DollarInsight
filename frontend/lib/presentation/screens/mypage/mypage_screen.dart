@@ -118,13 +118,17 @@ class MypageScreen extends StatelessWidget {
                   w: w,
                   h: h,
                   label: '관심 종목 변경',
-                  onTap: () {},
+                  onTap: () {
+                    context.push('/mypage/watchlist/edit');
+                  },
                 ),
                 _menuButton(
                   w: w,
                   h: h,
                   label: '탈퇴하기',
-                  onTap: () {},
+                  onTap: () {
+                    context.push('/withdrawal');
+                  },
                 ),
               ],
             ),

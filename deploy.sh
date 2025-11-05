@@ -19,13 +19,13 @@ NC='\033[0m' # No Color
 
 # Configuration
 DEPLOY_DIR="/opt/S13P31B205"
-BACKUP_DIR="/opt/dollar-insight-backups"
+BACKUP_DIR="${DEPLOY_DIR}/backups"  # 프로젝트 내부로 변경
 MAX_BACKUPS=5
 COMPOSE_FILE="docker-compose.yml"
 ENV_FILE=".env"
 
-# Logging
-LOG_FILE="/var/log/dollar-insight-deploy.log"
+# Logging - 프로젝트 디렉토리 내부로 변경
+LOG_FILE="${DEPLOY_DIR}/deploy.log"
 
 log() {
     echo -e "${GREEN}[$(date +'%Y-%m-%d %H:%M:%S')]${NC} $1" | tee -a "$LOG_FILE"
