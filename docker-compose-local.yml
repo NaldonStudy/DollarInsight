@@ -1,0 +1,59 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: di-postgres-local
+    ports:
+      - "55432:5432"   # host:container
+    environment:
+      POSTGRES_DB: dollar_insight
+      POSTGRES_USER: dev
+      POSTGRES_PASSWORD: ssafy
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL","pg_isready -U dev -d dollar_insight"]
+      interval: 10s
+      timeout: 5s
+      retries: 8
+
+  redis:
+    image: redis:7-alpine
+    container_name: di-redis-local
+    command: ["redis-server", "--requirepass", "ssafy"]
+    ports:
+      - "6380:6379"
+    volumes:
+      - ./redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "ssafy", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 8
+
+  mongodb:
+    image: mongo:7
+    container_name: di-mongodb-local
+    ports:
+      - "27018:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: ssafy
+    volumes:
+      - ./mongodb_data:/data/db
+      - ./.docker/mongodb/initdb.d:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD","mongosh","-u","admin","-p","ssafy","--authenticationDatabase","admin","--eval","db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 8
+
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: di-chromadb-local
+    # chroma 기본 포트가 컨테이너 8000이라 host 9000으로 노출
+    ports:
+      - "9000:8000"
+    volumes:
+      - ./chromadb_data:/chroma

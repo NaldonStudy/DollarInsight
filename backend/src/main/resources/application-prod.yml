@@ -1,4 +1,3 @@
-# 프로덕션 환경 설정 (Docker 환경)
 spring:
   jpa:
     hibernate:
@@ -9,11 +8,14 @@ spring:
     enabled: true
     baseline-on-migrate: true
 
-# 프로덕션에서는 상세 정보를 공개하지 않음
+  data:
+    redis:
+      password: ${SPRING_REDIS_PASSWORD}   # default 없이 강제
+
 management:
   endpoint:
     health:
-      show-details: never
+      show-details: never  # 프로덕션에서는 상세 헬스 비공개
 
 logging:
   level:
@@ -22,3 +24,10 @@ logging:
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
     file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+# (선택) 필수 비밀/주소는 지정 안되면 부팅 실패하도록 강제
+# spring:
+#   datasource:
+#     url: ${SPRING_DATASOURCE_URL:?SPRING_DATASOURCE_URL is required in prod}
+#     username: ${SPRING_DATASOURCE_USERNAME:?SPRING_DATASOURCE_USERNAME is required in prod}
+#     password: ${SPRING_DATASOURCE_PASSWORD:?SPRING_DATASOURCE_PASSWORD is required in prod}

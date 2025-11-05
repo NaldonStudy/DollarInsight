@@ -51,7 +51,7 @@ EXPOSE 9090
 
 # 헬스체크 설정
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
-  CMD curl -f http://localhost:8080/actuator/health/liveness || exit 1
+  CMD curl -f http://localhost:9090/actuator/health/liveness || exit 1
 
 # JVM 옵션 설정
 ENV JAVA_OPTS="-Xms512m -Xmx1024m -XX:+UseG1GC -XX:MaxGCPauseMillis=200"
