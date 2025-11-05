@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../widgets/common/custom_back_button.dart';
 
 class MypageScreen extends StatelessWidget {
@@ -8,11 +9,11 @@ class MypageScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
     final w = size.width;
+    final h = size.height;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FB),
 
-      // ✅ 로그인 화면과 동일한 AppBar 사용
       appBar: AppBar(
         elevation: 0,
         backgroundColor: const Color(0xFFF7F8FB),
@@ -20,40 +21,40 @@ class MypageScreen extends StatelessWidget {
       ),
 
       body: SafeArea(
-        child: SingleChildScrollView( // ← 스크롤 대비
+        child: SingleChildScrollView(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 33),
+            padding: EdgeInsets.symmetric(horizontal: w * 0.09), // 33/360 ≈ 9%
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
 
                 // ✅ 프로필 박스
                 Container(
-                  width: w * 0.82,
-                  height: 86,
+                  width: double.infinity,
+                  height: h * 0.11, // 86/800
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(w * 0.02),
                   ),
                   child: Stack(
                     children: [
                       // 배경 원
-                      const Positioned(
-                        left: 16,
-                        top: 13,
+                      Positioned(
+                        left: w * 0.045, // 16/360
+                        top: h * 0.016,  // 13/800
                         child: CircleAvatar(
-                          radius: 30,
-                          backgroundColor: Color(0xFFEFF8FF),
+                          radius: w * 0.083, // 30/360
+                          backgroundColor: const Color(0xFFEFF8FF),
                         ),
                       ),
 
-                      // ✅ 프로필 이미지
+                      // ✅ 프로필 이미지 (반응형)
                       Positioned(
-                        left: 9,
-                        top: 5,
+                        left: w * 0.025, // 9/360
+                        top: h * 0.006, // 5/800
                         child: Container(
-                          width: 75,
-                          height: 75,
+                          width: w * 0.208, // 75/360
+                          height: w * 0.208, // 항상 정사각형
                           decoration: const BoxDecoration(
                             shape: BoxShape.circle,
                             image: DecorationImage(
@@ -65,31 +66,28 @@ class MypageScreen extends StatelessWidget {
                       ),
 
                       // ✅ 이름
-                      const Positioned(
-                        left: 86,
-                        top: 21,
+                      Positioned(
+                        left: w * 0.24,  // 86/360
+                        top: h * 0.029, // 23/800
                         child: Text(
-                          '김싸피님 안녕하세요~',
+                          '김더미님 안녕하세요~',
                           style: TextStyle(
-                            color: Colors.black,
-                            fontSize: 16,
+                            fontSize: w * 0.044, // 16px
                             fontWeight: FontWeight.w600,
-                            height: 1.4,
                           ),
                         ),
                       ),
 
                       // ✅ 최종 로그인
-                      const Positioned(
-                        left: 86,
-                        top: 43,
+                      Positioned(
+                        left: w * 0.24,
+                        top: h * 0.056, // 45/800
                         child: Text(
                           '최종 로그인 : 2025.10.28 00:00',
                           style: TextStyle(
-                            color: Color(0xFF757575),
-                            fontSize: 12,
+                            fontSize: w * 0.033, // 12px
+                            color: const Color(0xFF757575),
                             fontWeight: FontWeight.w600,
-                            height: 1.4,
                           ),
                         ),
                       ),
@@ -97,12 +95,37 @@ class MypageScreen extends StatelessWidget {
                   ),
                 ),
 
-                const SizedBox(height: 25),
+                SizedBox(height: h * 0.04), // 30px → 반응형
 
-                _menuButton(label: '비밀번호 변경', onTap: () {}),
-                _menuButton(label: 'AI 친구 변경', onTap: () {}),
-                _menuButton(label: '관심 종목 변경', onTap: () {}),
-                _menuButton(label: '탈퇴하기', onTap: () {}),
+                // ✅ 메뉴 버튼
+                _menuButton(
+                  w: w,
+                  h: h,
+                  label: '비밀번호 변경',
+                  onTap: () {
+                    context.push('/mypage/password-change');
+                  },
+                ),
+                _menuButton(
+                  w: w,
+                  h: h,
+                  label: 'AI 친구 변경',
+                  onTap: () {
+                    context.push('/mypage/ai-friend');
+                  },
+                ),
+                _menuButton(
+                  w: w,
+                  h: h,
+                  label: '관심 종목 변경',
+                  onTap: () {},
+                ),
+                _menuButton(
+                  w: w,
+                  h: h,
+                  label: '탈퇴하기',
+                  onTap: () {},
+                ),
               ],
             ),
           ),
@@ -111,28 +134,30 @@ class MypageScreen extends StatelessWidget {
     );
   }
 
-  // ✅ 메뉴 버튼 공통 위젯
+  // ✅ 메뉴 버튼 (반응형)
   Widget _menuButton({
+    required double w,
+    required double h,
     required String label,
     required VoidCallback onTap,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 16),
-        width: double.infinity,
-        height: 62,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(8),
-        ),
+    return Container(
+      margin: EdgeInsets.only(bottom: h * 0.02), // 16px
+      width: double.infinity,
+      height: h * 0.077, // 62/800
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(w * 0.022),
+      ),
+      child: InkWell(
+        onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.only(left: 19, top: 17),
+          padding: EdgeInsets.only(left: w * 0.053, top: h * 0.021),
           child: Text(
             label,
-            style: const TextStyle(
-              color: Color(0xFF757575),
-              fontSize: 20,
+            style: TextStyle(
+              fontSize: w * 0.05, // 20px
+              color: const Color(0xFF757575),
               fontWeight: FontWeight.w600,
             ),
           ),
