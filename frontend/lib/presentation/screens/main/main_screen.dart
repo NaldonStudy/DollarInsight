@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../../core/constants/app_spacing.dart';
+import '../../widgets/common/top_navigation.dart';
+import '../chat/chat_list_screen.dart';
 import '../../widgets/main/live_chat_card.dart';
 import '../../widgets/main/index_section.dart';
 import '../../widgets/main/news_section.dart';
 import '../../widgets/main/stock_section.dart';
-import '../../widgets/common/top_navigation.dart';
-import '../../widgets/common/scroll_fab_button.dart';
-import 'package:go_router/go_router.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -15,12 +17,14 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
+  bool isCompany = true; // ✅ 기업분석 / 채팅 상태 저장
   final ScrollController _scrollController = ScrollController();
   bool showFab = false;
 
   @override
   void initState() {
     super.initState();
+
     _scrollController.addListener(() {
       setState(() {
         showFab = _scrollController.offset > 40;
@@ -42,49 +46,60 @@ class _MainScreenState extends State<MainScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FB),
-
       body: SafeArea(
         child: Column(
           children: [
+            /// ✅ TopNavigation 을 MainScreen이 직접 제어
             TopNavigation(
               w: w,
               h: h,
-              onProfileTap: () => context.push("/mypage"),  // ✅ push로 스택 쌓기!
+              isCompany: isCompany,
+              onTapCompany: () => setState(() => isCompany = true),
+              onTapChat: () => setState(() => isCompany = false),
+              onProfileTap: () => context.push('/mypage'),
             ),
-            SizedBox(height: h * 0.02),
 
+            if (isCompany)
+              SizedBox(height: AppSpacing.section(context)),
+
+            /// ✅ 탭에 따라 Body 변경
             Expanded(
-              child: SingleChildScrollView(
-                controller: _scrollController,
-                padding: EdgeInsets.symmetric(horizontal: w * 0.07),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    LiveChatCard(w: w, h: h),
-                    SizedBox(height: h * 0.03),
-
-                    IndexSection(w: w, h: h),
-                    SizedBox(height: h * 0.03),
-
-                    NewsSection(w: w, h: h),
-                    SizedBox(height: h * 0.03),
-
-                    StockSection(w: w, h: h),
-                    SizedBox(height: h * 0.25),
-                  ],
-                ),
-              ),
+              child: isCompany
+                  ? _buildCompanyBody(context, w, h)
+                  : const ChatListScreen(),
             ),
           ],
         ),
       ),
+    );
+  }
 
-      floatingActionButton: ScrollFabButton(
-        w: w,
-        showFab: showFab,
-        onTap: () {
-          print("FAB Tapped!");
-        },
+  /// ✅ 기업분석 화면 Body
+  Widget _buildCompanyBody(BuildContext context, double w, double h) {
+    return SingleChildScrollView(
+      controller: _scrollController,
+      padding: EdgeInsets.symmetric(
+        horizontal: AppSpacing.horizontal(context),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          LiveChatCard(w: w, h: h),
+
+          SizedBox(height: AppSpacing.section(context)),
+
+          IndexSection(w: w, h: h),
+
+          SizedBox(height: AppSpacing.section(context)),
+
+          NewsSection(w: w, h: h),
+
+          SizedBox(height: AppSpacing.section(context)),
+
+          StockSection(w: w, h: h),
+
+          SizedBox(height: AppSpacing.bottomLarge(context)),
+        ],
       ),
     );
   }
