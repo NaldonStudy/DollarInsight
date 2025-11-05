@@ -23,6 +23,7 @@ import '../presentation/screens/chat/chat_room_screen.dart';
 import '../presentation/screens/mypage/mypage_screen.dart';
 import '../presentation/screens/mypage/watchlist_screen.dart';
 import '../presentation/screens/mypage/watchlist_edit_screen.dart';
+import '../presentation/screens/mypage/company_search_screen.dart';
 import '../presentation/screens/mypage/password_change_screen.dart';
 import '../presentation/screens/mypage/password_change_new_screen.dart';
 import '../presentation/screens/mypage/ai_friend_change_screen.dart';
@@ -249,6 +250,14 @@ class AppRouter {
         path: '/mypage/watchlist/edit',
         name: 'watchlist-edit',
         builder: (context, state) => const WatchlistEditScreen(),
+        redirect: (context, state) => RouteGuards.requireAuth(context, state),
+      ),
+
+      /// 기업 검색
+      GoRoute(
+        path: '/mypage/company-search',
+        name: 'company-search',
+        builder: (context, state) => const CompanySearchScreen(),
         redirect: (context, state) => RouteGuards.requireAuth(context, state),
       ),
 

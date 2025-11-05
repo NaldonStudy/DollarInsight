@@ -39,6 +39,16 @@ class _WatchlistEditScreenState extends State<WatchlistEditScreen> {
     });
   }
 
+  /// 검색 화면으로 이동
+  void _openSearchModal() {
+    context.push('/mypage/company-search');
+
+    // TODO: 검색 화면에서 기업 추가 후 돌아올 때 관심종목 리스트 새로고침
+    // setState(() {
+    //   _currentWatchlist = await watchlistApi.getMyWatchlist();
+    // });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -49,44 +59,41 @@ class _WatchlistEditScreenState extends State<WatchlistEditScreen> {
           children: [
             const SizedBox(height: 22),
 
-            // 검색창
+            // 검색창 (클릭 시 모달 열림)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 60),
-              child: Container(
-                height: 40,
-                decoration: ShapeDecoration(
-                  color: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    const SizedBox(width: 9),
-                    const Icon(
-                      Icons.search,
-                      color: Color(0xFF757575),
-                      size: 24,
+              child: GestureDetector(
+                onTap: _openSearchModal,
+                child: Container(
+                  height: 40,
+                  decoration: ShapeDecoration(
+                    color: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: TextField(
-                        decoration: const InputDecoration(
-                          hintText: '기업을 검색해 추가하세요',
-                          hintStyle: TextStyle(
+                  ),
+                  child: Row(
+                    children: [
+                      const SizedBox(width: 9),
+                      const Icon(
+                        Icons.search,
+                        color: Color(0xFF757575),
+                        size: 24,
+                      ),
+                      const SizedBox(width: 8),
+                      const Expanded(
+                        child: Text(
+                          '기업을 검색해 추가하세요',
+                          style: TextStyle(
                             color: Color(0xFF757575),
                             fontSize: 13,
                             fontFamily: 'Pretendard',
                             fontWeight: FontWeight.w700,
                           ),
-                          border: InputBorder.none,
                         ),
-                        onChanged: (value) {
-                          // TODO: 검색 기능 구현
-                        },
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
