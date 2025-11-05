@@ -1,11 +1,13 @@
 package com.ssafy.b205.backend.infra.security;
 
 import io.jsonwebtoken.*;
+import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import jakarta.annotation.PostConstruct;
-import javax.crypto.SecretKey;                 // 0.12.x에서는 SecretKey 권장
+import javax.crypto.SecretKey;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Date;
@@ -15,8 +17,13 @@ import java.util.Map;
 @Component
 public class TokenProvider {
 
-    @Value("${app.jwt.secret:please-change-min-32bytes}")
-    private String secret;
+    // 1) Base64 우선 사용 (운영 권장)
+    @Value("${app.jwt.secret-base64:}")
+    private String secretBase64;
+
+    // 2) 필요 시 raw 문자열로도 허용 (테스트/로컬 편의)
+    @Value("${app.jwt.secret:}")
+    private String secretRaw;
 
     @Value("${app.jwt.access-ttl-seconds:900}")
     private long accessTtlSec;
@@ -25,7 +32,23 @@ public class TokenProvider {
 
     @PostConstruct
     void init() {
-        this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+        byte[] keyBytes = null;
+
+        if (secretBase64 != null && !secretBase64.isBlank()) {
+            // Base64 → bytes
+            keyBytes = Decoders.BASE64.decode(secretBase64.trim());
+        } else if (secretRaw != null && !secretRaw.isBlank()) {
+            // 문자열 그대로 사용(UTF-8) — 길이 반드시 32바이트 이상
+            keyBytes = secretRaw.getBytes(StandardCharsets.UTF_8);
+        }
+
+        if (keyBytes == null || keyBytes.length < 32) { // HS256 최소 32bytes = 256bits
+            throw new IllegalStateException(
+                    "Invalid JWT secret: provide app.jwt.secret-base64 (Base64) or app.jwt.secret (raw) with >= 32 bytes."
+            );
+        }
+
+        this.key = Keys.hmacShaKeyFor(keyBytes);
     }
 
     public String createAccessToken(String userUuid, String deviceId) {
@@ -39,12 +62,12 @@ public class TokenProvider {
                         "aud", "mobile",
                         "roles", List.of("USER")
                 ))
-                .signWith(key, Jwts.SIG.HS256)
+                // jjwt 0.12 스타일: 알고리즘은 key에서 유추됨. (명시하고 싶으면 .signWith(key, Jwts.SIG.HS256))
+                .signWith(key)
                 .compact();
     }
 
     public Jws<Claims> parse(String token) {
-        // parserBuilder() → parser().verifyWith(key).build().parseSignedClaims(...)
         return Jwts.parser()
                 .verifyWith(key)
                 .build()

@@ -12,40 +12,50 @@ class LoginScreen extends StatelessWidget {
     final emailController = TextEditingController();
     final passwordController = TextEditingController();
 
+    final size = MediaQuery.of(context).size;
+    final w = size.width;
+    final h = size.height;
+
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FB),
+
+      // ✅ 앱바 반응형
       appBar: AppBar(
         elevation: 0,
         backgroundColor: const Color(0xFFF7F8FB),
         leading: const CustomBackButton(),
       ),
+
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 33),
+          padding: EdgeInsets.symmetric(horizontal: w * 0.091), // 33/360
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 20),
 
-              // 로그인 타이틀
-              const Text(
+              SizedBox(height: h * 0.025), // 20px
+
+              // ✅ 로그인 타이틀 (30px → 반응형)
+              Text(
                 '로그인',
                 style: TextStyle(
-                  fontSize: 30,
+                  fontSize: w * 0.083, // 30px 기준
                   fontWeight: FontWeight.w700,
                 ),
               ),
-              const SizedBox(height: 32),
 
-              // 이메일 입력
+              SizedBox(height: h * 0.04), // 32px
+
+              // ✅ 이메일 입력
               CustomTextField(
                 hintText: '이메일',
                 controller: emailController,
                 keyboardType: TextInputType.emailAddress,
               ),
-              const SizedBox(height: 16),
 
-              // 비밀번호 입력
+              SizedBox(height: h * 0.02), // 16px
+
+              // ✅ 비밀번호 입력
               CustomTextField(
                 hintText: '비밀번호',
                 controller: passwordController,
@@ -53,16 +63,17 @@ class LoginScreen extends StatelessWidget {
                 showPasswordToggle: true,
               ),
 
-              const Spacer(), // 🔽 남는 공간을 채워서 버튼을 아래로 밀어냄
+              const Spacer(),
 
-              // 로그인 버튼
+              // ✅ 로그인 버튼 (너비는 내부에서 처리)
               CustomButton(
                 text: '로그인',
                 onPressed: () {
                   context.push('/persona-intro');
                 },
               ),
-              const SizedBox(height: 32), // 하단 여백
+
+              SizedBox(height: h * 0.04), // 32px
             ],
           ),
         ),
