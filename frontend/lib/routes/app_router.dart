@@ -7,7 +7,8 @@ import '../presentation/screens/onboarding/landing_screen.dart';
 import '../presentation/screens/onboarding/persona_intro_screen.dart';
 import '../presentation/screens/auth/login_screen.dart';
 import '../presentation/screens/auth/signup/signup_screen.dart';
-import '../presentation/screens/auth/signup/signup_watchlist_screen.dart';
+import '../presentation/screens/auth/signup/signup_watchlist_industry_screen.dart';
+import '../presentation/screens/auth/signup/signup_watchlist_company_screen.dart';
 import '../presentation/screens/auth/signup/signup_complete_screen.dart';
 import '../presentation/screens/auth/withdrawal/withdrawal_password_screen.dart';
 import '../presentation/screens/auth/withdrawal/withdrawal_complete_screen.dart';
@@ -81,11 +82,18 @@ class AppRouter {
         builder: (context, state) => const SignupScreen(),
       ),
     //
-      /// 관심 종목 선택
+      /// 관심 종목 산업 선택
       GoRoute(
-        path: '/signup/watchlist',
-        name: 'signup-watchlist',
-        builder: (context, state) => const SignupWatchlistScreen(),
+        path: '/signup/watchlist-industry',
+        name: 'signup-watchlist-industry',
+        builder: (context, state) => const SignupWatchlistIndustryScreen(),
+      ),
+
+      /// 관심 종목 기업 선택
+      GoRoute(
+        path: '/signup/watchlist-company',
+        name: 'signup-watchlist-company',
+        builder: (context, state) => const SignupWatchlistCompanyScreen(),
       ),
 
       /// 회원가입 완료

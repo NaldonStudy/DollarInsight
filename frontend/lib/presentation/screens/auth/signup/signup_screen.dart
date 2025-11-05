@@ -12,7 +12,7 @@ class SignupScreen extends StatelessWidget {
 
   void _handleSignup(BuildContext context, SignupFormProvider provider) {
     if (provider.validateAll()) {
-      context.push('/signup/watchlist');
+      context.push('/signup/watchlist-industry');
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(

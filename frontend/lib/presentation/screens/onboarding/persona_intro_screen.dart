@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../widgets/persona/persona_card.dart';
 
 class PersonaIntroScreen extends StatefulWidget {
@@ -72,7 +73,7 @@ class _PersonaIntroScreenState extends State<PersonaIntroScreen> {
         curve: Curves.easeOutCubic,
       );
     } else {
-      print('페르소나 소개 완료');
+      context.push('/signup/complete'); // ✅ 회원가입 완료 화면으로 이동
     }
   }
 
