@@ -8,6 +8,7 @@ import '../../widgets/main/live_chat_card.dart';
 import '../../widgets/main/index_section.dart';
 import '../../widgets/main/news_section.dart';
 import '../../widgets/main/stock_section.dart';
+import '../../widgets/common/scroll_fab_button.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -46,10 +47,26 @@ class _MainScreenState extends State<MainScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FB),
+
+      /// ✅ 스크롤 시 나타나는 FAB 버튼
+      floatingActionButton: ScrollFabButton(
+        w: w,
+        showFab: showFab,
+        onTap: () {
+          _scrollController.animateTo(
+            0,
+            duration: const Duration(milliseconds: 350),
+            curve: Curves.easeOut,
+          );
+        },
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+
+      /// ✅ MAIN BODY
       body: SafeArea(
         child: Column(
           children: [
-            /// ✅ TopNavigation 을 MainScreen이 직접 제어
+            /// ✅ Top Navigation
             TopNavigation(
               w: w,
               h: h,
@@ -59,10 +76,11 @@ class _MainScreenState extends State<MainScreen> {
               onProfileTap: () => context.push('/mypage'),
             ),
 
+            /// ✅ 기업분석일 때만 Navigation 아래 간격 추가
             if (isCompany)
               SizedBox(height: AppSpacing.section(context)),
 
-            /// ✅ 탭에 따라 Body 변경
+            /// ✅ 화면 스위칭 (화면 전체 전환 아님)
             Expanded(
               child: isCompany
                   ? _buildCompanyBody(context, w, h)
@@ -74,7 +92,7 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
-  /// ✅ 기업분석 화면 Body
+  /// ✅ 기업분석 탭 화면 구성
   Widget _buildCompanyBody(BuildContext context, double w, double h) {
     return SingleChildScrollView(
       controller: _scrollController,
@@ -84,18 +102,22 @@ class _MainScreenState extends State<MainScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          /// ✅ 실시간 채팅 박스
           LiveChatCard(w: w, h: h),
 
           SizedBox(height: AppSpacing.section(context)),
 
+          /// ✅ 주요 지수
           IndexSection(w: w, h: h),
 
           SizedBox(height: AppSpacing.section(context)),
 
+          /// ✅ 뉴스 섹션
           NewsSection(w: w, h: h),
 
           SizedBox(height: AppSpacing.section(context)),
 
+          /// ✅ 관심종목 섹션
           StockSection(w: w, h: h),
 
           SizedBox(height: AppSpacing.bottomLarge(context)),
