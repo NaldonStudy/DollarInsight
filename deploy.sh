@@ -19,7 +19,7 @@ NC='\033[0m' # No Color
 
 # Configuration
 DEPLOY_DIR="/opt/S13P31B205"
-BACKUP_DIR="/opt/dollar-insight-backups"
+BACKUP_DIR="${DEPLOY_DIR}/backups"  # 프로젝트 내부로 변경
 MAX_BACKUPS=5
 COMPOSE_FILE="docker-compose.yml"
 ENV_FILE=".env"
