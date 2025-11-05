@@ -30,13 +30,56 @@ pipeline {
             }
         }
         
+        // ========================================
+        // CI: Continuous Integration (테스트)
+        // ========================================
+        
+        stage('Backend - Test') {
+            steps {
+                echo '=== Backend Test (JUnit) ==='
+                dir('backend') {
+                    sh '''
+                        chmod +x gradlew
+                        ./gradlew clean test --no-daemon
+                    '''
+                }
+            }
+            post {
+                always {
+                    // JUnit 테스트 결과 수집
+                    junit '**/build/test-results/test/*.xml'
+                    
+                    // 테스트 리포트를 HTML로 발행
+                    publishHTML(target: [
+                        allowMissing: false,
+                        alwaysLinkToLastBuild: true,
+                        keepAll: true,
+                        reportDir: 'backend/build/reports/tests/test',
+                        reportFiles: 'index.html',
+                        reportName: 'Backend Test Report'
+                    ])
+                }
+                success {
+                    echo '✅ All backend tests passed!'
+                }
+                failure {
+                    echo '❌ Backend tests failed! Stopping pipeline.'
+                    error('Backend tests failed')
+                }
+            }
+        }
+        
+        // ========================================
+        // CD: Continuous Deployment (빌드 & 배포)
+        // ========================================
+        
         stage('Backend - Build') {
             steps {
                 echo '=== Backend Build (Gradle) ==='
                 dir('backend') {
                     sh '''
                         chmod +x gradlew
-                        ./gradlew clean build -x test --no-daemon
+                        ./gradlew build -x test --no-daemon
                         ls -lh build/libs/
                     '''
                 }
@@ -85,38 +128,22 @@ pipeline {
         
         stage('Deploy to EC2') {
             steps {
-                echo '=== Deploy to Production Server using Docker Hub Images ==='
+                echo '=== Deploy to Production Server using deploy.sh ==='
                 withCredentials([sshUserPrivateKey(credentialsId: SSH_CREDENTIAL, keyFileVariable: 'SSH_KEY')]) {
                     sh """
-                        # docker-compose.yml 파일을 EC2로 전송
+                        # 필요한 파일들을 EC2로 전송
                         scp -i \${SSH_KEY} -o StrictHostKeyChecking=no docker-compose.yml ${DEPLOY_SERVER}:${DEPLOY_PATH}/
+                        scp -i \${SSH_KEY} -o StrictHostKeyChecking=no deploy.sh ${DEPLOY_SERVER}:${DEPLOY_PATH}/
                         
                         ssh -i \${SSH_KEY} -o StrictHostKeyChecking=no ${DEPLOY_SERVER} '
                             cd ${DEPLOY_PATH}
                             
-                            # 환경 변수 파일 확인
-                            if [ ! -f backend/.env ] || [ ! -f ai-service/.env ]; then
-                                echo "ERROR: .env files not found!"
-                                echo "Please create .env files in backend/ and ai-service/ directories"
-                                exit 1
-                            fi
+                            # deploy.sh 실행 권한 부여
+                            chmod +x deploy.sh
                             
-                            # Docker Hub에서 최신 이미지 pull
-                            echo "=== Pulling latest images from Docker Hub ==="
-                            docker compose pull
-                            
-                            # 기존 컨테이너 중지 및 제거
-                            echo "=== Stopping and removing old containers ==="
-                            docker compose down --timeout 30 || true
-                            
-                            # 새 컨테이너 시작
-                            echo "=== Starting new containers ==="
-                            docker compose up -d
-                            
-                            # 잠시 대기 (컨테이너 초기화)
-                            sleep 10
-                            
-                            echo "=== Deployment completed ==="
+                            # deploy.sh를 사용한 배포 (Docker Hub 방식)
+                            echo "=== Running deployment script ==="
+                            ./deploy.sh deploy
                         '
                     """
                 }
@@ -131,59 +158,13 @@ pipeline {
                         ssh -i \${SSH_KEY} -o StrictHostKeyChecking=no ${DEPLOY_SERVER} '
                             cd ${DEPLOY_PATH}
                             
-                            # 배포 상태 확인
+                            # deploy.sh의 status 명령으로 배포 상태 확인
                             echo "=== Checking deployment status ==="
-                            docker compose ps
+                            ./deploy.sh status
                             
-                            # Health check 시도 (최대 30회)
-                            max_attempts=30
-                            attempt=0
-                            
+                            # Health check는 deploy.sh에서 이미 수행됨
                             echo ""
-                            echo "=== Running Health Checks ==="
-                            
-                            while [ \$attempt -lt \$max_attempts ]; do
-                                attempt=\$((attempt + 1))
-                                echo "Attempt \$attempt/\$max_attempts..."
-                                
-                                backend_healthy=false
-                                ai_healthy=false
-                                
-                                # Backend
-                                if curl -f -s http://localhost:9090/actuator/health > /dev/null 2>&1; then
-                                    backend_healthy=true
-                                fi
-                                
-                                # AI Service
-                                if curl -f -s http://localhost:8000/health > /dev/null 2>&1; then
-                                    ai_healthy=true
-                                fi
-                                
-                                if [ "\$backend_healthy" = true ] && [ "\$ai_healthy" = true ]; then
-                                    echo ""
-                                    echo "✅ Backend: HEALTHY"
-                                    echo "✅ AI Service: HEALTHY"
-                                    
-                                    # Nginx (선택사항)
-                                    if curl -f -s http://localhost:80/health > /dev/null 2>&1; then
-                                        echo "✅ Nginx: HEALTHY"
-                                    else
-                                        echo "⚠️  Nginx: UNHEALTHY (non-critical)"
-                                    fi
-                                    
-                                    echo ""
-                                    echo "=== All Critical Services are Healthy ==="
-                                    exit 0
-                                fi
-                                
-                                sleep 10
-                            done
-                            
-                            echo ""
-                            echo "❌ Health check failed after \$max_attempts attempts"
-                            echo "=== Container Logs ==="
-                            docker compose logs --tail=50
-                            exit 1
+                            echo "=== Deployment Verification Complete ==="
                         '
                     """
                 }
@@ -203,10 +184,10 @@ pipeline {
                 withCredentials([sshUserPrivateKey(credentialsId: SSH_CREDENTIAL, keyFileVariable: 'SSH_KEY')]) {
                     sh """
                         ssh -i \${SSH_KEY} -o StrictHostKeyChecking=no ${DEPLOY_SERVER} '
-                            # EC2의 오래된 이미지 정리
-                            echo "=== Cleaning up unused Docker resources ==="
-                            docker image prune -f
-                            docker network prune -f
+                            cd ${DEPLOY_PATH}
+                            
+                            # deploy.sh의 cleanup 기능 사용
+                            ./deploy.sh cleanup
                         '
                     """
                 }
@@ -216,9 +197,10 @@ pipeline {
     
     post {
         success {
-            echo '=== ✅ Deployment Success ==='
+            echo '=== ✅ CI/CD Pipeline Success ==='
             echo "Build Number: ${BUILD_NUMBER}"
             echo "Image Tag: ${IMAGE_TAG}"
+            echo "All tests passed and deployment completed"
             echo "Deployed at: ${new Date()}"
             
             withCredentials([sshUserPrivateKey(credentialsId: SSH_CREDENTIAL, keyFileVariable: 'SSH_KEY')]) {
@@ -230,24 +212,10 @@ pipeline {
                     '
                 """
             }
-            
-            // Slack 알림 (Slack 플러그인 설치 및 설정 후 활성화)
-            // slackSend(
-            //     channel: '#deployments',
-            //     color: 'good',
-            //     message: """
-            //         ✅ *Deployment Success*
-            //         Project: ${PROJECT_NAME}
-            //         Build: #${env.BUILD_NUMBER}
-            //         Tag: ${IMAGE_TAG}
-            //         Branch: ${env.GIT_BRANCH}
-            //         Deployed by: ${env.BUILD_USER}
-            //     """
-            // )
         }
         
         failure {
-            echo '=== ❌ Deployment Failed ==='
+            echo '=== ❌ CI/CD Pipeline Failed ==='
             
             // 실패 시 로그 수집
             withCredentials([sshUserPrivateKey(credentialsId: SSH_CREDENTIAL, keyFileVariable: 'SSH_KEY')]) {
@@ -255,39 +223,15 @@ pipeline {
                     ssh -i \${SSH_KEY} -o StrictHostKeyChecking=no ${DEPLOY_SERVER} '
                         echo "=== 📋 Service Logs (Last 50 lines) ==="
                         cd ${DEPLOY_PATH}
-                        sudo docker compose logs --tail=50
+                        ./deploy.sh logs || docker compose logs --tail=50
                     ' || true
                 """
             }
-            
-            // Slack 알림 (Slack 플러그인 설치 및 설정 후 활성화)
-            // slackSend(
-            //     channel: '#deployments',
-            //     color: 'danger',
-            //     message: """
-            //         ❌ *Deployment Failed*
-            //         Project: ${PROJECT_NAME}
-            //         Build: #${env.BUILD_NUMBER}
-            //         Branch: ${env.GIT_BRANCH}
-            //         Check Jenkins: ${env.BUILD_URL}
-            //     """
-            // )
         }
         
         unstable {
-            echo '=== ⚠️ Deployment Unstable ==='
-            
-            // Slack 알림
-            // slackSend(
-            //     channel: '#deployments',
-            //     color: 'warning',
-            //     message: """
-            //         ⚠️ *Deployment Unstable*
-            //         Project: ${PROJECT_NAME}
-            //         Build: #${env.BUILD_NUMBER}
-            //         Some tests may have failed
-            //     """
-            // )
+            echo '=== ⚠️ CI/CD Pipeline Unstable ==='
+            echo 'Some tests may have failed or deployment is incomplete'
         }
         
         always {
