@@ -3,6 +3,9 @@ import '../../widgets/main/live_chat_card.dart';
 import '../../widgets/main/index_section.dart';
 import '../../widgets/main/news_section.dart';
 import '../../widgets/main/stock_section.dart';
+import '../../widgets/common/top_navigation.dart';
+import '../../widgets/common/scroll_fab_button.dart';
+import 'package:go_router/go_router.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -18,14 +21,10 @@ class _MainScreenState extends State<MainScreen> {
   @override
   void initState() {
     super.initState();
-
     _scrollController.addListener(() {
-      if (_scrollController.offset > 40 && !showFab) {
-        setState(() => showFab = true);
-      }
-      if (_scrollController.offset <= 40 && showFab) {
-        setState(() => showFab = false);
-      }
+      setState(() {
+        showFab = _scrollController.offset > 40;
+      });
     });
   }
 
@@ -47,7 +46,11 @@ class _MainScreenState extends State<MainScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            _buildTopNavigation(w, h),
+            TopNavigation(
+              w: w,
+              h: h,
+              onProfileTap: () => context.push("/mypage"),  // ✅ push로 스택 쌓기!
+            ),
             SizedBox(height: h * 0.02),
 
             Expanded(
@@ -76,96 +79,12 @@ class _MainScreenState extends State<MainScreen> {
         ),
       ),
 
-      floatingActionButton: AnimatedScale(
-        scale: showFab ? 1 : 0,
-        duration: const Duration(milliseconds: 230),
-        child: AnimatedOpacity(
-          opacity: showFab ? 1 : 0,
-          duration: const Duration(milliseconds: 180),
-          child: Container(
-            width: w * 0.15,
-            height: w * 0.15,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: const Color(0xFFEFF8FF),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.25),
-                  blurRadius: 5,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Center(
-              child: Image.asset(
-                "assets/images/main8.png",
-                width: w * 0.1,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ✅ Top Navigation
-  Widget _buildTopNavigation(double w, double h) {
-    return Padding(
-      padding: EdgeInsets.only(top: h * 0.015, left: w * 0.06, right: w * 0.08),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Image.asset("assets/images/logomini.png", width: w * 0.1),
-
-          Container(
-            width: w * 0.42,
-            height: h * 0.045,
-            decoration: BoxDecoration(
-              color: const Color(0xFFABCEEA),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Stack(
-              children: [
-                Positioned(
-                  left: w * 0.01,
-                  top: h * 0.005,
-                  child: Container(
-                    width: w * 0.20,
-                    height: h * 0.035,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(7),
-                    ),
-                    child: const Center(
-                      child: Text(
-                        "기업분석",
-                        style: TextStyle(
-                          color: Color(0xFF60A4DA),
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  right: w * 0.075,
-                  top: h * 0.011,
-                  child: const Text(
-                    "채팅",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          SizedBox(width: w * 0.08),
-        ],
+      floatingActionButton: ScrollFabButton(
+        w: w,
+        showFab: showFab,
+        onTap: () {
+          print("FAB Tapped!");
+        },
       ),
     );
   }
