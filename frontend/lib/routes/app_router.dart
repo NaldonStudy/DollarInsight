@@ -243,7 +243,7 @@ class AppRouter {
         path: '/mypage/password-change/password-change-new',
         name: 'password-change-new',
         builder: (context, state) => const PasswordChangeNewScreen(),
-        redirect: (context, state) => RouteGuards.requireAuth(context, state),
+        // redirect: (context, state) => RouteGuards.requireAuth(context, state),
       ),
       /// AI 친구 변경
       GoRoute(
