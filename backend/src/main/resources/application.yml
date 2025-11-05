@@ -1,9 +1,26 @@
 server:
   port: ${SERVER_PORT:9090}
+  servlet:
+    encoding:
+      charset: UTF-8
+      force: true
+      enabled: true
+
+springdoc:
+  api-docs.path: /v3/api-docs
+  swagger-ui.path: /swagger-ui
 
 spring:
+  config:
+    import: optional:file:.env[.properties]
+
+  # 기본 활성 프로필은 local
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:local}
+
+  docker:
+    compose:
+      lifecycle-management: none  # IDE가 docker-compose 자동 기동하지 않도록
 
   datasource:
     url: ${SPRING_DATASOURCE_URL}
@@ -30,14 +47,14 @@ spring:
 
   data:
     mongodb:
-      host: ${SPRING_DATA_MONGODB_HOST}
+      host: ${SPRING_DATA_MONGODB_HOST:127.0.0.1}
       port: ${SPRING_DATA_MONGODB_PORT:27017}
-      database: ${SPRING_DATA_MONGODB_DATABASE}
-      username: ${SPRING_DATA_MONGODB_USERNAME}
-      password: ${SPRING_DATA_MONGODB_PASSWORD}
-      authentication-database: ${SPRING_DATA_MONGODB_AUTHENTICATION_DATABASE:admin}
+      database: ${SPRING_DATA_MONGODB_DATABASE:dollar_insight}
+      username: ${SPRING_DATA_MONGODB_USERNAME:}
+      password: ${SPRING_DATA_MONGODB_PASSWORD:}
+      authentication-database: ${SPRING_DATA_MONGODB_AUTHENTICATION_DATABASE:}
     redis:
-      host: ${SPRING_REDIS_HOST}
+      host: ${SPRING_REDIS_HOST:127.0.0.1}
       port: ${SPRING_REDIS_PORT:6379}
       password: ${SPRING_REDIS_PASSWORD:}
       timeout: 2s
@@ -48,19 +65,12 @@ spring:
     redis:
       time-to-live: 5m
 
-# 앱에서 활용할 토큰 시간
-app:
-  jwt:
-    secret: ${APP_JWT_SECRET:please-change-min-32bytes}
-    access-ttl-seconds: 900
-
-# Actuator 헬스체크 설정
 management:
   endpoints:
     web:
+      base-path: /actuator
       exposure:
         include: health,info,metrics
-      base-path: /actuator
   endpoint:
     health:
       show-details: when-authorized
@@ -76,10 +86,21 @@ management:
   server:
     port: ${MANAGEMENT_PORT:9090}
 
-# 로깅 설정
 logging:
   level:
     root: ${LOGGING_LEVEL_ROOT:INFO}
     com.ssafy.b205: ${LOGGING_LEVEL_COM_DOLLARINSIGHT:DEBUG}
   file:
     path: ${LOGGING_FILE_PATH:./logs}
+
+app:
+  jwt:
+    # (선택1) Base64 인코딩된 시크릿
+    secret-base64: ${APP_JWT_SECRET_BASE64:}
+    # (선택2) 일반 문자열 시크릿
+    secret: ${APP_JWT_SECRET:}
+    access-ttl-seconds: ${APP_JWT_ACCESS_TTL_SECONDS:900}
+
+external:
+  chromadb:
+    base-url: ${CHROMADB_BASE_URL:http://127.0.0.1:9000}
