@@ -1,11 +1,12 @@
 #!/bin/bash
 
 ################################################################################
-# Dollar In$ight - Deployment Script
+# Dollar In$ight - Deployment Script (Optimized)
 # 
 # This script handles the deployment of Dollar In$ight services
 # Uses Docker Hub images (no local build required)
-# Can be used both manually and by Jenkins CI/CD pipeline
+# Only restarts application services (backend, ai-service)
+# Keeps DB, Nginx and admin tools running
 ################################################################################
 
 set -e  # Exit on error
@@ -19,12 +20,15 @@ NC='\033[0m' # No Color
 
 # Configuration
 DEPLOY_DIR="/opt/S13P31B205"
-BACKUP_DIR="${DEPLOY_DIR}/backups"  # 프로젝트 내부로 변경
+BACKUP_DIR="${DEPLOY_DIR}/backups"
 MAX_BACKUPS=5
 COMPOSE_FILE="docker-compose.yml"
 ENV_FILE=".env"
 
-# Logging - 프로젝트 디렉토리 내부로 변경
+# Application services to update (DB, nginx, 관리 도구 제외)
+APP_SERVICES="backend ai-service"
+
+# Logging
 LOG_FILE="${DEPLOY_DIR}/deploy.log"
 
 log() {
@@ -46,12 +50,10 @@ info() {
 
 # Check if running as root or with sudo
 check_permissions() {
-    # Docker Hub 방식에서는 sudo 불필요 (docker 그룹 권한만 있으면 됨)
     if ! docker info > /dev/null 2>&1; then
         error "Cannot connect to Docker daemon. Please ensure:\n  1. Docker is running\n  2. Current user is in 'docker' group: sudo usermod -aG docker \$USER"
     fi
 }
-
 
 # Create necessary directories
 create_directories() {
@@ -100,43 +102,64 @@ cleanup_old_backups() {
     fi
 }
 
-# Pull latest Docker images
+# Pull latest Docker images (애플리케이션 서비스만)
 pull_images() {
     log "Pulling latest Docker images from Docker Hub..."
+    info "Target services: $APP_SERVICES"
     
     cd "$DEPLOY_DIR"
     
-    # .env 파일이 있는지 확인
+    # .env 파일 확인
     if [ ! -f backend/.env ] || [ ! -f ai-service/.env ]; then
         error "Environment files not found!\n  Please create:\n  - $DEPLOY_DIR/backend/.env\n  - $DEPLOY_DIR/ai-service/.env"
     fi
     
-    # Docker Compose로 이미지 pull
-    if ! docker compose pull; then
-        error "Failed to pull Docker images from Docker Hub\n  Check:\n  1. Internet connection\n  2. Docker Hub image availability\n  3. docker-compose.yml configuration"
+    # 애플리케이션 서비스만 이미지 pull
+    if ! docker compose pull $APP_SERVICES; then
+        error "Failed to pull Docker images\n  Check:\n  1. Internet connection\n  2. Docker Hub image availability\n  3. docker-compose.yml configuration"
     fi
     
-    log "Docker images pulled successfully ✓"
+    log "Application Docker images pulled successfully ✓"
 }
 
-# Stop running services
-stop_services() {
-    log "Stopping running services..."
+# Stop all services (전체 중지 - 초기 배포나 완전 재시작 시에만 사용)
+stop_all_services() {
+    log "Stopping ALL services..."
     
     cd "$DEPLOY_DIR"
     
     if docker compose ps | grep -q "Up"; then
-        info "Stopping containers gracefully..."
+        info "Stopping all containers gracefully..."
         docker compose down --timeout 30 || warn "Some services may not have stopped gracefully"
-        log "Services stopped ✓"
+        log "All services stopped ✓"
     else
         log "No running services found"
     fi
 }
 
-# Start services
-start_services() {
-    log "Starting services..."
+# Restart application services only (DB, nginx는 유지)
+restart_app_services() {
+    log "Restarting application services (DB, nginx, admin tools keep running)..."
+    info "Target services: $APP_SERVICES"
+    
+    cd "$DEPLOY_DIR"
+    
+    # 애플리케이션 서비스만 재시작
+    # --force-recreate: 컨테이너 강제 재생성
+    # --no-deps: 의존성 서비스(DB 등)는 재시작하지 않음
+    if ! docker compose up -d --force-recreate --no-deps $APP_SERVICES; then
+        error "Failed to restart application services"
+    fi
+    
+    log "Application services restarted ✓"
+    
+    # Wait for containers to initialize
+    sleep 10
+}
+
+# Start all services (초기 배포 시에만 사용)
+start_all_services() {
+    log "Starting ALL services..."
     
     cd "$DEPLOY_DIR"
     
@@ -144,10 +167,10 @@ start_services() {
         error "Failed to start services"
     fi
     
-    log "Services started ✓"
+    log "All services started ✓"
     
     # Wait for containers to initialize
-    sleep 10
+    sleep 15
 }
 
 # Health check
@@ -262,9 +285,9 @@ rollback() {
     
     log "Using backup: $latest_backup"
     
-    # Stop current services
+    # Stop current application services only
     cd "$DEPLOY_DIR"
-    docker compose down --timeout 30 || true
+    docker compose stop $APP_SERVICES || true
     
     # Restore backup files
     if [ -f "$latest_backup/$COMPOSE_FILE" ]; then
@@ -279,9 +302,9 @@ rollback() {
         cp "$latest_backup/ai-service.env" "$DEPLOY_DIR/ai-service/.env"
     fi
     
-    # Start services
+    # Restart application services
     cd "$DEPLOY_DIR"
-    docker compose up -d
+    docker compose up -d --force-recreate --no-deps $APP_SERVICES
     
     log "Rollback completed ✓"
     
@@ -300,9 +323,6 @@ cleanup_docker() {
     # Remove unused networks
     info "Removing unused networks..."
     docker network prune -f || warn "Failed to prune networks"
-    
-    # Optional: Remove unused volumes (주의: 데이터 손실 가능)
-    # docker volume prune -f || warn "Failed to prune volumes"
     
     log "Docker cleanup completed ✓"
 }
@@ -323,19 +343,19 @@ restart_service() {
     log "Service $service restarted ✓"
 }
 
-# Main deployment function
+# Main deployment function (애플리케이션 서비스만 업데이트)
 deploy() {
     log "========================================="
     log "Starting Dollar In\$ight Deployment"
-    log "Using Docker Hub Images (No Local Build)"
+    log "Updating Application Services Only"
+    log "DB, Nginx, Admin Tools Keep Running"
     log "========================================="
     
     check_permissions
     create_directories
     backup_current_deployment
     pull_images
-    stop_services
-    start_services
+    restart_app_services
     health_check
     show_status
     
@@ -343,23 +363,51 @@ deploy() {
     log "Deployment completed successfully! 🎉"
     log "========================================="
     echo ""
+    log "Updated Services: $APP_SERVICES"
+    log "Preserved Services: postgres, mongodb, redis, chromadb, nginx, pgadmin, mongo-express, redis-commander"
+    echo ""
     log "Service URLs:"
     log "  - Backend API: http://localhost:9090"
     log "  - AI Service: http://localhost:8000"
     log "  - Nginx Gateway: http://localhost:80"
     log "  - Backend Health: http://localhost:9090/actuator/health"
     log "  - AI Health: http://localhost:8000/health"
-    echo ""
-    log "Images from Docker Hub:"
-    log "  - imtaewon/dollar-backend:latest"
-    log "  - imtaewon/dollar-ai:latest"
-    log "  - imtaewon/dollar-nginx:latest"
+}
+
+# Initial deployment (모든 서비스 시작)
+deploy_initial() {
+    log "========================================="
+    log "Initial Dollar In\$ight Deployment"
+    log "Starting All Services"
+    log "========================================="
+    
+    check_permissions
+    create_directories
+    backup_current_deployment
+    
+    cd "$DEPLOY_DIR"
+    
+    # Pull all images
+    log "Pulling all Docker images..."
+    docker compose pull
+    
+    # Start all services
+    start_all_services
+    health_check
+    show_status
+    
+    log "========================================="
+    log "Initial deployment completed! 🎉"
+    log "========================================="
 }
 
 # Parse command line arguments
 case "${1:-deploy}" in
     deploy)
         deploy
+        ;;
+    deploy-all)
+        deploy_initial
         ;;
     rollback)
         rollback
@@ -368,15 +416,19 @@ case "${1:-deploy}" in
         show_status
         ;;
     stop)
-        stop_services
+        stop_all_services
         ;;
     start)
-        start_services
+        start_all_services
         health_check
         ;;
     restart)
-        stop_services
-        start_services
+        restart_app_services
+        health_check
+        ;;
+    restart-all)
+        stop_all_services
+        start_all_services
         health_check
         ;;
     restart-service)
@@ -392,28 +444,38 @@ case "${1:-deploy}" in
         cleanup_docker
         ;;
     *)
-        echo "Dollar In\$ight Deployment Script"
-        echo "Using Docker Hub Images (No Local Build Required)"
+        echo "Dollar In\$ight Deployment Script (Optimized)"
         echo ""
         echo "Usage: $0 {command} [options]"
         echo ""
         echo "Commands:"
-        echo "  deploy              - Full deployment (pull from Docker Hub, stop, start, health check)"
-        echo "  rollback            - Rollback to previous version"
+        echo "  deploy              - Update application services only (backend, ai-service)"
+        echo "                        DB, nginx, admin tools keep running [RECOMMENDED]"
+        echo "  deploy-all          - Initial deployment (start all services)"
+        echo "  rollback            - Rollback application services to previous version"
         echo "  status              - Show service status and resource usage"
         echo "  stop                - Stop all services"
         echo "  start               - Start all services"
-        echo "  restart             - Restart all services"
-        echo "  restart-service <name> - Restart specific service"
+        echo "  restart             - Restart application services only"
+        echo "  restart-all         - Restart all services"
+        echo "  restart-service <n> - Restart specific service"
         echo "  logs [service]      - View logs (all services or specific service)"
         echo "  health              - Run health checks"
         echo "  cleanup             - Clean up unused Docker resources"
         echo ""
         echo "Examples:"
-        echo "  ./deploy.sh deploy                    # Deploy from Docker Hub (no sudo needed)"
-        echo "  ./deploy.sh rollback                  # Rollback to previous version"
+        echo "  ./deploy.sh deploy                    # Update app services only (recommended)"
+        echo "  ./deploy.sh deploy-all                # Initial deployment"
+        echo "  ./deploy.sh restart                   # Quick restart of app services"
+        echo "  ./deploy.sh restart-all               # Full system restart"
         echo "  ./deploy.sh logs backend              # View backend logs"
-        echo "  ./deploy.sh restart-service ai-service # Restart AI service"
+        echo "  ./deploy.sh restart-service postgres  # Restart specific service"
+        echo ""
+        echo "Service Groups:"
+        echo "  Application: backend, ai-service (updated by 'deploy')"
+        echo "  Infrastructure: nginx (preserved)"
+        echo "  Databases: postgres, mongodb, redis, chromadb (preserved)"
+        echo "  Admin Tools: pgadmin, mongo-express, redis-commander (preserved)"
         echo ""
         echo "Prerequisites:"
         echo "  1. Docker installed and running"
