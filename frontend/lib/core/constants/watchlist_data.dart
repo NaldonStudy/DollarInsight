@@ -106,3 +106,92 @@ class WatchlistData {
     return companies;
   }
 }
+
+/// 미국 기업 데이터
+class USCompanyData {
+  final String name;
+  final String logoPath;
+  final String category;
+
+  const USCompanyData({
+    required this.name,
+    required this.logoPath,
+    required this.category,
+  });
+}
+
+/// 카테고리별 미국 기업 추천 데이터 (더미)
+class USWatchlistData {
+  /// 기술주 카테고리 미국 기업 12개
+  static const List<USCompanyData> techStocks = [
+    USCompanyData(
+      name: '애플',
+      logoPath: 'assets/images/company/apple.png', // 없음 - 추가 필요
+      category: '기술',
+    ),
+    USCompanyData(
+      name: '마이크로소프트',
+      logoPath: 'assets/images/company/microsoft.png', // 없음 - 추가 필요
+      category: '기술',
+    ),
+    USCompanyData(
+      name: '구글',
+      logoPath: 'assets/images/company/alphabeta.png',
+      category: '기술',
+    ),
+    USCompanyData(
+      name: '아마존',
+      logoPath: 'assets/images/company/amazon.png',
+      category: '기술',
+    ),
+    USCompanyData(
+      name: '메타',
+      logoPath: 'assets/images/company/meta.png', // 없음 - 추가 필요
+      category: '기술',
+    ),
+    USCompanyData(
+      name: '엔비디아',
+      logoPath: 'assets/images/company/nvidia.png', // 없음 - 추가 필요
+      category: '기술',
+    ),
+    USCompanyData(
+      name: 'AMD',
+      logoPath: 'assets/images/company/amd.png',
+      category: '기술',
+    ),
+    USCompanyData(
+      name: '인텔',
+      logoPath: 'assets/images/company/intel.png',
+      category: '기술',
+    ),
+    USCompanyData(
+      name: 'TSMC',
+      logoPath: 'assets/images/company/tsmc.png',
+      category: '기술',
+    ),
+    USCompanyData(
+      name: 'ASML',
+      logoPath: 'assets/images/company/asml.png',
+      category: '기술',
+    ),
+    USCompanyData(
+      name: '어도비',
+      logoPath: 'assets/images/company/adobe.png',
+      category: '기술',
+    ),
+    USCompanyData(
+      name: '오라클',
+      logoPath: 'assets/images/company/oracle.png',
+      category: '기술',
+    ),
+  ];
+
+  /// 카테고리별 미국 기업 조회 (현재는 기술주만)
+  static List<USCompanyData> getCompaniesByCategory(String category) {
+    if (category == '기술') {
+      return techStocks;
+    }
+    // TODO: 다른 카테고리 추가 (커머스, 항공, 자동차 등)
+    return techStocks; // 기본값
+  }
+}

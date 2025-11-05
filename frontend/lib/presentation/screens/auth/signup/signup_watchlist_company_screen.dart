@@ -56,10 +56,16 @@ class _SignupWatchlistCompanyScreenState
       return;
     }
 
-    // TODO: 선택된 기업 데이터를 저장하고 다음 화면으로 이동
+    // 선택된 산업과 기업 데이터를 다음 화면으로 전달
     print('선택된 산업: ${widget.selectedIndustries}');
     print('선택된 기업: $_selectedCompanies');
-    context.push('/signup/watchlist-result');
+
+    final data = {
+      'selectedIndustries': widget.selectedIndustries,
+      'selectedCompanies': _selectedCompanies,
+    };
+
+    context.push('/signup/watchlist-result', extra: data);
   }
 
   @override

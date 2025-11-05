@@ -107,7 +107,13 @@ class AppRouter {
       GoRoute(
         path: '/signup/watchlist-result',
         name: 'signup-watchlist-result',
-        builder: (context, state) => const SignupWatchlistResultScreen(),
+        builder: (context, state) {
+          final data = state.extra as Map<String, dynamic>?;
+          return SignupWatchlistResultScreen(
+            selectedIndustries: data?['selectedIndustries'] as Set<String>?,
+            selectedCompanies: data?['selectedCompanies'] as Set<String>?,
+          );
+        },
       ),
 
       /// 회원가입 완료
