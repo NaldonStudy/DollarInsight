@@ -357,12 +357,6 @@ Build Number: 42
 Image Tag: abc1234-42
 All tests passed and deployment completed
 
-=== 📊 Current Service Status ===
-NAME                           STATUS          PORTS
-dollar-insight-backend         Up 2 minutes    0.0.0.0:9090->9090/tcp
-dollar-insight-ai-service      Up 2 minutes    0.0.0.0:8000->8000/tcp
-dollar-insight-nginx           Up 2 minutes    0.0.0.0:80->80/tcp
-```
 
 ### 배포 실패 시
 - 자동으로 최근 50줄 로그 출력 (`./deploy.sh logs` 실행)

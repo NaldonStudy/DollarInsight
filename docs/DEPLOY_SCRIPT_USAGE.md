@@ -61,42 +61,12 @@ sudo chown -R $USER:$USER /opt/S13P31B205
 nano /opt/S13P31B205/backend/.env
 ```
 
-**backend/.env 예시:**
-```env
-SPRING_PROFILES_ACTIVE=prod
-SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/dollar_insight
-SPRING_DATASOURCE_USERNAME=dopamine
-SPRING_DATASOURCE_PASSWORD=b205dollarinsight
-
-JWT_SECRET=your-secret-key-here
-JWT_EXPIRATION=86400000
-
-MONGODB_URI=mongodb://admin:b205dollarinsight@mongodb:27017/dollar_insight?authSource=admin
-REDIS_HOST=redis
-REDIS_PORT=6379
-REDIS_PASSWORD=b205dollarinsight
-```
 
 ```bash
 # AI Service 환경 변수
 nano /opt/S13P31B205/ai-service/.env
 ```
 
-**ai-service/.env 예시:**
-```env
-ENVIRONMENT=production
-LOG_LEVEL=INFO
-
-MONGODB_URI=mongodb://admin:b205dollarinsight@mongodb:27017/dollar_insight?authSource=admin
-REDIS_HOST=redis
-REDIS_PORT=6379
-REDIS_PASSWORD=b205dollarinsight
-
-CHROMADB_HOST=chromadb
-CHROMADB_PORT=9000
-
-OPENAI_API_KEY=your-openai-api-key
-```
 
 ### 4. docker-compose.yml 배치
 
@@ -132,21 +102,6 @@ cd /opt/S13P31B205
 ./deploy.sh status
 ```
 
-**출력 예시:**
-```
-[2025-01-05 14:23:45] Current service status:
-
-NAME                           COMMAND                  STATUS          PORTS
-dollar-insight-backend         "java -jar app.jar"      Up 2 hours      0.0.0.0:9090->9090/tcp
-dollar-insight-ai-service      "python main.py"         Up 2 hours      0.0.0.0:8000->8000/tcp
-dollar-insight-nginx           "nginx -g 'daemon of…"   Up 2 hours      0.0.0.0:80->80/tcp
-
-[2025-01-05 14:23:45] Container resource usage:
-CONTAINER                    CPU %    MEM USAGE / LIMIT     NET I/O
-dollar-insight-backend       2.5%     512MiB / 2GiB         1.2GB / 850MB
-dollar-insight-ai-service    1.8%     1.5GiB / 4GiB         800MB / 600MB
-dollar-insight-nginx         0.1%     50MiB / 512MiB        500MB / 450MB
-```
 
 ### 로그 확인
 
