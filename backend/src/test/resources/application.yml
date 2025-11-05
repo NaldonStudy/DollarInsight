@@ -1,0 +1,43 @@
+spring:
+  config:
+    activate:
+      on-profile: test
+
+  # H2 인메모리 데이터베이스 설정
+  datasource:
+    driver-class-name: org.h2.Driver
+    url: jdbc:h2:mem:testdb;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH
+    username: sa
+    password: 
+  
+  # JPA 설정
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+  
+  # Flyway 비활성화 (테스트에서는 JPA가 스키마 자동 생성)
+  flyway:
+    enabled: false
+  
+  # MongoDB 테스트 설정 - 비활성화
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.mongo.MongoAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.mongo.MongoDataAutoConfiguration
+  
+  # Redis 테스트 설정 - 비활성화
+  data:
+    redis:
+      repositories:
+        enabled: false
+
+# 로그 레벨
+logging:
+  level:
+    com.ssafy.b205: INFO
+    org.springframework: WARN
