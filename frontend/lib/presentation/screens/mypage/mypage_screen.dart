@@ -110,7 +110,9 @@ class MypageScreen extends StatelessWidget {
                   w: w,
                   h: h,
                   label: 'AI 친구 변경',
-                  onTap: () {},
+                  onTap: () {
+                    context.push('/mypage/ai-friend');
+                  },
                 ),
                 _menuButton(
                   w: w,
