@@ -95,7 +95,8 @@ pipeline {
                         # 필요한 파일들을 EC2로 전송
                         scp -i \${SSH_KEY} -o StrictHostKeyChecking=no docker-compose.yml ${DEPLOY_SERVER}:${DEPLOY_PATH}/
                         scp -i \${SSH_KEY} -o StrictHostKeyChecking=no deploy.sh ${DEPLOY_SERVER}:${DEPLOY_PATH}/
-                        
+                        scp -i \${SSH_KEY} -o StrictHostKeyChecking=no -r nginx ${DEPLOY_SERVER}:${DEPLOY_PATH}/
+
                         ssh -i \${SSH_KEY} -o StrictHostKeyChecking=no ${DEPLOY_SERVER} '
                             cd ${DEPLOY_PATH}
                             
