@@ -23,13 +23,14 @@ spring:
   flyway:
     enabled: false
   
-  # MongoDB, Redis 자동 설정 제외
+  # MongoDB, Redis, Redisson 자동 설정 제외
   autoconfigure:
     exclude:
       - org.springframework.boot.autoconfigure.mongo.MongoAutoConfiguration
       - org.springframework.boot.autoconfigure.data.mongo.MongoDataAutoConfiguration
       - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
       - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
+      - org.redisson.spring.starter.RedissonAutoConfiguration
   
   # 캐시 비활성화
   cache:
