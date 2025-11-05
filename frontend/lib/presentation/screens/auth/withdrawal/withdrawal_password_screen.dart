@@ -1,14 +1,133 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../../widgets/common/custom_back_button.dart';
+import '../../../widgets/common/custom_text_field.dart';
+import '../../../widgets/common/custom_button.dart';
+import '../../../providers/password_change_provider.dart';
+import '../../../../data/models/signup_form_state.dart';
+import 'package:go_router/go_router.dart';
 
 class WithdrawalPasswordScreen extends StatelessWidget {
   const WithdrawalPasswordScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('회원탈퇴 비밀번호확인')),
-      body: const Center(
-        child: Text('TODO: 회원탈퇴 비밀번호확인'),
+    return ChangeNotifierProvider(
+      create: (_) => PasswordChangeProvider(),
+      child: Consumer<PasswordChangeProvider>(
+        builder: (context, provider, child) {
+          final size = MediaQuery.of(context).size;
+          final w = size.width;
+          final h = size.height;
+
+          return Scaffold(
+            resizeToAvoidBottomInset: true,
+            backgroundColor: const Color(0xFFF7F8FB),
+
+            appBar: AppBar(
+              elevation: 0,
+              backgroundColor: const Color(0xFFF7F8FB),
+              leading: const CustomBackButton(),
+            ),
+
+            body: SafeArea(
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: w * 0.091),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(height: h * 0.025),
+
+                    /// ✅ 제목
+                    Text(
+                      '현재 비밀번호를\n입력해주세요',
+                      style: TextStyle(
+                        fontSize: w * 0.072,
+                        fontWeight: FontWeight.w700,
+                        height: 1.3,
+                      ),
+                    ),
+
+                    SizedBox(height: h * 0.04),
+
+                    /// ✅ 입력 영역 (스크롤 가능)
+                    Expanded(
+                      child: SingleChildScrollView(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            /// ✅ 비밀번호 입력
+                            CustomTextField(
+                              hintText: '비밀번호',
+                              controller: provider.passwordController,
+                              obscureText: true,
+                              showPasswordToggle: true,
+                              onChanged: provider.validatePassword,
+                            ),
+                            _validation(provider.state.password),
+
+                            SizedBox(height: 24),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    /// ✅ 확인 버튼
+                    CustomButton(
+                      text: "확인",
+                      onPressed: () {
+                        if (provider.state.password.isValid) {
+                          /// ✅ 실제 탈퇴 API 넣을 자리
+                          /// TODO: provider.withdrawal(password)
+
+                          context.push('/withdrawal/complete');
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text("비밀번호를 올바르게 입력해주세요"),
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
+                        }
+                      },
+                    ),
+
+                    SizedBox(height: h * 0.04),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  /// ✅ Validation UI 복사
+  Widget _validation(FieldValidationState state) {
+    if (!state.hasBeenTouched) return const SizedBox.shrink();
+
+    if (state.isValid) {
+      return const Padding(
+        padding: EdgeInsets.only(top: 8, left: 2),
+        child: Row(
+          children: [
+            Icon(Icons.check_circle, color: Color(0xFF31C275), size: 16),
+          ],
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 8, left: 2),
+      child: Text(
+        state.errorMessage ?? '',
+        style: const TextStyle(
+          color: Color(0xFFFF0000),
+          fontSize: 15,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0.45,
+        ),
       ),
     );
   }
