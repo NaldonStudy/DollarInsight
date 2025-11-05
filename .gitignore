@@ -21,6 +21,8 @@ redis_data/
 mongodb_data/
 chromadb_data/
 
+
+
 # ========================
 # Logs
 # ========================
@@ -68,7 +70,7 @@ build/
 # Docker / Local-only
 # ========================
 # ❌ (중요) compose 파일은 "변수만" 쓰도록 하고 커밋 대상에 둔다. 팀원 모두 동일 로컬 환경 띄우기 위함.
-# docker-compose-local.yml   <-- 이 줄은 제거 (커밋 허용)
+docker-compose-local.yml   <-- 이 줄은 제거 (커밋 허용)
 
 # ========================
 # Temp
