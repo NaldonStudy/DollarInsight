@@ -18,6 +18,7 @@ import '../presentation/screens/company/company_detail_screen.dart';
 import '../presentation/screens/company/company_chart_screen.dart';
 import '../presentation/screens/company/news_list_screen.dart';
 import '../presentation/screens/company/news_detail_screen.dart';
+import '../presentation/screens/chat/chat_list_screen.dart';
 import '../presentation/screens/chat/chat_room_screen.dart';
 import '../presentation/screens/mypage/mypage_screen.dart';
 import '../presentation/screens/mypage/watchlist_screen.dart';
@@ -132,7 +133,9 @@ class AppRouter {
       GoRoute(
         path: '/main',
         name: 'main',
-        builder: (context, state) => const MainScreen(),
+        pageBuilder: (context, state) => const NoTransitionPage(
+          child: MainScreen(),
+        ),
         redirect: (context, state) => RouteGuards.requireAuth(context, state),
       ),
 
@@ -192,16 +195,23 @@ class AppRouter {
 
       // ==================== CHAT ====================
 
-      /// 채팅방
+      /// ✅ 채팅 목록 페이지
+      GoRoute(
+        path: '/chat',
+        name: 'chat-list',
+        pageBuilder: (context, state) => const NoTransitionPage(
+          child: ChatListScreen(),
+        ),
+        redirect: (context, state) => RouteGuards.requireAuth(context, state),
+      ),
+
+      /// ✅ 채팅방
       GoRoute(
         path: '/chat/:id',
         name: 'chat-room',
-        builder: (context, state) => const ChatRoomScreen(),
-        //param 데이터 주어질 때 이걸로 바꾸세요
-        // builder: (context, state) {
-        //   final id = state.pathParameters['id']!;
-        //   return ChatRoomScreen(chatId: id);
-        // },
+        pageBuilder: (context, state) => const NoTransitionPage(
+          child: ChatRoomScreen(),
+        ),
         redirect: (context, state) => RouteGuards.requireAuth(context, state),
       ),
 
