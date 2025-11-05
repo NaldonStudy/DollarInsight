@@ -4,31 +4,37 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 /// 라우트 가드 - 페이지 접근 권한 체크
 class RouteGuards {
+
+  /// ✅ 디버깅 시 가드 비활성화 스위치
+  /// debugDisableGuards = true → 모든 가드 무효
+  /// 실제 배포 시 false 로 변경하면 정상 동작
+  static const bool debugDisableGuards = true; // ✅ 디버그 중에는 true
+
   /// 로그인 필요 여부 체크
-  /// 로그인이 필요한 페이지에서 사용
   static Future<String?> requireAuth(BuildContext context, GoRouterState state) async {
+    // ✅ 디버그 모드: 가드 비활성화
+    if (debugDisableGuards) return null;
+
     final isLoggedIn = await _checkLoginStatus();
 
     if (!isLoggedIn) {
-      // 로그인되지 않은 경우 로그인 페이지로 리다이렉트
       return '/login';
     }
 
-    // 로그인된 경우 null 반환 (정상 진행)
     return null;
   }
 
-  /// 로그인 상태 확인 (미로그인 시에만 접근 가능)
-  /// 로그인 페이지, 회원가입 페이지 등에서 사용
+  /// 로그인 상태 확인 (비로그인만 접근 가능)
   static Future<String?> requireGuest(BuildContext context, GoRouterState state) async {
+    // ✅ 디버그 모드: 가드 비활성화
+    if (debugDisableGuards) return null;
+
     final isLoggedIn = await _checkLoginStatus();
 
     if (isLoggedIn) {
-      // 이미 로그인된 경우 메인 페이지로 리다이렉트
       return '/main';
     }
 
-    // 미로그인 상태면 null 반환 (정상 진행)
     return null;
   }
 
@@ -36,17 +42,13 @@ class RouteGuards {
   static Future<bool> _checkLoginStatus() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-
-      // SharedPreferences에서 토큰 확인
       final token = prefs.getString('auth_token');
 
       if (token == null || token.isEmpty) {
         return false;
       }
 
-      // TODO: 추가 검증 로직
-      // - 토큰 만료 시간 확인
-      // - 서버에 토큰 유효성 검증 요청
+      // TODO: 토큰 만료 확인 / 서버 검증
 
       return true;
     } catch (e) {
@@ -55,24 +57,22 @@ class RouteGuards {
     }
   }
 
-  /// 특정 권한 필요 여부 체크
-  /// 예: 관리자 전용 페이지
+  /// 권한 체크
   static Future<String?> requireRole(
       BuildContext context,
       GoRouterState state,
       String requiredRole,
       ) async {
-    final isLoggedIn = await _checkLoginStatus();
+    // ✅ 디버그 모드: 가드 비활성화
+    if (debugDisableGuards) return null;
 
+    final isLoggedIn = await _checkLoginStatus();
     if (!isLoggedIn) {
       return '/login';
     }
 
-    // TODO: 사용자 권한 확인 로직
     final userRole = await _getUserRole();
-
     if (userRole != requiredRole) {
-      // 권한이 없는 경우 메인 페이지로
       return '/main';
     }
 
@@ -89,14 +89,16 @@ class RouteGuards {
     }
   }
 
-  /// 온보딩 완료 여부 체크
+  /// 온보딩 체크
   static Future<String?> checkOnboarding(BuildContext context, GoRouterState state) async {
+    // ✅ 디버그 모드: 가드 비활성화
+    if (debugDisableGuards) return null;
+
     try {
       final prefs = await SharedPreferences.getInstance();
       final hasCompletedOnboarding = prefs.getBool('completed_onboarding') ?? false;
 
       if (!hasCompletedOnboarding) {
-        // 온보딩 미완료 시 랜딩 페이지로
         return '/landing';
       }
 
