@@ -9,6 +9,7 @@ import '../presentation/screens/auth/login_screen.dart';
 import '../presentation/screens/auth/signup/signup_screen.dart';
 import '../presentation/screens/auth/signup/signup_watchlist_industry_screen.dart';
 import '../presentation/screens/auth/signup/signup_watchlist_company_screen.dart';
+import '../presentation/screens/auth/signup/signup_watchlist_result_screen.dart';
 import '../presentation/screens/auth/signup/signup_complete_screen.dart';
 import '../presentation/screens/auth/withdrawal/withdrawal_password_screen.dart';
 import '../presentation/screens/auth/withdrawal/withdrawal_complete_screen.dart';
@@ -94,6 +95,13 @@ class AppRouter {
         path: '/signup/watchlist-company',
         name: 'signup-watchlist-company',
         builder: (context, state) => const SignupWatchlistCompanyScreen(),
+      ),
+
+      /// 관심 종목 선택 결과
+      GoRoute(
+        path: '/signup/watchlist-result',
+        name: 'signup-watchlist-result',
+        builder: (context, state) => const SignupWatchlistResultScreen(),
       ),
 
       /// 회원가입 완료
