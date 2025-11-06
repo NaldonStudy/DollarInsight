@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 class LiveChatCard extends StatelessWidget {
   final double w;
@@ -8,44 +9,50 @@ class LiveChatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: h * 0.12,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Stack(
-        children: [
-          Positioned(
-            left: w * 0.05,
-            top: h * 0.03,
-            child: const Text(
-              "실시간 채팅 참여하기",
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF757575),
+    return GestureDetector(
+      onTap: () {
+        // ✅ 채팅방으로 이동 (예: id = 1)
+        context.push('/chat/1');
+      },
+      child: Container(
+        height: h * 0.12,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Stack(
+          children: [
+            Positioned(
+              left: w * 0.05,
+              top: h * 0.03,
+              child: const Text(
+                "실시간 채팅 참여하기",
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF757575),
+                ),
               ),
             ),
-          ),
-          Positioned(
-            left: w * 0.05,
-            top: h * 0.066,
-            child: const Text(
-              "검색어를 입력해주세요",
-              style: TextStyle(fontSize: 13, color: Color(0xFF757575)),
+            Positioned(
+              left: w * 0.05,
+              top: h * 0.066,
+              child: const Text(
+                "검색어를 입력해주세요",
+                style: TextStyle(fontSize: 13, color: Color(0xFF757575)),
+              ),
             ),
-          ),
-          Positioned(
-            right: w * 0.06,
-            top: h * 0.01,
-            child: Image.asset(
-              "assets/images/main4.png",
-              width: w * 0.28,
-              fit: BoxFit.contain,
+            Positioned(
+              right: w * 0.06,
+              top: h * 0.01,
+              child: Image.asset(
+                "assets/images/main4.png",
+                width: w * 0.28,
+                fit: BoxFit.contain,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

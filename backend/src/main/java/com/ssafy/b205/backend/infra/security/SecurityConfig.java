@@ -26,12 +26,10 @@ public class SecurityConfig {
                 .cors(Customizer.withDefaults())
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(reg -> reg
-                        // 공개/문서/헬스체크
                         .requestMatchers("/api/public/**").permitAll()
-                        .requestMatchers("/api/auth/signup").permitAll()
+                        .requestMatchers("/api/auth/signup", "/api/auth/login", "/api/auth/refresh").permitAll() // ← 추가
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .requestMatchers("/actuator/**").permitAll()
-                        // 그 외는 인증
                         .anyRequest().authenticated()
                 );
 

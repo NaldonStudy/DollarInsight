@@ -17,12 +17,15 @@ import '../presentation/screens/main/main_screen.dart';
 import '../presentation/screens/company/company_detail_screen.dart';
 import '../presentation/screens/company/company_chart_screen.dart';
 import '../presentation/screens/company/news_list_screen.dart';
-import '../presentation/screens/company/news_detail_screen.dart';
+import '../presentation/screens/company/company_news_detail_screen.dart';
+import '../presentation/screens/news/all_news_list_screen.dart';
+import '../presentation/screens/news/all_news_detail_screen.dart';
 import '../presentation/screens/chat/chat_list_screen.dart';
 import '../presentation/screens/chat/chat_room_screen.dart';
 import '../presentation/screens/mypage/mypage_screen.dart';
 import '../presentation/screens/mypage/watchlist_screen.dart';
 import '../presentation/screens/mypage/watchlist_edit_screen.dart';
+import '../presentation/screens/mypage/company_search_screen.dart';
 import '../presentation/screens/mypage/password_change_screen.dart';
 import '../presentation/screens/mypage/password_change_new_screen.dart';
 import '../presentation/screens/mypage/ai_friend_change_screen.dart';
@@ -95,14 +98,25 @@ class AppRouter {
       GoRoute(
         path: '/signup/watchlist-company',
         name: 'signup-watchlist-company',
-        builder: (context, state) => const SignupWatchlistCompanyScreen(),
+        builder: (context, state) {
+          final selectedIndustries = state.extra as Set<String>?;
+          return SignupWatchlistCompanyScreen(
+            selectedIndustries: selectedIndustries,
+          );
+        },
       ),
 
       /// 관심 종목 선택 결과
       GoRoute(
         path: '/signup/watchlist-result',
         name: 'signup-watchlist-result',
-        builder: (context, state) => const SignupWatchlistResultScreen(),
+        builder: (context, state) {
+          final data = state.extra as Map<String, dynamic>?;
+          return SignupWatchlistResultScreen(
+            selectedIndustries: data?['selectedIndustries'] as Set<String>?,
+            selectedCompanies: data?['selectedCompanies'] as Set<String>?,
+          );
+        },
       ),
 
       /// 회원가입 완료
@@ -139,6 +153,28 @@ class AppRouter {
         redirect: (context, state) => RouteGuards.requireAuth(context, state),
       ),
 
+      // ==================== NEWS ====================
+
+      /// 전체 뉴스 목록
+      GoRoute(
+        path: '/news',
+        name: 'all-news-list',
+        builder: (context, state) => const AllNewsListScreen(),
+        redirect: (context, state) => RouteGuards.requireAuth(context, state),
+      ),
+
+      /// 전체 뉴스 상세
+      GoRoute(
+        path: '/news/:id',
+        name: 'all-news-detail',
+        builder: (context, state) => const AllNewsDetailScreen(),
+        //param 데이터 주어질 때 이걸로 바꾸세요
+        // builder: (context, state) {
+        //   final id = state.pathParameters['id']!;
+        //   return AllNewsDetailScreen(newsId: id);
+        // },
+        redirect: (context, state) => RouteGuards.requireAuth(context, state),
+      ),
       // ==================== COMPANY ====================
 
       /// 기업 상세 정보
@@ -167,10 +203,10 @@ class AppRouter {
         redirect: (context, state) => RouteGuards.requireAuth(context, state),
       ),
 
-      /// 뉴스 목록
+      /// 기업별 뉴스 목록
       GoRoute(
         path: '/company/:id/news',
-        name: 'news-list',
+        name: 'company-news-list',
         builder: (context, state) => const NewsListScreen(),
         //param 데이터 주어질 때 이걸로 바꾸세요
         // builder: (context, state) {
@@ -180,15 +216,16 @@ class AppRouter {
         redirect: (context, state) => RouteGuards.requireAuth(context, state),
       ),
 
-      /// 뉴스 상세
+      /// 기업별 뉴스 상세
       GoRoute(
-        path: '/news/:id',
-        name: 'news-detail',
-        builder: (context, state) => const NewsDetailScreen(),
+        path: '/company/:id/news/:newsId',
+        name: 'company-news-detail',
+        builder: (context, state) => const CompanyNewsDetailScreen(),
         //param 데이터 주어질 때 이걸로 바꾸세요
         // builder: (context, state) {
-        //   final id = state.pathParameters['id']!;
-        //   return NewsDetailScreen(newsId: id);
+        //   final companyId = state.pathParameters['id']!;
+        //   final newsId = state.pathParameters['newsId']!;
+        //   return CompanyNewsDetailScreen(companyId: companyId, newsId: newsId);
         // },
         redirect: (context, state) => RouteGuards.requireAuth(context, state),
       ),
@@ -209,9 +246,7 @@ class AppRouter {
       GoRoute(
         path: '/chat/:id',
         name: 'chat-room',
-        pageBuilder: (context, state) => const NoTransitionPage(
-          child: ChatRoomScreen(),
-        ),
+        builder: (context, state) => const ChatRoomScreen(),
         redirect: (context, state) => RouteGuards.requireAuth(context, state),
       ),
 
@@ -238,6 +273,14 @@ class AppRouter {
         path: '/mypage/watchlist/edit',
         name: 'watchlist-edit',
         builder: (context, state) => const WatchlistEditScreen(),
+        redirect: (context, state) => RouteGuards.requireAuth(context, state),
+      ),
+
+      /// 기업 검색
+      GoRoute(
+        path: '/mypage/company-search',
+        name: 'company-search',
+        builder: (context, state) => const CompanySearchScreen(),
         redirect: (context, state) => RouteGuards.requireAuth(context, state),
       ),
 

@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/routes/app_router.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
 
-void main() {
+  // ✅ 한국어 날짜/시간 포맷 초기화 (필수)
+  await initializeDateFormatting('ko_KR', null);
+
   usePathUrlStrategy();
   runApp(const MyApp());
 }
