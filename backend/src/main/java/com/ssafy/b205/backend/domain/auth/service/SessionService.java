@@ -4,6 +4,9 @@ public interface SessionService {
     /** refresh 발급 (V1: DB 저장 없이 발급만) */
     String issueRefreshAndStore(String userUuid, String deviceId);
 
+    String issueRefreshAndStore(String userUuid, String deviceId, Boolean pushEnabled, String pushToken);
+
+
     /** refresh 검증 후 access 재발급 */
     String reissueAccessByRefresh(String refreshToken, String deviceId);
 

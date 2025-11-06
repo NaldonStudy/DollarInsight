@@ -13,6 +13,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
+import static com.ssafy.b205.backend.infra.security.DeviceIdResolver.normalize;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -22,6 +24,7 @@ public class UserServiceImpl implements UserService {
     private final UserCredentialRepository credentialRepository;
     private final PasswordEncoder passwordEncoder;
     private final TokenProvider tokenProvider;
+
     private static final java.util.regex.Pattern STRONG_PW =
             java.util.regex.Pattern.compile("^(?=.*[A-Za-z])(?=.*\\d)(?=.*[^A-Za-z0-9])\\S{8,64}$");
 
@@ -39,6 +42,7 @@ public class UserServiceImpl implements UserService {
             log.warn("[UserSvc-E01] 이미 존재하는 이메일 email={}", email);
             throw new IllegalArgumentException("이미 사용 중인 이메일입니다.");
         }
+
         User u = userRepository.save(User.builder()
                 .email(email)
                 .nickname(nickname)
@@ -57,7 +61,8 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public String issueAccess(String email, String rawPassword, String deviceId) {
-        log.info("[UserSvc-11] 액세스 토큰 발급 시도 email={}, deviceId={}", email, deviceId);
+        String did = normalize(deviceId);
+        log.info("[UserSvc-11] 액세스 토큰 발급 시도 email={}, deviceId(normalized)={}", email, did);
 
         User u = getByEmailActive(email);
         String hash = credentialRepository.findByUser(u)
@@ -71,17 +76,19 @@ public class UserServiceImpl implements UserService {
             log.warn("[UserSvc-E03] 비밀번호 불일치 email={}", email);
             throw new IllegalArgumentException("비밀번호가 일치하지 않습니다.");
         }
-        String access = tokenProvider.createAccessToken(u.getUuid().toString(), deviceId);
-        log.info("[UserSvc-12] 액세스 토큰 발급 완료 userUuid={}, deviceId={}", u.getUuid(), deviceId);
+
+        String access = tokenProvider.createAccessToken(u.getUuid().toString(), did);
+        log.info("[UserSvc-12] 액세스 토큰 발급 완료 userUuid={}, deviceId(normalized)={}", u.getUuid(), did);
 
         return access;
     }
 
     @Override
     public String createAccessFor(User user, String deviceId) {
-        String access = tokenProvider.createAccessToken(user.getUuid().toString(), deviceId);
-        log.info("[UserSvc-21] (회원가입 직후) 액세스 토큰 발급 완료 userUuid={}, deviceId={}",
-                user.getUuid(), deviceId);
+        String did = normalize(deviceId);
+        String access = tokenProvider.createAccessToken(user.getUuid().toString(), did);
+        log.info("[UserSvc-21] (회원가입 직후) 액세스 토큰 발급 완료 userUuid={}, deviceId(normalized)={}",
+                user.getUuid(), did);
         return access;
     }
 

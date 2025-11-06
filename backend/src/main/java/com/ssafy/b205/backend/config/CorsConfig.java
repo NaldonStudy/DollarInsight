@@ -24,7 +24,10 @@ public class CorsConfig {
                 .map(String::trim).toList();
         cfg.setAllowedOriginPatterns(origins.isEmpty() ? List.of("*") : origins);
         cfg.setAllowedMethods(List.of("GET","POST","PATCH","DELETE","OPTIONS"));
-        cfg.setAllowedHeaders(List.of("*"));
+        cfg.setAllowedHeaders(List.of(
+                "Authorization", "Content-Type", "X-Device-Id", "X-Client-Version", "X-Refresh-Token"
+        ));
+        cfg.setExposedHeaders(List.of("Authorization")); // 필요시 추가
         cfg.setAllowCredentials(true);
         cfg.setMaxAge(3600L);
 

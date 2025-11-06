@@ -4,6 +4,7 @@ import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import jakarta.annotation.PostConstruct;
+
 import javax.crypto.SecretKey;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -15,6 +16,8 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import static com.ssafy.b205.backend.infra.security.DeviceIdResolver.normalize;
 
 @Component
 public class TokenProvider {
@@ -54,13 +57,14 @@ public class TokenProvider {
     }
 
     public String createAccessToken(String userUuid, String deviceId) {
+        String did = normalize(deviceId);
         Instant now = Instant.now();
         return Jwts.builder()
                 .subject(userUuid)
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(now.plusSeconds(accessTtlSec)))
                 .claims(Map.of(
-                        "did", deviceId,
+                        "did", did,
                         "aud", "mobile",
                         "roles", List.of("USER")
                 ))
@@ -71,9 +75,10 @@ public class TokenProvider {
 
     // 1) refresh 토큰 발급
     public String createRefreshToken(String userUuid, String deviceId, int ttlDays) {
+        String did = normalize(deviceId);
         Instant now = Instant.now();
         Map<String, Object> claims = new HashMap<>();
-        claims.put("did", deviceId);
+        claims.put("did", did);
         claims.put("typ", "refresh");
         return Jwts.builder()
                 .subject(userUuid)

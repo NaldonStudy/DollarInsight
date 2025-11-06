@@ -11,4 +11,5 @@ public class SignupRequest {
     @Email @NotBlank private String email;
     @NotBlank private String nickname;
     @StrongPassword private String password;
+    private Boolean pushEnabled = Boolean.FALSE;
 }
