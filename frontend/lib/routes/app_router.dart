@@ -218,7 +218,7 @@ class AppRouter {
 
       /// 기업별 뉴스 상세
       GoRoute(
-        path: '/company/:id',
+        path: '/company/:id/news/:id',
         name: 'company-news-detail',
         builder: (context, state) => const CompanyNewsDetailScreen(),
         //param 데이터 주어질 때 이걸로 바꾸세요
