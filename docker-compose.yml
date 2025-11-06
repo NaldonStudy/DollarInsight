@@ -125,13 +125,14 @@ services:
       redis:
         condition: service_healthy
 
-  # Nginx (리버스 프록시)
+# Nginx (리버스 프록시)
   nginx:
     image: imtaewon/dollar-nginx:latest
     container_name: dollar-insight-nginx
     restart: unless-stopped
     ports:
       - "80:80"
+      - "443:443"  # HTTPS 포트 추가
     networks:
       - dollar-insight-network
     depends_on:
@@ -148,6 +149,9 @@ services:
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro  # SSL 인증서
+      - ./apk:/usr/share/nginx/html/apk:ro  # APK 파일
+      - ./download-page:/usr/share/nginx/html/download:ro  # 다운로드 페이지
 
   # ============================================
   # Admin Tools (관리 도구) - Nginx 프록시로만 접근
