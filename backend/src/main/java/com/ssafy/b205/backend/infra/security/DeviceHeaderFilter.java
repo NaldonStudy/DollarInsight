@@ -17,18 +17,12 @@ public class DeviceHeaderFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest req) {
         final String uri = req.getRequestURI();
-
-        // 1) CORS preflight는 항상 통과
-        if ("OPTIONS".equalsIgnoreCase(req.getMethod())) return true;
-
-        // 2) 공개/문서/헬스체크 경로 화이트리스트
+        if ("OPTIONS".equalsIgnoreCase(req.getMethod())) return true;          // preflight
         if (uri.equals("/api/public") || uri.startsWith("/api/public/")) return true;
-        if (uri.startsWith("/api/auth/signup")) return true;                // 가입만 예외 (기존 로직 유지)
-        if (uri.startsWith("/v3/api-docs") || uri.startsWith("/swagger-ui")) return true;
-        if (uri.startsWith("/actuator")) return true;                       // /actuator/health 포함
-
-        // 3) /api/** 에만 필터 적용 (그 외는 패스)
-        return !uri.startsWith("/api/");
+        if (uri.startsWith("/v3/api-docs")) return true;
+        if (uri.startsWith("/swagger-ui")) return true;
+        if (uri.startsWith("/actuator")) return true;
+        return !uri.startsWith("/api/"); // /api/** 만 검증
     }
 
     @Override
@@ -44,7 +38,7 @@ public class DeviceHeaderFilter extends OncePerRequestFilter {
             res.setStatus(HttpStatus.BAD_REQUEST.value());
             res.getWriter().write(
                     "{ \"success\": false, " +
-                            "\"message\": \"[DeviceService-001] X-Device-Id 헤더가 누락되었거나 형식이 유효하지 않습니다.\"," +
+                            "\"message\": \"[DeviceService-001] X-Device-Id 헤더가 누락되었거나 비어 있습니다.\"," +
                             "\"data\": null }"
             );
             return;

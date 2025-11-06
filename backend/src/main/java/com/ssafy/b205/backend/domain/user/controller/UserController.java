@@ -3,11 +3,11 @@ package com.ssafy.b205.backend.domain.user.controller;
 import com.ssafy.b205.backend.domain.user.dto.response.UserResponse;
 import com.ssafy.b205.backend.domain.user.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -24,14 +24,16 @@ public class UserController {
     @Operation(
             summary = "내 프로필 조회",
             description = """
-            보호 API. Authorization(Access Token) + X-Device-Id 헤더가 필요합니다.
-            """,
-            parameters = {
-                    @Parameter(name = "Authorization", in = ParameterIn.HEADER, required = true, description = "Bearer {accessToken}"),
-                    @Parameter(name = "X-Device-Id", in = ParameterIn.HEADER, required = true, description = "디바이스 고정 UUID v4")
+        보호 API. 상단 Authorize에서 한 번만 설정하면 됩니다.
+        - Authorization: Bearer {accessToken}
+        - X-Device-Id: 디바이스 식별자(임의 문자열, 서버에서 trim+소문자+최대128자로 정규화)
+        """,
+            security = {
+                    @SecurityRequirement(name = "bearerAuth"),
+                    @SecurityRequirement(name = "deviceId")
             },
             responses = {
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    @ApiResponse(
                             responseCode = "200",
                             description = "OK",
                             content = @Content(
@@ -40,14 +42,14 @@ public class UserController {
                                     examples = @ExampleObject(
                                             name = "성공",
                                             value = """
-                                            {
-                                              "uuid": "7e26b6df-bcb8-48ff-85af-b7b5ae9c46cd",
-                                              "email": "minji@example.com",
-                                              "nickname": "Minji",
-                                              "status": "ACTIVE",
-                                              "createdAt": "2025-11-01T08:21:34.123Z"
-                                            }
-                                            """
+                        {
+                          "uuid": "7e26b6df-bcb8-48ff-85af-b7b5ae9c46cd",
+                          "email": "minji@example.com",
+                          "nickname": "Minji",
+                          "status": "ACTIVE",
+                          "createdAt": "2025-11-01T08:21:34.123Z"
+                        }
+                        """
                                     )
                             )
                     )
