@@ -10,7 +10,9 @@ import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -65,6 +67,27 @@ public class TokenProvider {
                 // jjwt 0.12 스타일: 알고리즘은 key에서 유추됨. (명시하고 싶으면 .signWith(key, Jwts.SIG.HS256))
                 .signWith(key)
                 .compact();
+    }
+
+    // 1) refresh 토큰 발급
+    public String createRefreshToken(String userUuid, String deviceId, int ttlDays) {
+        Instant now = Instant.now();
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("did", deviceId);
+        claims.put("typ", "refresh");
+        return Jwts.builder()
+                .subject(userUuid)
+                .issuedAt(Date.from(now))
+                .expiration(Date.from(now.plus(ttlDays, ChronoUnit.DAYS)))
+                .claims(claims)
+                .signWith(key)
+                .compact();
+    }
+
+    // 2) typ(access/refresh) 읽기
+    public static String readTyp(Claims c) {
+        Object t = c.get("typ");
+        return t == null ? null : String.valueOf(t);
     }
 
     public Jws<Claims> parse(String token) {
