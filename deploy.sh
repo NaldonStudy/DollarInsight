@@ -137,51 +137,75 @@ stop_all_services() {
     fi
 }
 
-# Restart application services only (DB는 유지)
+# Restart application services only (DB, nginx는 유지)
 restart_app_services() {
-    log "Restarting application services (DB, nginx, admin tools keep running)..."
-    info "Target services: $APP_SERVICES"
+    log "========================================="
+    log "Restarting Application Services"
+    log "Target: $APP_SERVICES"
+    log "Preserved: DB, Nginx, Admin Tools"
+    log "========================================="
     
-    cd "$DEPLOY_DIR"
+    cd "$DEPLOY_DIR" || error "Failed to change directory to $DEPLOY_DIR"
     
-    # Step 1: 기존 애플리케이션 컨테이너 중지
+    # Step 1: Docker 데몬 상태 확인 (CRITICAL)
+    info "Verifying Docker daemon status..."
+    if ! docker info > /dev/null 2>&1; then
+        error "Cannot connect to Docker daemon. Please check:\n  1. Docker service is running\n  2. Current user has Docker permissions"
+    fi
+    log "Docker daemon is accessible ✓"
+    
+    # Step 2: 기존 컨테이너 중지
     info "Stopping application services..."
-    docker compose stop $APP_SERVICES 2>/dev/null || warn "Some services may not be running"
+    if docker compose stop $APP_SERVICES 2>&1 | tee -a "$LOG_FILE"; then
+        log "Services stopped successfully ✓"
+    else
+        warn "Failed to stop some services (they may not be running)"
+    fi
     
-    # Step 2: 기존 컨테이너 제거 (docker compose로)
+    # Step 3: 중지된 컨테이너 제거
     info "Removing old containers..."
-    docker compose rm -f $APP_SERVICES 2>/dev/null || warn "Some containers may already be removed"
+    if docker compose rm -f $APP_SERVICES 2>&1 | tee -a "$LOG_FILE"; then
+        log "Old containers removed ✓"
+    else
+        warn "Failed to remove some containers (they may already be removed)"
+    fi
     
-    # Step 3: 혹시 남아있는 컨테이너를 직접 docker 명령으로 제거 (백업 조치)
-    info "Cleaning up any remaining containers..."
+    # Step 4: 좀비 컨테이너 정리 (에러 무시)
+    info "Cleaning up orphaned containers..."
+    local found_orphans=false
     for service in $APP_SERVICES; do
         local container_name="dollar-insight-${service}"
-        if docker ps -a --format '{{.Names}}' | grep -q "^${container_name}$"; then
-            warn "Found orphaned container: ${container_name}, removing..."
-            docker rm -f ${container_name} 2>/dev/null || true
+        if docker ps -a --format '{{.Names}}' | grep -q "^${container_name}$" 2>/dev/null; then
+            found_orphans=true
+            warn "Found orphaned container: ${container_name}"
+            docker rm -f "${container_name}" 2>&1 | tee -a "$LOG_FILE" || true
         fi
     done
     
-    # Step 4: 이름이 일치하는 모든 컨테이너 강제 제거
-    info "Force removing any containers with matching names..."
-    docker ps -a --format '{{.Names}}' | grep -E "dollar-insight-(backend|ai-service)" | xargs -r docker rm -f 2>/dev/null || true
-    
-    # Step 5: 새 컨테이너 생성 및 시작
-    info "Starting new containers..."
-    if ! docker compose up -d --no-deps $APP_SERVICES; then
-        error "Failed to start application services"
+    if [ "$found_orphans" = false ]; then
+        log "No orphaned containers found ✓"
+    else
+        log "Orphaned containers cleaned up ✓"
     fi
     
-    log "Application services restarted ✓"
+    # Step 5: 새 컨테이너 생성 및 시작 (CRITICAL - 실패하면 중단)
+    info "Starting new containers..."
+    if ! docker compose up -d --no-deps $APP_SERVICES 2>&1 | tee -a "$LOG_FILE"; then
+        error "CRITICAL: Failed to start application services\n  Check logs at: $LOG_FILE\n  Or run: docker compose logs $APP_SERVICES"
+    fi
+    log "New containers started successfully ✓"
     
-    # Step 6: Nginx DNS 캐시 초기화 (중요!)
-    info "Restarting nginx to refresh DNS cache..."
-    docker restart dollar-insight-nginx || warn "Failed to restart nginx"
+    # Step 6: 동적 DNS 해석을 사용하므로 Nginx 재시작 불필요
+    info "Note: Nginx DNS cache will auto-refresh (dynamic DNS enabled)"
+    log "No nginx restart required ✓"
     
-    log "Nginx DNS cache refreshed ✓"
-    
-    # Wait for containers to initialize
+    # Step 7: 컨테이너 안정화 대기
+    info "Waiting for services to stabilize..."
     sleep 10
+    
+    log "========================================="
+    log "Application Services Restarted Successfully"
+    log "========================================="
 }
 
 # Start all services (초기 배포 시에만 사용)
