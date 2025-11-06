@@ -184,6 +184,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
 
           // ✅ 말풍선
           Container(
+            constraints: BoxConstraints(
+              maxWidth: MediaQuery.of(context).size.width * 0.7,
+            ),
             padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
             decoration: BoxDecoration(
               color: const Color(0xFFC8E2F6),
@@ -239,6 +242,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                   children: [
                     // 말풍선
                     Container(
+                      constraints: BoxConstraints(
+                        maxWidth: MediaQuery.of(context).size.width * 0.7,
+                      ),
                       padding: const EdgeInsets.symmetric(
                         vertical: 12,
                         horizontal: 16,
@@ -247,7 +253,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                          color: const Color(0xFF9BA9B0),
+                          color: Color(0xFF9BA9B0),
                           width: 0.5,
                         ),
                       ),
@@ -281,7 +287,6 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     );
   }
 
-  // ✅ 메시지 입력창
   // ✅ 메시지 입력창
   Widget _buildMessageInput() {
     return Container(
