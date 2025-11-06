@@ -173,42 +173,27 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       padding: const EdgeInsets.only(bottom: 16),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.end,
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  vertical: 12,
-                  horizontal: 16,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFC8E2F6),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: const Color(0xFF9BA9B0),
-                    width: 0.5,
-                  ),
-                ),
-                child: Text(
-                  text,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    color: Color(0xFF21272A),
-                  ),
-                ),
-              ),
-              if (time.isNotEmpty) ...[
-                const SizedBox(height: 4),
-                Text(
-                  time,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Color(0xFFBBBBBB),
-                  ),
-                ),
-              ],
-            ],
+          // ✅ 시간을 왼쪽에 배치
+          Text(
+            time,
+            style: const TextStyle(fontSize: 12, color: Color(0xFFBBBBBB)),
+          ),
+          const SizedBox(width: 6),
+
+          // ✅ 말풍선
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+            decoration: BoxDecoration(
+              color: const Color(0xFFC8E2F6),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Color(0xFF9BA9B0), width: 0.5),
+            ),
+            child: Text(
+              text,
+              style: const TextStyle(fontSize: 15, color: Color(0xFF21272A)),
+            ),
           ),
         ],
       ),
@@ -227,13 +212,17 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CircleAvatar(radius: 18, backgroundImage: AssetImage(profile)),
+          // ✅ 캐릭터 이미지
+          Image.asset(profile, width: 36, height: 36),
+
           const SizedBox(width: 8),
 
+          // ✅ 말풍선 + 시간 (왼쪽 정렬)
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // 이름
                 Text(
                   name,
                   style: const TextStyle(
@@ -241,9 +230,14 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                     color: Color(0xFF7E909A),
                   ),
                 ),
+
                 const SizedBox(height: 4),
+
+                // ✅ 말풍선 + 시간 (열 구조)
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
+                    // 말풍선
                     Container(
                       padding: const EdgeInsets.symmetric(
                         vertical: 12,
@@ -265,16 +259,18 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                         ),
                       ),
                     ),
-                    if (time.isNotEmpty) ...[
-                      const SizedBox(width: 8),
-                      Text(
-                        time,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Color(0xFFBBBBBB),
-                        ),
+
+                    // 간격
+                    const SizedBox(width: 6),
+
+                    // ✅ 시간: 말풍선 하단에 정렬되도록 crossAxisAlignment.end 적용
+                    Text(
+                      time,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFFBBBBBB),
                       ),
-                    ],
+                    ),
                   ],
                 ),
               ],
@@ -286,13 +282,13 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   }
 
   // ✅ 메시지 입력창
+  // ✅ 메시지 입력창
   Widget _buildMessageInput() {
     return Container(
       color: const Color(0xFFF7F8FB),
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        height: 50,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
@@ -303,6 +299,11 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
             Expanded(
               child: TextField(
                 controller: _controller,
+                minLines: 1,
+                // ✅ 기본 한 줄
+                maxLines: 5,
+                // ✅ 최대 다섯 줄까지 자동 증가
+                keyboardType: TextInputType.multiline,
                 decoration: const InputDecoration(
                   border: InputBorder.none,
                   hintText: "메시지 입력",
