@@ -179,51 +179,51 @@ class AppRouter {
 
       /// 기업 상세 정보
       GoRoute(
-        path: '/company/:id',
+        path: '/company/:companyId',
         name: 'company-detail',
         builder: (context, state) => const CompanyDetailScreen(),
         //param 데이터 주어질 때 이걸로 바꾸세요
         // builder: (context, state) {
-        //   final id = state.pathParameters['id']!;
-        //   return CompanyDetailScreen(companyId: id);
+        //   final companyId = state.pathParameters['companyId']!;
+        //   return CompanyDetailScreen(companyId: companyId);
         // },
         redirect: (context, state) => RouteGuards.requireAuth(context, state),
       ),
 
       /// 기업 차트
       GoRoute(
-        path: '/company/:id/chart',
+        path: '/company/:companyId/chart',
         name: 'company-chart',
         builder: (context, state) => const CompanyChartScreen(),
         //param 데이터 주어질 때 이걸로 바꾸세요
         // builder: (context, state) {
-        //   final id = state.pathParameters['id']!;
-        //   return CompanyChartScreen(companyId: id);
+        //   final companyId = state.pathParameters['companyId']!;
+        //   return CompanyChartScreen(companyId: companyId);
         // },
         redirect: (context, state) => RouteGuards.requireAuth(context, state),
       ),
 
       /// 기업별 뉴스 목록
       GoRoute(
-        path: '/company/:id/news',
+        path: '/company/:companyId/news',
         name: 'company-news-list',
         builder: (context, state) => const CompanyNewsListScreen(),
         //param 데이터 주어질 때 이걸로 바꾸세요
         // builder: (context, state) {
-        //   final id = state.pathParameters['id']!;
-        //   return CompanyNewsListScreen(companyId: id);
+        //   final companyId = state.pathParameters['companyId']!;
+        //   return CompanyNewsListScreen(companyId: companyId);
         // },
         redirect: (context, state) => RouteGuards.requireAuth(context, state),
       ),
 
       /// 기업별 뉴스 상세
       GoRoute(
-        path: '/company/:id/news/:id',
+        path: '/company/:companyId/news/:newsId',
         name: 'company-news-detail',
         builder: (context, state) => const CompanyNewsDetailScreen(),
         //param 데이터 주어질 때 이걸로 바꾸세요
         // builder: (context, state) {
-        //   final companyId = state.pathParameters['id']!;
+        //   final companyId = state.pathParameters['companyId']!;
         //   final newsId = state.pathParameters['newsId']!;
         //   return CompanyNewsDetailScreen(companyId: companyId, newsId: newsId);
         // },
