@@ -29,7 +29,6 @@ class CompanyChip extends StatelessWidget {
             clipBehavior: Clip.antiAlias,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: const Color(0xFFD9D9D9),
               border: Border.all(
                 color: isSelected ? const Color(0xFF31C275) : Colors.transparent,
                 width: 5,
