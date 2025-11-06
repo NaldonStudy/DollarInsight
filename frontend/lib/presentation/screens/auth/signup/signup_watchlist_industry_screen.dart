@@ -56,9 +56,9 @@ class _SignupWatchlistIndustryScreenState
       return;
     }
 
-    // TODO: 선택된 산업 데이터를 저장하고 다음 화면으로 이동
+    // 선택된 산업 데이터를 다음 화면으로 전달
     print('선택된 산업: $_selectedIndustries');
-    context.push('/signup/watchlist-company');
+    context.push('/signup/watchlist-company', extra: _selectedIndustries);
   }
 
   @override
