@@ -1,34 +1,11 @@
-# ============================================
-# HTTP → HTTPS 리다이렉션
-# ============================================
+# Docker 내장 DNS resolver 설정 (동적 DNS 해석)
+# valid=10s: DNS 캐시를 10초만 유지
+# ipv6=off: IPv6 비활성화
+resolver 127.0.0.11 valid=10s ipv6=off;
+
 server {
     listen 80;
-    server_name k13b205.p.ssafy.io;
-
-    # Let's Encrypt 인증서 갱신을 위한 경로
-    location /.well-known/acme-challenge/ {
-        root /var/www/certbot;
-    }
-
-    # 나머지 모든 요청은 HTTPS로 리다이렉트
-    location / {
-        return 301 https://$server_name$request_uri;
-    }
-}
-
-# ============================================
-# HTTPS 서버
-# ============================================
-server {
-    listen 443 ssl http2;
-    server_name k13b205.p.ssafy.io;
-
-    # SSL 인증서
-    ssl_certificate /etc/letsencrypt/live/k13b205.p.ssafy.io/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/k13b205.p.ssafy.io/privkey.pem;
-
-    # 보안 설정 include
-    include /etc/nginx/conf.d/security.conf;
+    server_name _;
 
     # 클라이언트 요청 사이즈 제한
     client_max_body_size 100M;
@@ -37,56 +14,23 @@ server {
     gzip on;
     gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
 
-    # Rate limiting 적용
-    limit_req zone=general burst=20 nodelay;
-    limit_conn addr 10;
-
-    # ============================================
-    # APK 다운로드
-    # ============================================
-    
-    # 다운로드 페이지
-    location /download {
-        alias /usr/share/nginx/html/download;
-        index index.html;
-        try_files $uri $uri/ /download/index.html;
-    }
-
-    # APK 파일 직접 다운로드
-    location /apk {
-        alias /usr/share/nginx/html/apk;
-        autoindex off;
-        
-        # APK 파일 MIME 타입 설정
-        types {
-            application/vnd.android.package-archive apk;
-        }
-        
-        # 다운로드 속도 제한 (선택사항)
-        # limit_rate 1m;
-    }
-
-    # ============================================
     # Health check (Nginx 자체)
-    # ============================================
     location /health {
         access_log off;
         return 200 "healthy\n";
         add_header Content-Type text/plain;
     }
 
-    # ============================================
     # Backend API 프록시
-    # ============================================
     location /api/ {
-        limit_req zone=api burst=50 nodelay;
-        
-        proxy_pass http://backend:9090/;
+        # 변수 사용으로 매 요청마다 DNS 재해석 (IP 변경 시 자동 대응)
+        set $backend_upstream dollar-insight-backend:9090;
+        proxy_pass http://$backend_upstream/;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-
+        
         # Timeout 설정
         proxy_connect_timeout 60s;
         proxy_send_timeout 60s;
@@ -95,25 +39,25 @@ server {
 
     # Backend Actuator (헬스체크, 모니터링)
     location /actuator/ {
-        proxy_pass http://backend:9090/actuator/;
+        # 변수 사용으로 매 요청마다 DNS 재해석
+        set $backend_upstream dollar-insight-backend:9090;
+        proxy_pass http://$backend_upstream/actuator/;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
-    # ============================================
     # AI Service API 프록시
-    # ============================================
     location /ai/ {
-        limit_req zone=api burst=30 nodelay;
-        
-        proxy_pass http://ai-service:8000/;
+        # 변수 사용으로 매 요청마다 DNS 재해석
+        set $ai_upstream dollar-insight-ai-service:8000;
+        proxy_pass http://$ai_upstream/;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-
+        
         # Timeout 설정 (AI 처리 시간이 길 수 있음)
         proxy_connect_timeout 120s;
         proxy_send_timeout 120s;
@@ -132,12 +76,12 @@ server {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_set_header X-Script-Name /pgadmin;
-
+        
         # WebSocket 지원
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
-
+        
         proxy_redirect off;
         proxy_buffering off;
     }
@@ -149,7 +93,7 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-
+        
         proxy_redirect off;
     }
 
@@ -160,20 +104,18 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-
-        # WebSocket 지원
+        
+        # WebSocket 지원 (Redis Commander도 필요)
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
-
+        
         proxy_redirect off;
     }
 
-    # ============================================
     # 기본 루트
-    # ============================================
     location / {
-        return 200 "Dollar In\$ight API Gateway - HTTPS Enabled\n";
+        return 200 "Dollar InSight API Gateway\n";
         add_header Content-Type text/plain;
     }
 }
