@@ -137,7 +137,7 @@ stop_all_services() {
     fi
 }
 
-# Restart application services only (DB, nginx는 유지)
+# Restart application services only (DB는 유지)
 restart_app_services() {
     log "Restarting application services (DB, nginx, admin tools keep running)..."
     info "Target services: $APP_SERVICES"
@@ -146,19 +146,39 @@ restart_app_services() {
     
     # Step 1: 기존 애플리케이션 컨테이너 중지
     info "Stopping application services..."
-    docker compose stop $APP_SERVICES || warn "Some services may not be running"
+    docker compose stop $APP_SERVICES 2>/dev/null || warn "Some services may not be running"
     
-    # Step 2: 기존 컨테이너 제거 (이미지는 유지)
+    # Step 2: 기존 컨테이너 제거 (docker compose로)
     info "Removing old containers..."
-    docker compose rm -f $APP_SERVICES || warn "Some containers may already be removed"
+    docker compose rm -f $APP_SERVICES 2>/dev/null || warn "Some containers may already be removed"
     
-    # Step 3: 새 컨테이너 생성 및 시작
+    # Step 3: 혹시 남아있는 컨테이너를 직접 docker 명령으로 제거 (백업 조치)
+    info "Cleaning up any remaining containers..."
+    for service in $APP_SERVICES; do
+        local container_name="dollar-insight-${service}"
+        if docker ps -a --format '{{.Names}}' | grep -q "^${container_name}$"; then
+            warn "Found orphaned container: ${container_name}, removing..."
+            docker rm -f ${container_name} 2>/dev/null || true
+        fi
+    done
+    
+    # Step 4: 이름이 일치하는 모든 컨테이너 강제 제거
+    info "Force removing any containers with matching names..."
+    docker ps -a --format '{{.Names}}' | grep -E "dollar-insight-(backend|ai-service)" | xargs -r docker rm -f 2>/dev/null || true
+    
+    # Step 5: 새 컨테이너 생성 및 시작
     info "Starting new containers..."
     if ! docker compose up -d --no-deps $APP_SERVICES; then
         error "Failed to start application services"
     fi
     
     log "Application services restarted ✓"
+    
+    # Step 6: Nginx DNS 캐시 초기화 (중요!)
+    info "Restarting nginx to refresh DNS cache..."
+    docker restart dollar-insight-nginx || warn "Failed to restart nginx"
+    
+    log "Nginx DNS cache refreshed ✓"
     
     # Wait for containers to initialize
     sleep 10
