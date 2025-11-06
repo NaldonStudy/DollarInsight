@@ -12,4 +12,5 @@ public interface UserSessionRepository extends JpaRepository<UserSession, Intege
     Optional<UserSession> findByRefreshTokenHash(String hash);
     List<UserSession> findByUserAndUserDevice(User user, UserDevice userDevice);
     List<UserSession> findByUser(User user);
+    List<UserSession> findByUserOrderByIssuedAtDesc(User user);
 }

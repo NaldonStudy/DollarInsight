@@ -1,10 +1,9 @@
 package com.ssafy.b205.backend.domain.auth.controller;
 
 import com.ssafy.b205.backend.domain.auth.dto.response.AccessTokenResponse;
+import com.ssafy.b205.backend.domain.auth.dto.response.SessionResponse;
 import com.ssafy.b205.backend.domain.auth.service.SessionService;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -15,6 +14,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @Tag(name = "Auth Session")
 @RestController
@@ -32,17 +33,6 @@ public class SessionController {
         - X-Refresh-Token: 로그인/가입 시 받은 refresh
         성공 시 새 accessToken만 반환합니다.
         """,
-            // X-Device-Id는 전역 Authorize로 주입
-            security = { @SecurityRequirement(name = "deviceId") },
-            // refreshToken은 이 API에서만 필요 → 파라미터로 남김
-            parameters = {
-                    @Parameter(
-                            name = "X-Refresh-Token",
-                            in = ParameterIn.HEADER,
-                            required = true,
-                            description = "리프레시 토큰"
-                    )
-            },
             responses = {
                     @ApiResponse(responseCode = "200", description = "OK",
                             content = @Content(
@@ -73,19 +63,7 @@ public class SessionController {
         V1: 서버 세션 저장이 없어도 클라이언트 토큰을 폐기합니다.
         V2에서는 refresh 해시 저장 및 revoke 처리를 수행합니다.
         """,
-            // 보호 API → 전역 Authorize로 Bearer + DeviceId 자동 주입
-            security = {
-                    @SecurityRequirement(name = "bearerAuth"),
-                    @SecurityRequirement(name = "deviceId")
-            },
-            parameters = {
-                    @Parameter(
-                            name = "X-Refresh-Token",
-                            in = ParameterIn.HEADER,
-                            required = false,
-                            description = "리프레시 토큰(있으면 해당 세션만 revoke, 없으면 디바이스 전체 세션 revoke)"
-                    )
-            },
+            security = { @SecurityRequirement(name = "bearerAuth") },
             responses = { @ApiResponse(responseCode = "204", description = "No Content") }
     )
     @PostMapping("/logout")
@@ -96,5 +74,36 @@ public class SessionController {
     ) {
         sessionService.logoutByDevice(userUuid, deviceId, refreshToken);
         return ResponseEntity.noContent().build();
+    }
+
+    @Operation(
+            summary = "내 세션 목록",
+            description = """
+                - 요구 헤더: X-Device-Id, Authorization: Bearer <AT>
+                - 현재 계정의 모든 세션(디바이스 기준) 목록을 반환합니다.
+                """,
+            security = { @SecurityRequirement(name = "bearerAuth") },
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "OK",
+                            content = @Content(schema = @Schema(implementation = SessionResponse.class)))
+            }
+    )
+    @GetMapping
+    public List<SessionResponse> list(@AuthenticationPrincipal String userUuid) {
+        return sessionService.listSessions(userUuid);
+    }
+
+    @Operation(
+            summary = "세션 강제 로그아웃",
+            description = """
+                - 요구 헤더: X-Device-Id, Authorization: Bearer <AT>
+                - path의 세션 id가 본인 소유가 아닐 경우 403 반환
+                - 성공 시 본 세션은 revoke 처리됩니다.
+                """,
+            security = { @SecurityRequirement(name = "bearerAuth") }
+    )
+    @DeleteMapping("/{id}")
+    public void revoke(@AuthenticationPrincipal String userUuid, @PathVariable Integer id) {
+        sessionService.revokeById(userUuid, id);
     }
 }
