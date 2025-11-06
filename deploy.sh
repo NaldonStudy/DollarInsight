@@ -144,11 +144,18 @@ restart_app_services() {
     
     cd "$DEPLOY_DIR"
     
-    # 애플리케이션 서비스만 재시작
-    # --force-recreate: 컨테이너 강제 재생성
-    # --no-deps: 의존성 서비스(DB 등)는 재시작하지 않음
-    if ! docker compose up -d --force-recreate --no-deps $APP_SERVICES; then
-        error "Failed to restart application services"
+    # Step 1: 기존 애플리케이션 컨테이너 중지
+    info "Stopping application services..."
+    docker compose stop $APP_SERVICES || warn "Some services may not be running"
+    
+    # Step 2: 기존 컨테이너 제거 (이미지는 유지)
+    info "Removing old containers..."
+    docker compose rm -f $APP_SERVICES || warn "Some containers may already be removed"
+    
+    # Step 3: 새 컨테이너 생성 및 시작
+    info "Starting new containers..."
+    if ! docker compose up -d --no-deps $APP_SERVICES; then
+        error "Failed to start application services"
     fi
     
     log "Application services restarted ✓"
