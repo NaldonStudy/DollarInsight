@@ -20,8 +20,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/devices")
 @RequiredArgsConstructor
-@SecurityRequirement(name = "bearerAuth")
-@SecurityRequirement(name = "deviceId")
+@SecurityRequirement(name = "bearerAuth") // 보호 API → bearerAuth만 명시
 public class DeviceController {
 
     private final DeviceService deviceService;

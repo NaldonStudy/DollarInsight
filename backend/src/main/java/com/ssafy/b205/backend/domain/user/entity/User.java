@@ -50,4 +50,16 @@ public class User {
     void onUpdate() {
         this.updatedAt = LocalDateTime.now();
     }
+
+    public void updateNickname(String nickname) {
+        // 필요하면 내부 검증 추가
+        this.nickname = nickname;
+    }
+    public void markWithdrawn() {
+        if (this.status != UserStatus.WITHDRAWN) {
+            this.status = UserStatus.WITHDRAWN; // enum 가정
+            this.deletedAt = java.time.LocalDateTime.now(); // 필드 있으면
+        }
+    }
+
 }

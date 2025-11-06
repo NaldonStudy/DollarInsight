@@ -55,7 +55,9 @@ public class UserSession {
     }
 
     public void revoke(String reason) {
-        this.revokedAt = LocalDateTime.now();
-        this.revokeReason = reason;
+        if (this.revokedAt == null) {              // 이미 취소된 세션이면 그대로 둠(멱등)
+            this.revokedAt = java.time.LocalDateTime.now();
+            this.revokeReason = reason;            // 컬럼이 있으면 사유 저장
+        }
     }
 }

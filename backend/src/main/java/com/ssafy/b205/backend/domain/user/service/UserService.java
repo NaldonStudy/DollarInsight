@@ -8,4 +8,7 @@ public interface UserService {
     String createAccessFor(User user, String deviceId);
     User getByEmailActive(String email);
     User getByUuid(String userUuid);
+    void changeNickname(String userUuid, String nickname);
+    void changePassword(String userUuid, String oldPassword, String newPassword);
+    void softDelete(String userUuid);
 }
