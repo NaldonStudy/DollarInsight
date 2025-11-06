@@ -61,8 +61,8 @@ public class TokenFilter extends OncePerRequestFilter {
             Claims c = jws.getPayload();
 
             // ── Device binding 검증
-            String didInToken  = String.valueOf(c.get("did"));
-            String didInHeader = DeviceIdResolver.resolveValidOrNull(req);
+            String didInToken  = String.valueOf(c.get("did"));              // TokenProvider에서 이미 normalize하여 저장
+            String didInHeader = DeviceIdResolver.resolveValidOrNull(req);  // 헤더도 normalize + 빈값 거절
             if (didInHeader == null || !didInToken.equals(didInHeader)) {
                 res.setStatus(HttpStatus.FORBIDDEN.value());
                 res.setCharacterEncoding(StandardCharsets.UTF_8.name());

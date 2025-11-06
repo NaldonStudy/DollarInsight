@@ -100,6 +100,7 @@ app:
     # (선택2) 일반 문자열 시크릿
     secret: ${APP_JWT_SECRET:}
     access-ttl-seconds: ${APP_JWT_ACCESS_TTL_SECONDS:900}
+    refresh-ttl-days: ${APP_JWT_REFRESH_TTL_DAYS:28}
 
 external:
   chromadb:
