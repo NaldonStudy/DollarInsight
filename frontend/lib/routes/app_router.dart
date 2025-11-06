@@ -246,9 +246,7 @@ class AppRouter {
       GoRoute(
         path: '/chat/:id',
         name: 'chat-room',
-        pageBuilder: (context, state) => const NoTransitionPage(
-          child: ChatRoomScreen(),
-        ),
+        builder: (context, state) => const ChatRoomScreen(),
         redirect: (context, state) => RouteGuards.requireAuth(context, state),
       ),
 
