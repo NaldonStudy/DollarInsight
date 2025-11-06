@@ -16,7 +16,7 @@ import '../presentation/screens/auth/withdrawal/withdrawal_complete_screen.dart'
 import '../presentation/screens/main/main_screen.dart';
 import '../presentation/screens/company/company_detail_screen.dart';
 import '../presentation/screens/company/company_chart_screen.dart';
-import '../presentation/screens/company/news_list_screen.dart';
+import '../presentation/screens/company/company_news_list_screen.dart';
 import '../presentation/screens/company/company_news_detail_screen.dart';
 import '../presentation/screens/news/all_news_list_screen.dart';
 import '../presentation/screens/news/all_news_detail_screen.dart';
@@ -207,18 +207,18 @@ class AppRouter {
       GoRoute(
         path: '/company/:id/news',
         name: 'company-news-list',
-        builder: (context, state) => const NewsListScreen(),
+        builder: (context, state) => const CompanyNewsListScreen(),
         //param 데이터 주어질 때 이걸로 바꾸세요
         // builder: (context, state) {
         //   final id = state.pathParameters['id']!;
-        //   return NewsListScreen(companyId: id);
+        //   return CompanyNewsListScreen(companyId: id);
         // },
         redirect: (context, state) => RouteGuards.requireAuth(context, state),
       ),
 
       /// 기업별 뉴스 상세
       GoRoute(
-        path: '/company/:id/news/:newsId',
+        path: '/company/:id',
         name: 'company-news-detail',
         builder: (context, state) => const CompanyNewsDetailScreen(),
         //param 데이터 주어질 때 이걸로 바꾸세요
