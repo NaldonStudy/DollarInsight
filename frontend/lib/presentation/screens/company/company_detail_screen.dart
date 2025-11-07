@@ -636,7 +636,10 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => const CompanyNewsDetailScreen(),
+                builder: (context) => CompanyNewsDetailScreen(
+                  companyId: widget.companyId,
+                  newsId: news['id'] ?? '1',
+                ),
               ),
             );
           },

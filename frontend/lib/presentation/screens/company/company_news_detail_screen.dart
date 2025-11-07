@@ -195,7 +195,7 @@ class _CompanyNewsDetailScreenState extends State<CompanyNewsDetailScreen> {
                       ),
 
                       if (provider.source != null) ...[
-                        SizedBox(height: AppSpacing.tiny(context)),
+                        SizedBox(height: AppSpacing.small(context) * 0.5),
                         Text(
                           '출처: ${provider.source}',
                           style: TextStyle(

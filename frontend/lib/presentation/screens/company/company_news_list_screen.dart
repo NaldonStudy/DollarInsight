@@ -302,8 +302,10 @@ class _CompanyNewsListScreenState extends State<CompanyNewsListScreen> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) =>
-                                const CompanyNewsDetailScreen(),
+                            builder: (context) => CompanyNewsDetailScreen(
+                              companyId: widget.companyId,
+                              newsId: news['id'] ?? '1',
+                            ),
                           ),
                         );
                       },
