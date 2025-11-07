@@ -181,12 +181,10 @@ class AppRouter {
       GoRoute(
         path: '/company/:companyId',
         name: 'company-detail',
-        builder: (context, state) => const CompanyDetailScreen(),
-        //param 데이터 주어질 때 이걸로 바꾸세요
-        // builder: (context, state) {
-        //   final companyId = state.pathParameters['companyId']!;
-        //   return CompanyDetailScreen(companyId: companyId);
-        // },
+        builder: (context, state) {
+          final companyId = state.pathParameters['companyId']!;
+          return CompanyDetailScreen(companyId: companyId);
+        },
         redirect: (context, state) => RouteGuards.requireAuth(context, state),
       ),
 
