@@ -29,7 +29,7 @@ class TopNavigation extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Image.asset("assets/images/logomini.png", width: w * 0.1),
+          Image.asset("assets/images/logomini.webp", width: w * 0.1),
 
           // 토글
           SizedBox(

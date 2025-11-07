@@ -23,7 +23,7 @@ class WithdrawalCompleteScreen extends StatelessWidget {
                 height: w * 0.79,
                 decoration: const BoxDecoration(
                   image: DecorationImage(
-                    image: AssetImage("assets/images/main9.png"),
+                    image: AssetImage("assets/images/main9.webp"),
                     fit: BoxFit.contain,
                   ),
                 ),

@@ -68,7 +68,7 @@ class _LandingScreenState extends State<LandingScreen>
                   height: width * 2.06,
                   decoration: const BoxDecoration(
                     image: DecorationImage(
-                      image: AssetImage('assets/images/onboard1.png'),
+                      image: AssetImage('assets/images/onboard1.webp'),
                       fit: BoxFit.cover,
                     ),
                   ),
@@ -84,7 +84,7 @@ class _LandingScreenState extends State<LandingScreen>
                   height: height * 0.22,
                   decoration: const BoxDecoration(
                     image: DecorationImage(
-                      image: AssetImage('assets/images/logo.png'),
+                      image: AssetImage('assets/images/logo.webp'),
                       fit: BoxFit.contain,
                     ),
                   ),
@@ -183,7 +183,7 @@ class _LandingScreenState extends State<LandingScreen>
                           left: width * 0.266,
                           top: height * 0.305, // ✅ 비율 기반
                           child: Image.asset(
-                            'assets/images/kakao.png',
+                            'assets/images/kakao.webp',
                             width: width * 0.136,
                             height: width * 0.136,
                             fit: BoxFit.cover,
@@ -193,7 +193,7 @@ class _LandingScreenState extends State<LandingScreen>
                           left: width * 0.594,
                           top: height * 0.305, // ✅ 통일
                           child: Image.asset(
-                            'assets/images/google.png',
+                            'assets/images/google.webp',
                             width: width * 0.139,
                             height: width * 0.139,
                             fit: BoxFit.cover,
