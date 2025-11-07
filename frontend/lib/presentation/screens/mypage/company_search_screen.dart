@@ -24,7 +24,7 @@ class _CompanySearchScreenState extends State<CompanySearchScreen> {
     _searchResults = [
       const USCompanyData(
         name: '테슬라',
-        logoPath: 'assets/images/company/tesla.png', // TODO: 로고 추가
+        logoPath: 'assets/images/company/tesla.webp', // TODO: 로고 추가
         category: '자동차',
       ),
     ];
@@ -37,7 +37,7 @@ class _CompanySearchScreenState extends State<CompanySearchScreen> {
         _searchResults = [
           const USCompanyData(
             name: '테슬라',
-            logoPath: 'assets/images/company/tesla.png',
+            logoPath: 'assets/images/company/tesla.webp',
             category: '자동차',
           ),
         ];
@@ -64,7 +64,7 @@ class _CompanySearchScreenState extends State<CompanySearchScreen> {
           _searchResults = [
             const USCompanyData(
               name: '테슬라',
-              logoPath: 'assets/images/company/tesla.png',
+              logoPath: 'assets/images/company/tesla.webp',
               category: '자동차',
             ),
           ].where((c) => c.name.contains(query)).toList();

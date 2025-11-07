@@ -38,7 +38,7 @@ class ScrollFabButton extends StatelessWidget {
             ),
             child: Center(
               child: Image.asset(
-                "assets/images/main8.png",
+                "assets/images/main8.webp",
                 width: w * 0.1,
               ),
             ),

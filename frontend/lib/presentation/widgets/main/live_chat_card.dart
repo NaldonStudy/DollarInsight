@@ -46,7 +46,7 @@ class LiveChatCard extends StatelessWidget {
               right: w * 0.06,
               top: h * 0.01,
               child: Image.asset(
-                "assets/images/main4.png",
+                "assets/images/main4.webp",
                 width: w * 0.28,
                 fit: BoxFit.contain,
               ),
