@@ -77,9 +77,9 @@ services:
     networks:
       - dollar-insight-network
 
-  # Backend Service (Spring Boot)
+# Backend Service (Spring Boot)
   backend:
-    image: imtaewon/dollar-backend:latest
+    image: imtaewon/dollar-backend:${BACKEND_VERSION:-latest}
     container_name: dollar-insight-backend
     restart: unless-stopped
     env_file:
@@ -104,7 +104,7 @@ services:
 
   # AI Service (Python/FastAPI)
   ai-service:
-    image: imtaewon/dollar-ai:latest
+    image: imtaewon/dollar-ai:${AI_VERSION:-latest}
     container_name: dollar-insight-ai-service
     restart: unless-stopped
     env_file:
