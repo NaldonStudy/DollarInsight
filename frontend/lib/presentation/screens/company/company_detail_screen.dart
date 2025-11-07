@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../providers/company_detail_provider.dart';
 import '../../widgets/company/watch_button.dart';
 import '../../widgets/common/scroll_fab_button.dart';
 import '../../widgets/common/top_navigation.dart';
@@ -6,6 +8,7 @@ import '../chat/chat_list_screen.dart';
 import '../../../core/constants/app_spacing.dart';
 
 /// 기업 상세 페이지
+/// Provider를 사용하여 데이터 로직과 UI 로직 분리
 /// TopNavigation 포함 (기업분석/채팅 토글)
 /// 차트, 종목지표, 주가예측 탭으로 구성
 /// 하단에 기업별 뉴스 리스트 표시
@@ -28,16 +31,6 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
   final ScrollController _scrollController = ScrollController();
   bool showFab = false;
   bool isCompany = true; // 기업분석/채팅 토글 상태
-  bool isWatching = false;
-  bool isLoading = true;
-
-  // 기업 정보 (API로 받아올 데이터)
-  String? companyName;
-  String? currentPrice;
-  String? currentPriceUsd;
-  String? logoUrl;
-  Map<String, String>? indicators; // 투자지표 데이터
-  List<Map<String, String>> newsList = [];
 
   @override
   void initState() {
@@ -49,103 +42,6 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
         showFab = _scrollController.offset > 40;
       });
     });
-
-    // API 호출
-    _loadCompanyData();
-  }
-
-  /// 기업 데이터 로드 (API 연결 지점)
-  Future<void> _loadCompanyData() async {
-    setState(() => isLoading = true);
-
-    try {
-      // TODO: 백엔드 API 연결
-      // 1. 기업 기본 정보 API 호출
-      // final companyInfo = await companyRepository.getCompanyInfo(widget.companyId);
-
-      // 2. 투자지표 API 호출
-      // final indicatorData = await companyRepository.getIndicators(widget.companyId);
-
-      // 3. 기업 뉴스 API 호출
-      // final newsData = await newsRepository.getCompanyNews(widget.companyId);
-
-      // 4. 관심종목 상태 확인
-      // final watchStatus = await userRepository.checkWatchlist(widget.companyId);
-
-      // 임시 더미 데이터 (API 연결 후 삭제)
-      await Future.delayed(const Duration(seconds: 1));
-      setState(() {
-        companyName = '엔비디아';
-        currentPrice = '293,027원';
-        currentPriceUsd = '\$204.32';
-        logoUrl = null;
-        isWatching = false;
-
-        indicators = {
-          '시가총액': '7000억원',
-          '배당수익률': '0.02%',
-          'PBR': '48.8배',
-          'PER': '56.4배',
-          'ROE': '109.4%',
-          'PSR': '29.6배',
-        };
-
-        newsList = [
-          {
-            'title': '[GAM]스텔란티스-엔비디아-우버-폭스콘, 로보택시 공동 개발',
-            'url': 'https://example.com/news/1'
-          },
-          {
-            'title': '투자자들, 연준·기술주 실적에 대비하면서 AI 낙관론에 주가 상승',
-            'url': 'https://example.com/news/2'
-          },
-          {
-            'title': '트럼프, 엔비디아 \'슈퍼-듀퍼\' 블랙웰 칩에 中 시진핑과 논의할 수도',
-            'url': 'https://example.com/news/3'
-          },
-          {
-            'title': '엔비디아, 美 에너지부에 AI 슈퍼컴 7대 구축… 6G 인프라 구축도 추진',
-            'url': 'https://example.com/news/4'
-          },
-          {
-            'title': '[오늘의 뉴욕증시 무버] 노키아, 엔비디아 10억 달러 투자 소식에 22.85%↑',
-            'url': 'https://example.com/news/5'
-          },
-        ];
-
-        isLoading = false;
-      });
-    } catch (e) {
-      // 에러 처리
-      setState(() => isLoading = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('데이터를 불러오는데 실패했습니다: $e')),
-        );
-      }
-    }
-  }
-
-  /// 관심종목 추가/삭제 (API 연결 지점)
-  Future<void> _toggleWatchlist() async {
-    try {
-      // TODO: 백엔드 API 연결
-      // if (isWatching) {
-      //   await userRepository.removeFromWatchlist(widget.companyId);
-      // } else {
-      //   await userRepository.addToWatchlist(widget.companyId);
-      // }
-
-      setState(() {
-        isWatching = !isWatching;
-      });
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('관심종목 설정에 실패했습니다: $e')),
-        );
-      }
-    }
   }
 
   @override
@@ -161,43 +57,46 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
     final w = size.width;
     final h = size.height;
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FB),
-      floatingActionButton: ScrollFabButton(
-        w: w,
-        showFab: showFab,
-        onTap: () {
-          _scrollController.animateTo(
-            0,
-            duration: const Duration(milliseconds: 350),
-            curve: Curves.easeOut,
-          );
-        },
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      body: SafeArea(
-        child: Column(
-          children: [
-            /// TopNavigation (기업분석/채팅 토글)
-            TopNavigation(
-              w: w,
-              h: h,
-              isCompany: isCompany,
-              onTapCompany: () => setState(() => isCompany = true),
-              onTapChat: () => setState(() => isCompany = false),
-              onProfileTap: () {
-                // TODO: 마이페이지로 이동
-                // context.push('/mypage');
-              },
-            ),
+    return ChangeNotifierProvider(
+      create: (_) => CompanyDetailProvider(companyId: widget.companyId),
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF7F8FB),
+        floatingActionButton: ScrollFabButton(
+          w: w,
+          showFab: showFab,
+          onTap: () {
+            _scrollController.animateTo(
+              0,
+              duration: const Duration(milliseconds: 350),
+              curve: Curves.easeOut,
+            );
+          },
+        ),
+        floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+        body: SafeArea(
+          child: Column(
+            children: [
+              /// TopNavigation (기업분석/채팅 토글)
+              TopNavigation(
+                w: w,
+                h: h,
+                isCompany: isCompany,
+                onTapCompany: () => setState(() => isCompany = true),
+                onTapChat: () => setState(() => isCompany = false),
+                onProfileTap: () {
+                  // TODO: 마이페이지로 이동
+                  // context.push('/mypage');
+                },
+              ),
 
-            /// 화면 전환 (기업분석 / 채팅)
-            Expanded(
-              child: isCompany
-                  ? _buildCompanyAnalysisBody(w, h)
-                  : const ChatListScreen(),
-            ),
-          ],
+              /// 화면 전환 (기업분석 / 채팅)
+              Expanded(
+                child: isCompany
+                    ? _buildCompanyAnalysisBody(w, h)
+                    : const ChatListScreen(),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -205,41 +104,57 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
 
   /// 기업분석 화면 바디
   Widget _buildCompanyAnalysisBody(double w, double h) {
-    if (isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(),
-      );
-    }
+    return Consumer<CompanyDetailProvider>(
+      builder: (context, provider, child) {
+        // 에러 처리
+        if (provider.error != null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(provider.error!)),
+            );
+            provider.clearError();
+          });
+        }
 
-    return SingleChildScrollView(
-      controller: _scrollController,
-      child: Column(
-        children: [
-          SizedBox(height: AppSpacing.medium(context)),
-          _buildCompanyHeader(w),
-          SizedBox(height: AppSpacing.section(context)),
-          _buildTabBar(),
-          SizedBox(
-            height: h * 0.5, // 화면 높이의 50%
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                _buildChartTab(),
-                _buildIndicatorTab(),
-                _buildPredictionTab(),
-              ],
-            ),
+        // 로딩 중
+        if (provider.isLoading) {
+          return const Center(
+            child: CircularProgressIndicator(),
+          );
+        }
+
+        // 데이터 표시
+        return SingleChildScrollView(
+          controller: _scrollController,
+          child: Column(
+            children: [
+              SizedBox(height: AppSpacing.medium(context)),
+              _buildCompanyHeader(w, provider),
+              SizedBox(height: AppSpacing.section(context)),
+              _buildTabBar(),
+              SizedBox(
+                height: h * 0.5, // 화면 높이의 50%
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _buildChartTab(),
+                    _buildIndicatorTab(provider),
+                    _buildPredictionTab(),
+                  ],
+                ),
+              ),
+              SizedBox(height: AppSpacing.section(context)),
+              _buildNewsSection(w, provider),
+              SizedBox(height: AppSpacing.bottomLarge(context)),
+            ],
           ),
-          SizedBox(height: AppSpacing.section(context)),
-          _buildNewsSection(w),
-          SizedBox(height: AppSpacing.bottomLarge(context)),
-        ],
-      ),
+        );
+      },
     );
   }
 
   /// 기업 정보 헤더 (로고, 기업명, 현재가, 관심 버튼)
-  Widget _buildCompanyHeader(double w) {
+  Widget _buildCompanyHeader(double w, CompanyDetailProvider provider) {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: AppSpacing.horizontal(context)),
       child: Row(
@@ -252,10 +167,10 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
               color: Color(0xFFD9D9D9),
               shape: BoxShape.circle,
             ),
-            child: logoUrl != null
+            child: provider.logoUrl != null
                 ? ClipOval(
                     child: Image.network(
-                      logoUrl!,
+                      provider.logoUrl!,
                       fit: BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) =>
                           const SizedBox(),
@@ -270,7 +185,7 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  companyName ?? '',
+                  provider.companyName ?? '',
                   style: const TextStyle(
                     color: Colors.black,
                     fontSize: 13,
@@ -283,7 +198,7 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
                   TextSpan(
                     children: [
                       TextSpan(
-                        text: currentPrice ?? '',
+                        text: provider.currentPrice ?? '',
                         style: const TextStyle(
                           color: Colors.black,
                           fontSize: 18,
@@ -295,7 +210,7 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
                       ),
                       const TextSpan(text: ' '),
                       TextSpan(
-                        text: currentPriceUsd ?? '',
+                        text: provider.currentPriceUsd ?? '',
                         style: const TextStyle(
                           color: Color(0xFF757575),
                           fontSize: 12,
@@ -313,8 +228,19 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
           ),
           // 관심 버튼
           WatchButton(
-            isWatching: isWatching,
-            onTap: _toggleWatchlist,
+            isWatching: provider.isWatching,
+            onTap: () async {
+              try {
+                await provider.toggleWatchlist();
+              } catch (e) {
+                // Provider에서 에러를 던지면 여기서 처리
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('관심종목 설정에 실패했습니다: $e')),
+                  );
+                }
+              }
+            },
             size: 24,
           ),
         ],
@@ -373,7 +299,7 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
   }
 
   /// 종목지표 탭
-  Widget _buildIndicatorTab() {
+  Widget _buildIndicatorTab(CompanyDetailProvider provider) {
     return Container(
       margin: EdgeInsets.symmetric(
         horizontal: AppSpacing.horizontal(context),
@@ -398,15 +324,15 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
             ),
           ),
           SizedBox(height: AppSpacing.small(context)),
-          Expanded(child: _buildIndicatorGrid()),
+          Expanded(child: _buildIndicatorGrid(provider)),
         ],
       ),
     );
   }
 
   /// 투자지표 그리드
-  Widget _buildIndicatorGrid() {
-    if (indicators == null || indicators!.isEmpty) {
+  Widget _buildIndicatorGrid(CompanyDetailProvider provider) {
+    if (provider.indicators == null || provider.indicators!.isEmpty) {
       return const Center(
         child: Text(
           '투자지표 데이터가 없습니다.',
@@ -416,7 +342,7 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
     }
 
     final List<MapEntry<String, String>> indicatorList =
-        indicators!.entries.toList();
+        provider.indicators!.entries.toList();
 
     return GridView.builder(
       shrinkWrap: true,
@@ -497,7 +423,7 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
   }
 
   /// 뉴스 섹션
-  Widget _buildNewsSection(double w) {
+  Widget _buildNewsSection(double w, CompanyDetailProvider provider) {
     return Container(
       margin: EdgeInsets.symmetric(horizontal: AppSpacing.horizontal(context)),
       child: Column(
@@ -520,14 +446,6 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
               GestureDetector(
                 onTap: () {
                   // TODO: 전체 뉴스 페이지로 이동
-                  // Navigator.push(
-                  //   context,
-                  //   MaterialPageRoute(
-                  //     builder: (context) => AllNewsListScreen(
-                  //       companyId: widget.companyId,
-                  //     ),
-                  //   ),
-                  // );
                 },
                 child: Container(
                   padding:
@@ -560,7 +478,7 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
               color: Colors.white,
               borderRadius: BorderRadius.circular(8),
             ),
-            child: newsList.isEmpty
+            child: provider.newsList.isEmpty
                 ? Padding(
                     padding: EdgeInsets.all(AppSpacing.medium(context)),
                     child: const Center(
@@ -571,8 +489,8 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
                     ),
                   )
                 : Column(
-                    children: newsList.map((news) {
-                      return _buildNewsItem(news);
+                    children: provider.newsList.map((news) {
+                      return _buildNewsItem(news, provider.newsList);
                     }).toList(),
                   ),
           ),
@@ -582,7 +500,8 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
   }
 
   /// 개별 뉴스 아이템 (클릭 시 링크 연결)
-  Widget _buildNewsItem(Map<String, String> news) {
+  Widget _buildNewsItem(
+      Map<String, String> news, List<Map<String, String>> newsList) {
     final index = newsList.indexOf(news);
     final isLast = index == newsList.length - 1;
 
@@ -593,17 +512,6 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
             final url = news['url'];
             if (url != null && url.isNotEmpty) {
               // TODO: 뉴스 상세 페이지로 이동 또는 외부 링크 열기
-              // 방법 1: 웹뷰로 열기
-              // Navigator.push(
-              //   context,
-              //   MaterialPageRoute(
-              //     builder: (context) => NewsDetailScreen(url: url),
-              //   ),
-              // );
-
-              // 방법 2: 외부 브라우저로 열기 (url_launcher 패키지)
-              // launchUrl(Uri.parse(url));
-
               debugPrint('뉴스 클릭: $url');
             }
           },
