@@ -69,7 +69,7 @@ class LoginScreen extends StatelessWidget {
               CustomButton(
                 text: '로그인',
                 onPressed: () {
-                  context.push('/persona-intro');
+                  context.go('/main');
                 },
               ),
 
