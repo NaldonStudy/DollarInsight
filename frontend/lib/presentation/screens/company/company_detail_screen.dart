@@ -6,6 +6,10 @@ import '../../widgets/common/scroll_fab_button.dart';
 import '../../widgets/common/top_navigation.dart';
 import '../chat/chat_list_screen.dart';
 import '../../../core/constants/app_spacing.dart';
+import 'package:go_router/go_router.dart';
+import 'company_chart_screen.dart';
+import 'company_news_list_screen.dart';
+import 'company_news_detail_screen.dart';
 
 /// 기업 상세 페이지
 /// Provider를 사용하여 데이터 로직과 UI 로직 분리
@@ -29,18 +33,43 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final ScrollController _scrollController = ScrollController();
+  final PageController _chartPageController = PageController(); // 차트 탭 내부 페이지
+  final PageController _scorePageController = PageController(); // 종목점수 탭 내부 페이지
+
   bool showFab = false;
   bool isCompany = true; // 기업분석/채팅 토글 상태
+  int chartPageIndex = 0; // 차트 탭 페이지 인덱스 (0: 주가그래프, 1: 주가예측)
+  int scorePageIndex = 0; // 종목정보 탭 페이지 인덱스 (0: 투자지표, 1: 주식점수)
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 2, vsync: this); // 2개 탭으로 변경
 
     _scrollController.addListener(() {
       setState(() {
         showFab = _scrollController.offset > 40;
       });
+    });
+
+    // 차트 페이지 인디케이터
+    _chartPageController.addListener(() {
+      final page = _chartPageController.page;
+      if (page != null) {
+        setState(() {
+          chartPageIndex = page.round();
+        });
+      }
+    });
+
+    // 종목정보 페이지 인디케이터
+    _scorePageController.addListener(() {
+      final page = _scorePageController.page;
+      if (page != null) {
+        setState(() {
+          scorePageIndex = page.round();
+        });
+      }
     });
   }
 
@@ -48,6 +77,8 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
   void dispose() {
     _tabController.dispose();
     _scrollController.dispose();
+    _chartPageController.dispose();
+    _scorePageController.dispose();
     super.dispose();
   }
 
@@ -137,9 +168,8 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
                 child: TabBarView(
                   controller: _tabController,
                   children: [
-                    _buildChartTab(),
-                    _buildIndicatorTab(provider),
-                    _buildPredictionTab(),
+                    _buildChartTabWithPages(w, h),
+                    _buildScoreTabWithPages(w, h, provider),
                   ],
                 ),
               ),
@@ -248,7 +278,7 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
     );
   }
 
-  /// 탭바 (차트 / 종목지표 / 주가예측)
+  /// 탭바 (차트 / 종목점수)
   Widget _buildTabBar() {
     return Container(
       margin: EdgeInsets.symmetric(horizontal: AppSpacing.horizontal(context)),
@@ -269,15 +299,36 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
         ),
         tabs: const [
           Tab(text: '차트'),
-          Tab(text: '종목지표'),
-          Tab(text: '주가예측'),
+          Tab(text: '종목정보'),
         ],
       ),
     );
   }
 
-  /// 차트 탭
-  Widget _buildChartTab() {
+  /// 차트 탭 (PageView로 주가그래프와 주가예측 스와이프)
+  Widget _buildChartTabWithPages(double w, double h) {
+    return Column(
+      children: [
+        // PageView
+        Expanded(
+          child: PageView(
+            controller: _chartPageController,
+            children: [
+              _buildStockChartPage(), // 주가 그래프
+              _buildPredictionPage(), // 주가 예측
+            ],
+          ),
+        ),
+        // 회색 인디케이터
+        SizedBox(height: AppSpacing.small(context)),
+        _buildPageIndicator(chartPageIndex, 2),
+        SizedBox(height: AppSpacing.medium(context)),
+      ],
+    );
+  }
+
+  /// 주가 그래프 페이지 (MVP: 일봉)
+  Widget _buildStockChartPage() {
     return Container(
       margin: EdgeInsets.symmetric(
         horizontal: AppSpacing.horizontal(context),
@@ -290,7 +341,7 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
       ),
       child: const Center(
         child: Text(
-          'TODO: 차트 구현\n백엔드 API에서 차트 데이터 받아오기',
+          'TODO: 주가 그래프 (일봉)\n백엔드 API에서 차트 데이터 받아오기',
           textAlign: TextAlign.center,
           style: TextStyle(fontSize: 14, color: Color(0xFF757575)),
         ),
@@ -298,8 +349,52 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
     );
   }
 
-  /// 종목지표 탭
-  Widget _buildIndicatorTab(CompanyDetailProvider provider) {
+  /// 주가 예측 페이지
+  Widget _buildPredictionPage() {
+    return Container(
+      margin: EdgeInsets.symmetric(
+        horizontal: AppSpacing.horizontal(context),
+        vertical: AppSpacing.small(context),
+      ),
+      padding: EdgeInsets.all(AppSpacing.medium(context)),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: const Center(
+        child: Text(
+          'TODO: 주가예측 그래프\n백엔드 API에서 예측 데이터 받아오기',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 14, color: Color(0xFF757575)),
+        ),
+      ),
+    );
+  }
+
+  /// 종목정보 탭 (PageView로 투자지표와 주식점수 스와이프)
+  Widget _buildScoreTabWithPages(double w, double h, CompanyDetailProvider provider) {
+    return Column(
+      children: [
+        // PageView
+        Expanded(
+          child: PageView(
+            controller: _scorePageController,
+            children: [
+              _buildIndicatorsPage(provider), // 투자지표
+              _buildStockScorePage(), // 주식점수
+            ],
+          ),
+        ),
+        // 회색 인디케이터
+        SizedBox(height: AppSpacing.small(context)),
+        _buildPageIndicator(scorePageIndex, 2),
+        SizedBox(height: AppSpacing.medium(context)),
+      ],
+    );
+  }
+
+  /// 투자지표 페이지
+  Widget _buildIndicatorsPage(CompanyDetailProvider provider) {
     return Container(
       margin: EdgeInsets.symmetric(
         horizontal: AppSpacing.horizontal(context),
@@ -326,6 +421,28 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
           SizedBox(height: AppSpacing.small(context)),
           Expanded(child: _buildIndicatorGrid(provider)),
         ],
+      ),
+    );
+  }
+
+  /// 주식점수 페이지
+  Widget _buildStockScorePage() {
+    return Container(
+      margin: EdgeInsets.symmetric(
+        horizontal: AppSpacing.horizontal(context),
+        vertical: AppSpacing.small(context),
+      ),
+      padding: EdgeInsets.all(AppSpacing.medium(context)),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: const Center(
+        child: Text(
+          'TODO: 주식점수 안내\n백엔드 API에서 점수 데이터 받아오기',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 14, color: Color(0xFF757575)),
+        ),
       ),
     );
   }
@@ -445,7 +562,13 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
               ),
               GestureDetector(
                 onTap: () {
-                  // TODO: 전체 뉴스 페이지로 이동
+                  // 전체 뉴스 페이지로 이동
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const CompanyNewsListScreen(),
+                    ),
+                  );
                 },
                 child: Container(
                   padding:
@@ -509,11 +632,13 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
       children: [
         GestureDetector(
           onTap: () {
-            final url = news['url'];
-            if (url != null && url.isNotEmpty) {
-              // TODO: 뉴스 상세 페이지로 이동 또는 외부 링크 열기
-              debugPrint('뉴스 클릭: $url');
-            }
+            // 뉴스 상세 페이지로 이동
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const CompanyNewsDetailScreen(),
+              ),
+            );
           },
           child: Container(
             color: Colors.transparent,
@@ -535,6 +660,26 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
             color: const Color(0xFFE4E4E4),
           ),
       ],
+    );
+  }
+
+  /// 회색 인디케이터 dots (페이지 표시)
+  Widget _buildPageIndicator(int currentIndex, int totalPages) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(totalPages, (index) {
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 4),
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: currentIndex == index
+                ? const Color(0xFF5A5A5A) // 현재 페이지 (진한 회색)
+                : const Color(0xFFD9D9D9), // 다른 페이지 (연한 회색)
+          ),
+        );
+      }),
     );
   }
 }
