@@ -58,7 +58,7 @@ class MypageScreen extends StatelessWidget {
                           decoration: const BoxDecoration(
                             shape: BoxShape.circle,
                             image: DecorationImage(
-                              image: AssetImage('assets/images/onboard1.png'),
+                              image: AssetImage('assets/images/onboard1.webp'),
                               fit: BoxFit.cover,
                             ),
                           ),

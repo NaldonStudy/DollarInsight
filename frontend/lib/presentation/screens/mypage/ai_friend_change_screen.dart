@@ -16,11 +16,11 @@ class _AiFriendChangeScreenState extends State<AiFriendChangeScreen> {
 
   // ✅ 캐릭터 리스트 (이름 + 이미지 경로 설정)
   final List<Map<String, String>> friends = [
-    {"name": "희열", "image": "assets/images/Heeyule.png"},
-    {"name": "지율", "image": "assets/images/Jiyule.png"},
-    {"name": "덕수", "image": "assets/images/Ducksu.png"},
-    {"name": "테오", "image": "assets/images/Taeo.png"},
-    {"name": "민지", "image": "assets/images/Minji.png"},
+    {"name": "희열", "image": "assets/images/Heeyule.webp"},
+    {"name": "지율", "image": "assets/images/Jiyule.webp"},
+    {"name": "덕수", "image": "assets/images/Ducksu.webp"},
+    {"name": "테오", "image": "assets/images/Taeo.webp"},
+    {"name": "민지", "image": "assets/images/Minji.webp"},
   ];
 
   @override

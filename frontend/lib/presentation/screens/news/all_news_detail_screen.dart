@@ -148,11 +148,11 @@ class _AllNewsDetailScreenState extends State<AllNewsDetailScreen> {
     ];
 
     final images = [
-      "assets/images/Heeyule.png",
-      "assets/images/Jiyule.png",
-      "assets/images/Taeo.png",
-      "assets/images/Minji.png",
-      "assets/images/Ducksu.png",
+      "assets/images/Heeyule.webp",
+      "assets/images/Jiyule.webp",
+      "assets/images/Taeo.webp",
+      "assets/images/Minji.webp",
+      "assets/images/Ducksu.webp",
     ];
 
     return Column(
