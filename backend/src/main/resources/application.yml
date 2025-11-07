@@ -101,7 +101,13 @@ app:
     secret: ${APP_JWT_SECRET:}
     access-ttl-seconds: ${APP_JWT_ACCESS_TTL_SECONDS:900}
     refresh-ttl-days: ${APP_JWT_REFRESH_TTL_DAYS:28}
+    refresh-pepper: ${APP_JWT_REFRESH_PEPPER:}
 
 external:
   chromadb:
     base-url: ${CHROMADB_BASE_URL:http://127.0.0.1:9000}
+
+fastai:
+  base-url: http://localhost:8000
+  connect-timeout-ms: 3000
+  read-timeout-ms: 600000  # 10분 (SSE 스트림 타임아웃)

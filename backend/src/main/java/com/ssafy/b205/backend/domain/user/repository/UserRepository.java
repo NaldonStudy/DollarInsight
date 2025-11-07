@@ -10,4 +10,5 @@ public interface UserRepository extends JpaRepository<User, Integer> {
     Optional<User> findByUuid(UUID uuid);
     Optional<User> findByEmailIgnoreCaseAndDeletedAtIsNull(String email);
     boolean existsByEmailIgnoreCaseAndDeletedAtIsNull(String email);
+    boolean existsByNickname(String nickname);
 }

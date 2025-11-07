@@ -88,18 +88,24 @@ pipeline {
                 echo '=== Deploy to Production Server using deploy.sh ==='
                 withCredentials([sshUserPrivateKey(credentialsId: SSH_CREDENTIAL, keyFileVariable: 'SSH_KEY')]) {
                     sh """
-                        # 필요한 파일들을 EC2로 전송
-                        scp -i \${SSH_KEY} -o StrictHostKeyChecking=no docker-compose.yml ${DEPLOY_SERVER}:${DEPLOY_PATH}/
-                        scp -i \${SSH_KEY} -o StrictHostKeyChecking=no deploy.sh ${DEPLOY_SERVER}:${DEPLOY_PATH}/
-
                         ssh -i \${SSH_KEY} -o StrictHostKeyChecking=no ${DEPLOY_SERVER} '
                             cd ${DEPLOY_PATH}
+                            
+                            # Git repository 업데이트
+                            echo "=== Updating Git repository ==="
+                            git fetch origin
+                            git checkout develop
+                            git pull origin develop
+                            
+                            # 배포할 이미지 버전 설정
+                            export BACKEND_VERSION=${IMAGE_TAG}
+                            export AI_VERSION=${IMAGE_TAG}
                             
                             # deploy.sh 실행 권한 부여
                             chmod +x deploy.sh
                             
-                            # deploy.sh를 사용한 배포 (Backend & AI Service만 업데이트)
-                            echo "=== Running deployment script (backend, ai-service only) ==="
+                            # deploy.sh를 사용한 배포
+                            echo "=== Running deployment script with version ${IMAGE_TAG} ==="
                             ./deploy.sh deploy
                         '
                     """

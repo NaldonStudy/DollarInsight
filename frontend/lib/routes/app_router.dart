@@ -177,7 +177,7 @@ class AppRouter {
       ),
       // ==================== COMPANY ====================
 
-      /// 기업 상세 정보
+      /// 기업 상세 정보 (차트/종목지표/주가예측 포함)
       GoRoute(
         path: '/company/:companyId',
         name: 'company-detail',

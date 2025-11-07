@@ -1,5 +1,6 @@
 package com.ssafy.b205.backend.domain.auth.service;
 
+import com.ssafy.b205.backend.domain.auth.dto.response.SessionResponse;
 import com.ssafy.b205.backend.domain.device.entity.PlatformType;
 import com.ssafy.b205.backend.domain.device.entity.UserDevice;
 import com.ssafy.b205.backend.domain.device.repository.UserDeviceRepository;
@@ -9,6 +10,8 @@ import com.ssafy.b205.backend.domain.user.entity.User;
 import com.ssafy.b205.backend.domain.user.repository.UserRepository;
 import com.ssafy.b205.backend.infra.security.RefreshTokenUtil;
 import com.ssafy.b205.backend.infra.security.TokenProvider;
+import com.ssafy.b205.backend.support.error.AppException;
+import com.ssafy.b205.backend.support.error.ErrorCode;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jws;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 import static com.ssafy.b205.backend.infra.security.DeviceIdResolver.normalize;
@@ -163,5 +167,33 @@ public class SessionServiceImpl implements SessionService {
                     .forEach(s -> { if (s.isActive()) s.revoke("logout all by device"); });
             log.info("[SessionSvc-23] 디바이스 전체 세션 리보크 완료");
         }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<SessionResponse> listSessions(String userUuid) {
+        User user = userRepository.findByUuid(UUID.fromString(userUuid))
+                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "[UserSvc-E05] UUID로 사용자 없음: " + userUuid));
+
+        // 정렬 보장 필요하면 repository에 order 메서드 사용
+        List<UserSession> sessions = userSessionRepository.findByUser(user);
+        return sessions.stream().map(SessionResponse::from).toList();
+    }
+
+    @Override
+    @Transactional
+    public void revokeById(String userUuid, Integer sessionId) {
+        User user = userRepository.findByUuid(UUID.fromString(userUuid))
+                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "[UserSvc-E05] UUID로 사용자 없음: " + userUuid));
+
+        UserSession s = userSessionRepository.findById(sessionId)
+                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "[SessionSvc-E02] 세션 없음: id=" + sessionId));
+
+        if (!s.getUser().getId().equals(user.getId())) {
+            throw new AppException(ErrorCode.FORBIDDEN, "[SessionSvc-E03] 내 세션만 종료할 수 있습니다.");
+        }
+
+        // 도메인 메서드로 상태 변경 (setter 금지)
+        s.revoke("manual");
     }
 }

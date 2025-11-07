@@ -5,6 +5,8 @@ import com.ssafy.b205.backend.domain.user.entity.UserCredential;
 import com.ssafy.b205.backend.domain.user.repository.UserCredentialRepository;
 import com.ssafy.b205.backend.domain.user.repository.UserRepository;
 import com.ssafy.b205.backend.infra.security.TokenProvider;
+import com.ssafy.b205.backend.support.error.AppException;
+import com.ssafy.b205.backend.support.error.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -114,5 +116,46 @@ public class UserServiceImpl implements UserService {
         log.info("[UserSvc-41] UUID로 사용자 조회 완료 id={}, uuid={}, email={}",
                 u.getId(), u.getUuid(), u.getEmail());
         return u;
+    }
+
+    @Override
+    @Transactional
+    public void changeNickname(String userUuid, String nickname) {
+        User user = userRepository.findByUuid(UUID.fromString(userUuid))
+                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "[UserSvc-E05] UUID로 사용자 없음: " + userUuid));
+
+        if (userRepository.existsByNickname(nickname)) {
+            throw new AppException(ErrorCode.CONFLICT, "[UserSvc-E07] 닉네임 중복: " + nickname);
+        }
+
+        user.updateNickname(nickname);
+        // flush는 트랜잭션 종료 시점에 JPA가 처리
+    }
+
+    @Override
+    @Transactional
+    public void changePassword(String userUuid, String oldPassword, String newPassword) {
+        User user = userRepository.findByUuid(UUID.fromString(userUuid))
+                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "[UserSvc-E05] UUID로 사용자 없음: " + userUuid));
+
+        UserCredential cred = credentialRepository.findByUser(user)
+                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "[UserCredSvc-E01] 자격증명 없음: user=" + user.getId()));
+
+        if (!passwordEncoder.matches(oldPassword, cred.getPasswordHash())) {
+            throw new AppException(ErrorCode.FORBIDDEN, "[UserCredSvc-E02] 현재 비밀번호 불일치");
+        }
+        if (passwordEncoder.matches(newPassword, cred.getPasswordHash())) {
+            throw new AppException(ErrorCode.BAD_REQUEST, "[UserCredSvc-E03] 새 비밀번호가 기존과 동일");
+        }
+
+        cred.updatePassword(passwordEncoder.encode(newPassword));
+    }
+
+    @Override
+    @Transactional
+    public void softDelete(String userUuid) {
+        User user = userRepository.findByUuid(UUID.fromString(userUuid))
+                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "[UserSvc-E05] UUID로 사용자 없음: " + userUuid));
+        user.markWithdrawn();
     }
 }
