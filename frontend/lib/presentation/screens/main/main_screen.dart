@@ -102,6 +102,25 @@ class _MainScreenState extends State<MainScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          /// ✅ 임시 테스트 버튼 (기업 상세 페이지로 이동)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: Center(
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  context.push('/company/NVDA');
+                },
+                icon: const Icon(Icons.business),
+                label: const Text('기업 상세 페이지 테스트 (엔비디아)'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF60A4DA),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                ),
+              ),
+            ),
+          ),
+
           /// ✅ 실시간 채팅 박스
           LiveChatCard(w: w, h: h),
 
