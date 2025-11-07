@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 class NewsSection extends StatelessWidget {
   final double w;
@@ -13,20 +14,29 @@ class NewsSection extends StatelessWidget {
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: const [
-            Text("추천 뉴스",
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
-            Text(
-              "전체보기",
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFFA9A9A9),
+          children: [
+            const Text(
+              "추천 뉴스",
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+            ),
+
+            /// ✅ 전체보기 → 클릭 시 /news 이동
+            GestureDetector(
+              onTap: () => context.push('/news'),
+              child: const Text(
+                "전체보기",
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFFA9A9A9),
+                ),
               ),
             ),
           ],
         ),
+
         SizedBox(height: h * 0.01),
+
         Container(
           decoration: BoxDecoration(
             color: Colors.white,
