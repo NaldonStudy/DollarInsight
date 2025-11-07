@@ -141,8 +141,8 @@ stop_all_services() {
 restart_app_services() {
     log "========================================="
     log "Restarting Application Services"
-    log "Target: $APP_SERVICES"
-    log "Preserved: DB, Nginx, Admin Tools"
+    log "Backend Version: ${BACKEND_VERSION:-latest}"
+    log "AI Service Version: ${AI_VERSION:-latest}"
     log "========================================="
     
     cd "$DEPLOY_DIR" || error "Failed to change directory to $DEPLOY_DIR"
