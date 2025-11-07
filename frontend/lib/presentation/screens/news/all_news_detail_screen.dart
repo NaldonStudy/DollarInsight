@@ -6,6 +6,7 @@ import '../../widgets/common/top_navigation.dart';
 import '../../widgets/main/live_chat_card.dart';
 import '../chat/chat_list_screen.dart';
 import '../../widgets/chat/chat_bubble.dart';
+import '../../widgets/common/scroll_fab_button.dart'; // ✅ 추가
 
 class AllNewsDetailScreen extends StatefulWidget {
   const AllNewsDetailScreen({super.key});
@@ -17,6 +18,27 @@ class AllNewsDetailScreen extends StatefulWidget {
 class _AllNewsDetailScreenState extends State<AllNewsDetailScreen> {
   bool isCompany = true;
 
+  /// ✅ FAB 제어용
+  bool showFab = false;
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+
+    _scrollController.addListener(() {
+      setState(() {
+        showFab = _scrollController.offset > 40;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
@@ -25,6 +47,21 @@ class _AllNewsDetailScreenState extends State<AllNewsDetailScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FB),
+
+      /// ✅ 스크롤 시 나타나는 FAB 버튼
+      floatingActionButton: ScrollFabButton(
+        w: w,
+        showFab: showFab,
+        onTap: () {
+          _scrollController.animateTo(
+            0,
+            duration: const Duration(milliseconds: 350),
+            curve: Curves.easeOut,
+          );
+        },
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+
       body: SafeArea(
         child: Column(
           children: [
@@ -42,8 +79,9 @@ class _AllNewsDetailScreenState extends State<AllNewsDetailScreen> {
 
             /// ✅ 화면 전환
             Expanded(
-              child:
-              isCompany ? _buildNewsDetailBody(context, w, h) : const ChatListScreen(),
+              child: isCompany
+                  ? _buildNewsDetailBody(context, w, h)
+                  : const ChatListScreen(),
             ),
           ],
         ),
@@ -54,6 +92,7 @@ class _AllNewsDetailScreenState extends State<AllNewsDetailScreen> {
   /// ✅ 뉴스 상세 페이지 본문
   Widget _buildNewsDetailBody(BuildContext context, double w, double h) {
     return SingleChildScrollView(
+      controller: _scrollController, // ✅ 반드시 연결
       padding: EdgeInsets.symmetric(horizontal: AppSpacing.horizontal(context)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -67,8 +106,8 @@ class _AllNewsDetailScreenState extends State<AllNewsDetailScreen> {
           Container(
             width: double.infinity,
             padding: EdgeInsets.symmetric(
-              horizontal: w * 0.05,   // ✅ 반응형 padding
-              vertical: w * 0.045,    // ✅ 반응형 padding
+              horizontal: w * 0.05,
+              vertical: w * 0.045,
             ),
             decoration: BoxDecoration(
               color: Colors.white,
@@ -89,7 +128,7 @@ class _AllNewsDetailScreenState extends State<AllNewsDetailScreen> {
                 Text(
                   "미국 빅테크 3분기 실적 희비…구글 분기 매출 첫 1000억 달러 돌파",
                   style: TextStyle(
-                    fontSize: w * 0.055,    // ✅ 반응형 (약 22px)
+                    fontSize: w * 0.055,
                     fontWeight: FontWeight.w700,
                     color: const Color(0xFF143D60),
                   ),
@@ -101,7 +140,7 @@ class _AllNewsDetailScreenState extends State<AllNewsDetailScreen> {
                 Text(
                   "2025년 10월 30일 15:15",
                   style: TextStyle(
-                    fontSize: w * 0.038,    // ✅ 반응형 (약 14px)
+                    fontSize: w * 0.038,
                     color: Colors.grey,
                   ),
                 ),
@@ -116,7 +155,7 @@ class _AllNewsDetailScreenState extends State<AllNewsDetailScreen> {
                       "MS, 과도한 설비 투자에 투자자 불안감 커져"
                       "메타, 현실성 떨어진 비용에 EPS 예상 쇼크",
                   style: TextStyle(
-                    fontSize: w * 0.040,   // ✅ 반응형 (약 16px)
+                    fontSize: w * 0.040,
                     height: 1.5,
                     color: const Color(0xFF333333),
                   ),
@@ -126,7 +165,6 @@ class _AllNewsDetailScreenState extends State<AllNewsDetailScreen> {
 
                 /// ✅ AI 말풍선 리스트
                 _buildAiComments(),
-
               ],
             ),
           ),
