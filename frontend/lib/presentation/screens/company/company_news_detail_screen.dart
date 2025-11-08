@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/constants/app_spacing.dart';
 import '../../providers/company_news_detail_provider.dart';
@@ -47,6 +48,18 @@ class _CompanyNewsDetailScreenState extends State<CompanyNewsDetailScreen> {
   void dispose() {
     _scrollController.dispose();
     super.dispose();
+  }
+
+  /// ✅ URL 열기 함수
+  Future<void> _launchUrl(String urlString) async {
+    final Uri url = Uri.parse(urlString);
+    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('링크를 열 수 없습니다')),
+        );
+      }
+    }
   }
 
   @override
@@ -185,7 +198,7 @@ class _CompanyNewsDetailScreenState extends State<CompanyNewsDetailScreen> {
 
                       SizedBox(height: AppSpacing.small(context)),
 
-                      /// ✅ 날짜 및 출처
+                      /// ✅ 날짜
                       Text(
                         provider.publishedAt ?? '',
                         style: TextStyle(
@@ -193,17 +206,6 @@ class _CompanyNewsDetailScreenState extends State<CompanyNewsDetailScreen> {
                           color: Colors.grey,
                         ),
                       ),
-
-                      if (provider.source != null) ...[
-                        SizedBox(height: AppSpacing.small(context) * 0.5),
-                        Text(
-                          '출처: ${provider.source}',
-                          style: TextStyle(
-                            fontSize: w * 0.035,
-                            color: Colors.grey,
-                          ),
-                        ),
-                      ],
 
                       SizedBox(height: AppSpacing.medium(context)),
 
@@ -225,10 +227,7 @@ class _CompanyNewsDetailScreenState extends State<CompanyNewsDetailScreen> {
                         children: [
                           if (provider.url != null)
                             TextButton(
-                              onPressed: () {
-                                // TODO: 원문 링크 열기
-                                // launchUrl(Uri.parse(provider.url!));
-                              },
+                              onPressed: () => _launchUrl(provider.url!),
                               child: Text(
                                 '원문보기',
                                 style: TextStyle(
@@ -241,8 +240,7 @@ class _CompanyNewsDetailScreenState extends State<CompanyNewsDetailScreen> {
                           SizedBox(width: w * 0.02),
                           TextButton(
                             onPressed: () {
-                              // TODO: 채팅방으로 이동
-                              // context.push('/chat/${widget.newsId}');
+                              context.push('/chat/:id');
                             },
                             child: Text(
                               '채팅하기',
@@ -258,7 +256,7 @@ class _CompanyNewsDetailScreenState extends State<CompanyNewsDetailScreen> {
 
                       SizedBox(height: AppSpacing.big(context)),
 
-                      /// ✅ AI 말풍선 리스트
+                      /// ✅ AI 멤버별 반응 섹션
                       _buildAiComments(provider, w, h),
                     ],
                   ),

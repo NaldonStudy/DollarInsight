@@ -92,7 +92,7 @@ MS, 과도한 설비 투자에 투자자 불안감 커져
       _summary = "3사 모두 사상 최대 매출을 기록했으나 시장 평가는 크게 엇갈렸습니다. 알파벳은 클라우드 부문 호조로 성장을 견인했고, MS는 과도한 설비 투자에 투자자 불안감이 커졌으며, 메타는 일회성 법인세 비용에 EPS '어닝 쇼크'를 겪었습니다.";
       _publishedAt = "2025년 10월 30일 15:15";
       _source = "한국경제";
-      _url = "https://example.com/news/$newsId";
+      _url = "https://news.naver.com";
       _companyName = "엔비디아";
 
       _aiComments = [
