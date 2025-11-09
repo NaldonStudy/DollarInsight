@@ -26,6 +26,8 @@ import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import org.bson.types.ObjectId;
+import org.springframework.data.domain.PageRequest;
 import reactor.core.Disposable;
 
 import java.time.Instant;
@@ -191,6 +193,28 @@ public class ChatServiceImpl implements ChatService {
         Collections.reverse(docs);
         return HistoryResponse.from(docs);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public com.ssafy.b205.backend.domain.chat.dto.response.HistoryCursorResponse
+    history2(String userUuid, UUID sessionUuid, int limit, String cursorId) {
+        final int userId = toUserId(userUuid);
+        loadOwnedSession(userId, sessionUuid);
+
+        final int pageSize = Math.max(1, Math.min(100, limit)) + 1; // limit+1 조회
+        final var pageable = PageRequest.of(0, pageSize);
+
+        final List<ChatMessageDoc> docsDesc = (cursorId == null || cursorId.isBlank())
+                ? msgRepo.pageFirst(sessionUuid, pageable)
+                : msgRepo.pageByCursor(sessionUuid, new ObjectId(cursorId), pageable);
+
+        // _id desc → 응답은 과거→최신
+        final var orderedAsc = new ArrayList<>(docsDesc);
+        Collections.reverse(orderedAsc);
+
+        return com.ssafy.b205.backend.domain.chat.dto.response.HistoryCursorResponse.of(orderedAsc, pageSize);
+    }
+
 
     @Override
     @Transactional

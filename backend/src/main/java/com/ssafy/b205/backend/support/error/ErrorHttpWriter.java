@@ -13,7 +13,6 @@ import java.nio.charset.StandardCharsets;
 
 public final class ErrorHttpWriter {
 
-    // ✅ Boot 자동설정 없이도 JSR-310 모듈과 ISO-8601 출력 적용
     private static final ObjectMapper om = new ObjectMapper()
             .registerModule(new JavaTimeModule())
             .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
@@ -23,7 +22,6 @@ public final class ErrorHttpWriter {
     public static void write(HttpServletRequest req, HttpServletResponse res,
                              ErrorCode code, String message) throws IOException {
 
-        // 이미 커밋된 경우 추가 쓰기 방지
         if (res.isCommitted()) return;
 
         res.setStatus(code.status.value());

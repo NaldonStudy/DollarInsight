@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static com.ssafy.b205.backend.infra.security.DeviceIdResolver.resolveValidOrNull;
 import static com.ssafy.b205.backend.infra.security.SecurityConstants.BEARER_PREFIX;
 
 @Component
@@ -29,22 +28,40 @@ public class TokenFilter extends OncePerRequestFilter {
 
     private final TokenProvider tokenProvider;
 
+    private static String normalizedPath(HttpServletRequest req) {
+        String uri = req.getRequestURI();
+        String ctx = req.getContextPath();
+        String p = (ctx != null && !ctx.isEmpty() && uri.startsWith(ctx))
+                ? uri.substring(ctx.length())
+                : uri;
+        return p.replaceAll("/{2,}", "/");
+    }
+
     @Override
     protected boolean shouldNotFilter(HttpServletRequest req) {
-        String p = req.getRequestURI();
+        final String path = normalizedPath(req);
 
-        // 공개/예외 경로
-        if (p.equals("/api/public") || p.startsWith("/api/public/")) return true;
-        if (p.startsWith("/api/auth/login"))   return true;
-        if (p.startsWith("/api/auth/refresh")) return true;
-        if (p.startsWith("/api/auth/signup"))  return true;
-        if (p.startsWith("/v3/api-docs"))      return true;
-        if (p.startsWith("/swagger-ui"))       return true;
-        if (p.equals("/swagger-ui.html"))      return true;
-        if (p.startsWith("/actuator/health"))  return true;
-
-        // CORS preflight
         if ("OPTIONS".equalsIgnoreCase(req.getMethod())) return true;
+        if ("/error".equals(path)) return true;
+
+        // 공개/예외 경로 (컨텍스트 유무 모두 허용)
+        if (path.equals("/public") || path.startsWith("/public/")
+                || path.equals("/api/public") || path.startsWith("/api/public/")) return true;
+
+        if (path.equals("/auth/login") || path.startsWith("/auth/login")
+                || path.equals("/api/auth/login") || path.startsWith("/api/auth/login")) return true;
+
+        if (path.equals("/auth/refresh") || path.startsWith("/auth/refresh")
+                || path.equals("/api/auth/refresh") || path.startsWith("/api/auth/refresh")) return true;
+
+        if (path.equals("/auth/signup") || path.startsWith("/auth/signup")
+                || path.equals("/api/auth/signup") || path.startsWith("/api/auth/signup")) return true;
+
+        // 문서/헬스 (둘 다 커버)
+        if (path.startsWith("/v3/api-docs") || path.startsWith("/api/v3/api-docs")) return true;
+        if (path.startsWith("/swagger-ui")  || path.startsWith("/api/swagger-ui"))  return true;
+        if (path.equals("/swagger-ui.html") || path.equals("/api/swagger-ui.html")) return true;
+        if (path.startsWith("/actuator")    || path.startsWith("/api/actuator"))    return true;
 
         return false;
     }
@@ -53,20 +70,20 @@ public class TokenFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res, FilterChain chain)
             throws ServletException, IOException {
 
-        // 이미 인증된 경우(다른 필터에서 넣었을 가능성) → 통과
+        // 이미 인증됨 → 통과
         if (SecurityContextHolder.getContext().getAuthentication() != null) {
             chain.doFilter(req, res);
             return;
         }
 
-        // 1) 헤더에서 시도
+        // 1) Authorization: Bearer
         String token = null;
-        String h = req.getHeader(HttpHeaders.AUTHORIZATION);
-        if (h != null && h.startsWith(BEARER_PREFIX)) {
-            token = h.substring(BEARER_PREFIX.length()).trim();
+        String authHeader = req.getHeader(HttpHeaders.AUTHORIZATION);
+        if (authHeader != null && authHeader.startsWith(BEARER_PREFIX)) {
+            token = authHeader.substring(BEARER_PREFIX.length()).trim();
         }
 
-        // 2) 헤더가 없으면 ?access_token= 허용 (브라우저 EventSource 호환 / 디버깅 편의)
+        // 2) ?access_token=
         if (token == null || token.isBlank()) {
             String fromQuery = req.getParameter("access_token");
             if (fromQuery != null && !fromQuery.isBlank()) {
@@ -74,39 +91,40 @@ public class TokenFilter extends OncePerRequestFilter {
             }
         }
 
-        // 토큰이 여전히 없으면 → 다음으로 넘기고, 컨트롤러/시큐리티에서 401 처리
+        // 토큰 없음 → 체인 진행 (컨트롤러에서 401 처리)
         if (token == null || token.isBlank()) {
             chain.doFilter(req, res);
             return;
         }
 
         try {
+            // JWT 파싱/검증
             Jws<Claims> jws = tokenProvider.parse(token);
-            Claims c = jws.getPayload();
+            Claims claims = jws.getPayload();
 
-            // ── Device binding
-            String didInToken  = String.valueOf(c.get("did"));
-            String didInHeader = resolveValidOrNull(req);
-            if (didInHeader == null || !didInToken.equals(didInHeader)) {
-                ErrorHttpWriter.write(req, res, ErrorCode.FORBIDDEN,
-                        "[AuthService-013] 토큰의 디바이스와 요청 디바이스가 일치하지 않습니다.");
+            // Device Binding (동일 정규화로 비교)
+            String tokenDid  = claims.get("did", String.class);
+            String headerDid = com.ssafy.b205.backend.infra.security.DeviceIdResolver.normalize(
+                    req.getHeader("X-Device-Id")
+            );
+            if (headerDid == null || headerDid.isBlank() || tokenDid == null || !tokenDid.equals(headerDid)) {
+                ErrorHttpWriter.write(req, res, ErrorCode.FORBIDDEN, "[AuthSvc-E07] token.did ≠ X-Device-Id");
                 return;
             }
 
-            // ── 권한
-            var authorities = extractAuthorities(c);
+            // 권한
+            var authorities = extractAuthorities(claims);
             if (authorities.isEmpty()) {
                 authorities = List.of(new SimpleGrantedAuthority("ROLE_USER"));
             }
 
-            // ✅ principal = userUuid (sub)
-            String userUuid = c.getSubject();
+            // principal = userUuid
+            String userUuid = claims.getSubject();
             var auth = new UsernamePasswordAuthenticationToken(userUuid, null, authorities);
             SecurityContextHolder.getContext().setAuthentication(auth);
 
         } catch (Exception ex) {
-            // 파싱 실패 → 401 (메시지는 통일)
-            ErrorHttpWriter.write(req, res, ErrorCode.UNAUTHORIZED, "유효하지 않은 토큰입니다.");
+            ErrorHttpWriter.write(req, res, ErrorCode.UNAUTHORIZED, "invalid token");
             return;
         }
 
