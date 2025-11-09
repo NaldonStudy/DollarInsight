@@ -57,18 +57,15 @@ public class DeviceServiceImpl implements DeviceService {
 
     @Override
     @Transactional
-    public void delete(String userUuid, Integer id) {
+    public void deleteByDeviceId(String userUuid, String deviceId) {
         User user = getActiveUser(userUuid);
-        UserDevice dev = userDeviceRepository.findById(id)
-                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND,
-                        "[DeviceSvc-E03] 디바이스 레코드 없음: id=" + id));
+        String did = normalize(deviceId);
 
-        if (!dev.getUser().getId().equals(user.getId())) {
-            throw new AppException(ErrorCode.FORBIDDEN, "[DeviceSvc-E04] 내 기기만 삭제할 수 있습니다.");
-        }
+        UserDevice dev = userDeviceRepository.findByUserAndDeviceId(user, did)
+                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND,
+                        "[DeviceSvc-E05] 내 기기 목록에 deviceId가 없습니다."));
 
         userDeviceRepository.delete(dev);
-        log.info("[DeviceSvc-21] 디바이스 삭제 완료 userId={}, deviceId={}, id={}",
-                user.getId(), dev.getDeviceId(), id);
+        log.info("[DeviceSvc-21] 디바이스 삭제 완료 userId={}, deviceId={}", user.getId(), did);
     }
 }

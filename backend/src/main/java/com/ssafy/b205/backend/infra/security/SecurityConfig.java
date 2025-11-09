@@ -28,20 +28,22 @@ public class SecurityConfig {
                         .accessDeniedHandler(new JsonAccessDeniedHandler())           // 403
                 )
                 .authorizeHttpRequests(reg -> reg
+                        // ✅ 프리플라이트 전면 허용
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
                         // 공개 API
                         .requestMatchers("/api/public/**").permitAll()
                         .requestMatchers("/api/auth/signup", "/api/auth/login", "/api/auth/refresh").permitAll()
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .requestMatchers("/actuator/**").permitAll()
-                        // SSE 스트림(명시적으로 명기해 두면 디버깅 편함)
-                        .requestMatchers(HttpMethod.GET, "/api/chat/sessions/*/stream").authenticated()
+
                         // 그 외 보호
                         .anyRequest().authenticated()
                 );
 
-        // 🔒 필터 순서: Device → Token → UsernamePasswordAuthenticationFilter
+        // ✅ 필터 순서: 둘 다 UsernamePasswordAuthenticationFilter "앞"에 배치
         http.addFilterBefore(deviceHeaderFilter, UsernamePasswordAuthenticationFilter.class);
-        http.addFilterAfter(tokenFilter, DeviceHeaderFilter.class);
+        http.addFilterBefore(tokenFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

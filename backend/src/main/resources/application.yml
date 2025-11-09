@@ -107,6 +107,9 @@ app:
     refresh-ttl-days: ${APP_JWT_REFRESH_TTL_DAYS:28}
     refresh-pepper: ${APP_JWT_REFRESH_PEPPER:}
 
+  cors:
+    allowed-origins: http://k13b205.p.ssafy.io
+
 external:
   chromadb:
     base-url: ${CHROMADB_BASE_URL:http://127.0.0.1:9000}
