@@ -10,11 +10,11 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import java.util.UUID;
 
 public interface ChatService {
-    CreateSessionResponse createSession(Integer userId, CreateSessionRequest req);
-    AppendMessageResponse appendUserMessage(Integer userId, UUID sessionUuid, AppendMessageRequest req);
-    SseEmitter streamAssistant(Integer userId, UUID sessionUuid, String deviceId, String lastEventId);
-    void interrupt(Integer userId, UUID sessionUuid);
-    HistoryResponse history(Integer userId, UUID sessionUuid, int limit);
-    void resume(Integer userId, UUID sessionUuid);
-    void changePace(Integer userId, UUID sessionUuid, int paceMs);
+    CreateSessionResponse createSession(String userUuid, CreateSessionRequest req);
+    AppendMessageResponse appendUserMessage(String userUuid, UUID sessionUuid, AppendMessageRequest req);
+    SseEmitter streamAssistant(String userUuid, UUID sessionUuid, String deviceId, String lastEventId);
+    void interrupt(String userUuid, UUID sessionUuid);
+    HistoryResponse history(String userUuid, UUID sessionUuid, int limit);
+    void resume(String userUuid, UUID sessionUuid);
+    void changePace(String userUuid, UUID sessionUuid, int paceMs);
 }

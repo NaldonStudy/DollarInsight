@@ -14,16 +14,25 @@ import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;   // ✅ 스프링 RequestBody
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
-import java.security.Principal;
 import java.util.UUID;
 
 @RestController
@@ -34,160 +43,246 @@ public class ChatController {
 
     private final ChatService chatService;
 
-    // 실제 구현에서는 @AuthenticationPrincipal 커스텀 보안 객체에서 userId를 꺼내세요.
-    // ※ 서비스가 Integer를 받으므로 여기에서도 Integer로 통일
-    private Integer currentUserId(Principal principal) {
-        try {
-            return Integer.parseInt(principal.getName());
-        } catch (NumberFormatException ex) {
-            throw new IllegalStateException("Principal name must be numeric userId, but was: " + principal.getName());
-        }
-    }
-
     @Operation(
             summary = "세션 생성",
             description = """
-                새 채팅 세션을 생성합니다.
-                - 메타데이터(Postgres)만 생성되며, 첫 사용자 메시지는 `/sessions/{id}/messages`로 등록합니다.
-                - 페르소나는 **요청자가 지정하지 않으며**, 세션 소유 유저의 **활성화된 페르소나 목록 전체**가 자동 연결됩니다.
-                - FastAPI에는 첫 메시지 등록 시(`/start`) 해당 페르소나 목록이 전달됩니다.
-                """,
-            security = @SecurityRequirement(name = "bearerAuth"),
-            responses = {
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                            responseCode = "200", description = "성공",
-                            content = @Content(mediaType = "application/json",
-                                    schema = @Schema(implementation = CreateSessionResponse.class),
-                                    examples = @ExampleObject(value = """
-                                        {
-                                          "data": {
-                                            "sessionId": "8c2c2f07-3c3a-4985-8b7d-5f7f7f4e3f21",
-                                            "personas": ["Minji","Taeo","Ducksu"],
-                                            "createdAt": "2025-11-06T10:12:00"
-                                          }
-                                        }
-                                    """))),
-            }
+            새 채팅 세션 메타데이터(PostgreSQL)를 생성합니다. 
+            첫 사용자 메시지는 `/api/chat/sessions/{sid}/messages`로 전송하세요.
+            - 인증: Bearer AccessToken
+            - 헤더: `X-Device-Id`(UUIDv4) 사용 (디바이스 바인딩)
+            """,
+            security = @SecurityRequirement(name = "bearerAuth")
     )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200", description = "세션 생성 성공",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = CreateSessionResponse.class),
+                            examples = @ExampleObject(name = "ok", value = """
+                    {
+                      "sessionUuid": "4b1c0a5c-2c4c-49d9-8c8f-19b6e0a6a1d2",
+                      "personas": ["Minji","Taeo","Ducksu"],
+                      "createdAt": "2025-11-07T04:50:00Z"
+                    }
+                """)
+                    )
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 실패"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "권한 없음"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "요청 본문 오류")
+    })
+    @Parameter(name = "X-Device-Id", in = ParameterIn.HEADER, required = true,
+            description = "디바이스 식별자(UUID v4)", example = "11111111-1111-1111-1111-111111111111")
     @PostMapping("/sessions")
     public ApiResponse<CreateSessionResponse> createSession(
-            Principal principal,
+            @AuthenticationPrincipal String userUuid,
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    required = true,
+                    content = @Content(
+                            schema = @Schema(implementation = CreateSessionRequest.class),
+                            examples = {
+                                    @ExampleObject(name = "custom", value = """
+                        { "topicType": "CUSTOM", "title": "엔비디아 전망 토크" }
+                    """),
+                                    @ExampleObject(name = "company", value = """
+                        { "topicType": "COMPANY", "title": "애플 실적 콜 분석", "ticker": "AAPL" }
+                    """)
+                            }
+                    )
+            )
             @Valid @RequestBody CreateSessionRequest req
     ) {
-        return ApiResponse.ok(
-                chatService.createSession(currentUserId(principal), req)
-        );
+        return ApiResponse.ok(chatService.createSession(userUuid, req));
     }
 
     @Operation(
             summary = "사용자 메시지 등록",
             description = """
-                사용자 메시지를 등록합니다.
-                - 첫 사용자 메시지면 FastAPI `/start` 호출(세션에 연결된 **전체 페르소나 코드 목록**과 함께 전송)
-                - 이후 메시지는 `/input`으로 전달
-                - 실제 AI 응답은 SSE(`/sessions/{id}/stream`)로 수신
-                """,
+            세션에 사용자 메시지를 추가합니다.
+            - 첫 사용자 메시지면 FastAPI `/start` 호출(세션의 페르소나 코드 전달)
+            - 이후 메시지는 FastAPI `/input`으로 전달되어 SSE로 응답 수신
+            - 인증: Bearer AccessToken, 헤더: `X-Device-Id`
+            """,
             security = @SecurityRequirement(name = "bearerAuth")
     )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200", description = "등록 성공",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = AppendMessageResponse.class),
+                            examples = @ExampleObject(value = """
+                    { "messageId": "672c1fe28f7d3c0b1d2a90a3" }
+                """)
+                    )
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 실패"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "세션 소유자 불일치"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "세션 없음"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "요청 본문 오류")
+    })
+    @Parameter(name = "X-Device-Id", in = ParameterIn.HEADER, required = true,
+            description = "디바이스 식별자(UUID v4)", example = "11111111-1111-1111-1111-111111111111")
     @PostMapping("/sessions/{sid}/messages")
     public ApiResponse<AppendMessageResponse> appendMessage(
-            Principal principal,
+            @AuthenticationPrincipal String userUuid,
             @Parameter(name = "sid", description = "세션 UUID") @PathVariable("sid") UUID sessionId,
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    required = true,
+                    content = @Content(
+                            schema = @Schema(implementation = AppendMessageRequest.class),
+                            examples = @ExampleObject(value = """
+                    { "content": "내 월급일·연금 일정 기준으로 포트폴리오 다시 짜줘" }
+                """)
+                    )
+            )
             @Valid @RequestBody AppendMessageRequest req
     ) {
-        return ApiResponse.ok(
-                chatService.appendUserMessage(currentUserId(principal), sessionId, req)
-        );
+        return ApiResponse.ok(chatService.appendUserMessage(userUuid, sessionId, req));
     }
 
     @Operation(
             summary = "SSE 스트림 시작",
             description = """
-                FastAPI의 스트림을 Spring이 게이트웨이로 받아 text/event-stream으로 중계합니다.
-                - 이벤트: message, replay, heartbeat, error, interrupted 등
-                - 재연결 시 Last-Event-ID 헤더로 일부 이벤트를 replay
-                """,
-            security = @SecurityRequirement(name = "bearerAuth"),
-            responses = {
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                            responseCode = "200", description = "SSE 시작",
-                            content = @Content(mediaType = "text/event-stream",
-                                    examples = {
-                                            @ExampleObject(name = "message", value = """
-                                                event: message
-                                                data: {"speaker":"Minji","text":"요약을 시작할게요.","turn":1}
-
-                                            """),
-                                            @ExampleObject(name = "heartbeat", value = """
-                                                event: heartbeat
-                                                data: {"ts":"2025-11-06T01:23:45Z"}
-
-                                            """)
-                                    }))
-            }
+            해당 세션의 AI 응답을 Server-Sent Events로 스트리밍합니다.
+            - `Accept: text/event-stream`
+            - 헤더 `X-Device-Id`(필수), `Last-Event-ID`(옵션, 재연결 시)
+            - 이벤트: `message`(토큰/문장), `done`(완료), `error`(오류)
+            """,
+            security = @SecurityRequirement(name = "bearerAuth")
     )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200", description = "스트림 시작",
+                    content = @Content(mediaType = "text/event-stream")
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 실패"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "세션 소유자 불일치"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "세션 없음")
+    })
     @GetMapping(value = "/sessions/{sid}/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter stream(
-            Principal principal,
+            @AuthenticationPrincipal String userUuid,
             @Parameter(name = "sid", description = "세션 UUID") @PathVariable("sid") UUID sessionId,
             @Parameter(name = "X-Device-Id", in = ParameterIn.HEADER, required = true,
-                    description = "디바이스 고유 식별자(UUID v4)") @RequestHeader("X-Device-Id") String deviceId,
+                    description = "디바이스 식별자(UUID v4)", example = "11111111-1111-1111-1111-111111111111")
+            @RequestHeader("X-Device-Id") String deviceId,
             @Parameter(name = "Last-Event-ID", in = ParameterIn.HEADER, required = false,
-                    description = "재연결용 이벤트 ID") @RequestHeader(value = "Last-Event-ID", required = false) String lastEventId
+                    description = "SSE 재연결용 마지막 이벤트 ID(옵션)", example = "128")
+            @RequestHeader(value = "Last-Event-ID", required = false) String lastEventId
     ) {
-        return chatService.streamAssistant(currentUserId(principal), sessionId, deviceId, lastEventId);
+        return chatService.streamAssistant(userUuid, sessionId, deviceId, lastEventId);
     }
 
-    @Operation(summary = "중단(인터럽트)",
-            description = "현재 진행 중인 스트림을 사용자 주도로 중단합니다.",
-            security = @SecurityRequirement(name = "bearerAuth"),
-            responses = { @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "중단 완료") })
+    @Operation(
+            summary = "중단(인터럽트)",
+            description = "진행 중인 스트림에 `INTERRUPT` 제어 신호를 보냅니다.",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "중단 성공"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 실패"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "세션 소유자 불일치"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "세션 없음")
+    })
+    @Parameter(name = "X-Device-Id", in = ParameterIn.HEADER, required = true,
+            description = "디바이스 식별자(UUID v4)", example = "11111111-1111-1111-1111-111111111111")
     @PostMapping("/sessions/{sid}/interrupt")
     public ResponseEntity<Void> interrupt(
-            Principal principal,
-            @Parameter(name = "sid", description = "세션 UUID") @PathVariable("sid") UUID sessionId
+            @AuthenticationPrincipal String userUuid,
+            @Parameter(name = "sid") @PathVariable("sid") UUID sessionId
     ) {
-        chatService.interrupt(currentUserId(principal), sessionId);
+        chatService.interrupt(userUuid, sessionId);
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "히스토리 조회",
-            description = "Mongo `chat_messages`에서 최근 N개 메시지를 조회(기본 50)",
-            security = @SecurityRequirement(name = "bearerAuth"))
+    @Operation(
+            summary = "히스토리 조회",
+            description = "세션의 과거 대화를 최근→과거로 조회 후 과거→최신 정렬로 반환합니다.",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200", description = "조회 성공",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = HistoryResponse.class),
+                            examples = @ExampleObject(value = """
+                    {
+                      "items": [
+                        { "role": "user", "content": "포지션 요약해줘", "ts": "2025-11-07T04:51:01Z" },
+                        { "role": "assistant", "content": "요약: ...", "ts": "2025-11-07T04:51:03Z" }
+                      ]
+                    }
+                """)
+                    )
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 실패"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "세션 소유자 불일치"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "세션 없음")
+    })
+    @Parameter(name = "X-Device-Id", in = ParameterIn.HEADER, required = true,
+            description = "디바이스 식별자(UUID v4)", example = "11111111-1111-1111-1111-111111111111")
     @GetMapping("/sessions/{sid}/history")
     public ApiResponse<HistoryResponse> history(
-            Principal principal,
-            @Parameter(name = "sid", description = "세션 UUID") @PathVariable("sid") UUID sessionId,
-            @Parameter(description = "최근 메시지 개수", example = "50") @RequestParam(defaultValue = "50") int limit
+            @AuthenticationPrincipal String userUuid,
+            @Parameter(name = "sid") @PathVariable("sid") UUID sessionId,
+            @Parameter(description = "최근 메시지 개수(기본=50)", example = "50")
+            @RequestParam(defaultValue = "50") int limit
     ) {
-        return ApiResponse.ok(
-                chatService.history(currentUserId(principal), sessionId, limit)
-        );
+        return ApiResponse.ok(chatService.history(userUuid, sessionId, limit));
     }
 
-    @Operation(summary = "스트림 재개 (RESUME)",
-            security = @SecurityRequirement(name = "bearerAuth"),
-            responses = { @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "재개 완료") })
+    @Operation(
+            summary = "스트림 재개 (RESUME)",
+            description = "`RESUME` 제어 신호를 전송하여 일시 중단된 스트림을 재개합니다.",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "재개 성공"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 실패"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "세션 소유자 불일치"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "세션 없음")
+    })
+    @Parameter(name = "X-Device-Id", in = ParameterIn.HEADER, required = true,
+            description = "디바이스 식별자(UUID v4)", example = "11111111-1111-1111-1111-111111111111")
     @PostMapping("/sessions/{sid}/control/resume")
     public ResponseEntity<Void> resume(
-            Principal principal,
-            @Parameter(name = "sid", description = "세션 UUID") @PathVariable("sid") UUID sessionId
+            @AuthenticationPrincipal String userUuid,
+            @Parameter(name = "sid") @PathVariable("sid") UUID sessionId
     ) {
-        chatService.resume(currentUserId(principal), sessionId);
+        chatService.resume(userUuid, sessionId);
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "발화 간격 변경 (CHANGE_PACE)",
-            description = "FastAPI에 CHANGE_PACE 명령을 보내 발화 간격(ms)을 변경",
-            security = @SecurityRequirement(name = "bearerAuth"),
-            responses = { @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "변경 완료") })
+    @Operation(
+            summary = "발화 간격 변경 (CHANGE_PACE)",
+            description = "`CHANGE_PACE`(pace_ms) 제어 신호로 스트리밍 속도를 조절합니다.",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "변경 성공"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 실패"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "세션 소유자 불일치"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "세션 없음"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "요청 본문 오류")
+    })
+    @Parameter(name = "X-Device-Id", in = ParameterIn.HEADER, required = true,
+            description = "디바이스 식별자(UUID v4)", example = "11111111-1111-1111-1111-111111111111")
     @PostMapping("/sessions/{sid}/control/pace")
     public ResponseEntity<Void> changePace(
-            Principal principal,
-            @Parameter(name = "sid", description = "세션 UUID") @PathVariable("sid") UUID sessionId,
+            @AuthenticationPrincipal String userUuid,
+            @Parameter(name = "sid") @PathVariable("sid") UUID sessionId,
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    required = true,
+                    content = @Content(
+                            schema = @Schema(implementation = ChangePaceRequest.class),
+                            examples = @ExampleObject(value = """
+                    { "paceMs": 2000 }
+                """)
+                    )
+            )
             @Valid @RequestBody ChangePaceRequest req
     ) {
-        chatService.changePace(currentUserId(principal), sessionId, req.getPaceMs());
+        chatService.changePace(userUuid, sessionId, req.getPaceMs());
         return ResponseEntity.noContent().build();
     }
 }
