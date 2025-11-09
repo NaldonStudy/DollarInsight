@@ -3,6 +3,7 @@ package com.ssafy.b205.backend.infra.security;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -22,24 +23,25 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .cors(Customizer.withDefaults())
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint(new JsonAuthenticationEntryPoint()) // 401
+                        .accessDeniedHandler(new JsonAccessDeniedHandler())           // 403
+                )
                 .authorizeHttpRequests(reg -> reg
+                        // 공개 API
                         .requestMatchers("/api/public/**").permitAll()
                         .requestMatchers("/api/auth/signup", "/api/auth/login", "/api/auth/refresh").permitAll()
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .requestMatchers("/actuator/**").permitAll()
+                        // SSE 스트림(명시적으로 명기해 두면 디버깅 편함)
+                        .requestMatchers(HttpMethod.GET, "/api/chat/sessions/*/stream").authenticated()
+                        // 그 외 보호
                         .anyRequest().authenticated()
-                )
-                // 401/403를 ApiResponse.error 포맷으로 통일
-                .exceptionHandling(ex -> ex
-                        .authenticationEntryPoint(new JsonAuthenticationEntryPoint()) // 401
-                        .accessDeniedHandler(new JsonAccessDeniedHandler())           // 403
                 );
 
-        // 🔒 필터 순서 보장
-        // 1) TokenFilter 를 UsernamePasswordAuthenticationFilter 앞에 둔다
-        http.addFilterBefore(tokenFilter, UsernamePasswordAuthenticationFilter.class);
-        // 2) DeviceHeaderFilter 를 TokenFilter 앞에 둔다  (즉, Device → Token → UsernamePasswordAuthenticationFilter)
-        http.addFilterBefore(deviceHeaderFilter, TokenFilter.class);
+        // 🔒 필터 순서: Device → Token → UsernamePasswordAuthenticationFilter
+        http.addFilterBefore(deviceHeaderFilter, UsernamePasswordAuthenticationFilter.class);
+        http.addFilterAfter(tokenFilter, DeviceHeaderFilter.class);
 
         return http.build();
     }

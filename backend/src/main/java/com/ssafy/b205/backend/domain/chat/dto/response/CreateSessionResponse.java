@@ -3,7 +3,7 @@ package com.ssafy.b205.backend.domain.chat.dto.response;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -16,9 +16,10 @@ public class CreateSessionResponse {
             example = "[\"Minji\",\"Taeo\",\"Ducksu\"]")
     private final List<String> personas;
 
-    private final LocalDateTime createdAt;
+    @Schema(type = "string", format = "date-time", example = "2025-11-07T08:20:00Z")
+    private final Instant createdAt;
 
-    public CreateSessionResponse(UUID sessionId, List<String> personas, LocalDateTime createdAt) {
+    public CreateSessionResponse(UUID sessionId, List<String> personas, Instant createdAt) {
         this.sessionId = sessionId;
         this.personas = personas;
         this.createdAt = createdAt;
