@@ -31,6 +31,9 @@ class CompanyDetailProvider with ChangeNotifier {
   Map<String, String>? _indicators;
   Map<String, String>? get indicators => _indicators;
 
+  Map<String, double>? _stockScores;
+  Map<String, double>? get stockScores => _stockScores;
+
   List<Map<String, String>> _newsList = [];
   List<Map<String, String>> get newsList => _newsList;
 
@@ -53,10 +56,13 @@ class CompanyDetailProvider with ChangeNotifier {
       // 2. 투자지표 API 호출
       await _fetchIndicators();
 
-      // 3. 기업 뉴스 API 호출 (최대 5개)
+      // 3. 주식 점수 API 호출
+      await _fetchStockScores();
+
+      // 4. 기업 뉴스 API 호출 (최대 5개)
       await _fetchCompanyNews();
 
-      // 4. 관심종목 상태 확인
+      // 5. 관심종목 상태 확인
       await _checkWatchlistStatus();
 
       _isLoading = false;
@@ -100,6 +106,31 @@ class CompanyDetailProvider with ChangeNotifier {
       'PER': '56.4배',
       'ROE': '109.4%',
       'PSR': '29.6배',
+    };
+  }
+
+  /// 주식 점수 API 호출
+  Future<void> _fetchStockScores() async {
+    // TODO: API 연결
+    // final response = await companyRepository.getStockScores(companyId);
+    // _stockScores = {
+    //   '총점': response.totalScore.toDouble(),
+    //   '모멘텀': response.momentumScore.toDouble(),
+    //   '가치': response.valueScore.toDouble(),
+    //   '성장': response.growthScore.toDouble(),
+    //   '수급': response.supplyDemandScore.toDouble(),
+    //   '위험': response.riskScore.toDouble(),
+    // };
+
+    // 임시 더미 데이터 (API 연결 후 삭제)
+    await Future.delayed(const Duration(milliseconds: 300));
+    _stockScores = {
+      '총점': 70.0,
+      '모멘텀': 80.0,
+      '가치': 55.0,
+      '성장': 75.0,
+      '수급': 90.0,
+      '위험': 75.0,
     };
   }
 
