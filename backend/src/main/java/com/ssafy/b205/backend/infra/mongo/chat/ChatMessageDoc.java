@@ -1,38 +1,47 @@
 package com.ssafy.b205.backend.infra.mongo.chat;
 
-import lombok.*;
+import lombok.Builder;
+import lombok.Getter;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
+import org.springframework.data.mongodb.core.index.CompoundIndexes;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
-import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.time.Instant;
 import java.util.UUID;
 
-@Document(collection = "chat_messages")
 @Getter
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor
-@Builder
-public class ChatMessageDoc {
+@Document(collection = "chat_messages")
+@CompoundIndexes({
+        // 기존: ts 정렬 히스토리 최적화
+        @CompoundIndex(name = "session_ts_desc_idx", def = "{'sessionUuid': 1, 'ts': -1}"),
+        // 추가: _id 커서 히스토리2 최적화
+        @CompoundIndex(name = "session__id_desc_idx", def = "{'sessionUuid': 1, '_id': -1}")
+})
+public final class ChatMessageDoc {
 
     @Id
-    private String id;
+    private final String id;          // Mongo ObjectId 문자열
 
     @Indexed
-    @Field("session_uuid")
-    private UUID sessionUuid;
+    private final UUID sessionUuid;   // 세션 식별자(외부 공개 UUID)
 
-    @Field("role")
-    private String role;
-
-    @Field("content")
-    private String content;
-
-    @Field("seq")
-    private long seq;
+    private final String role;        // "user" | "assistant" | "system"
+    private final String content;
 
     @Indexed
-    @Field("ts")
-    private Instant ts;
+    private final Instant ts;         // 타임라인 정렬/페이징 기준
+
+    private final Long seq;           // SSE 내 순서 표기(옵션) — 조회 정렬엔 사용 안 함
+
+    @Builder
+    public ChatMessageDoc(String id, UUID sessionUuid, String role, String content, Instant ts, Long seq) {
+        this.id = id;
+        this.sessionUuid = sessionUuid;
+        this.role = role;
+        this.content = content;
+        this.ts = ts;
+        this.seq = seq;
+    }
 }

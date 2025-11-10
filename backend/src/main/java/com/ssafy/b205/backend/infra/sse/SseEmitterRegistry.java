@@ -1,3 +1,4 @@
+// src/main/java/com/ssafy/b205/backend/infra/sse/SseEmitterRegistry.java
 package com.ssafy.b205.backend.infra.sse;
 
 import org.springframework.stereotype.Component;
@@ -10,22 +11,39 @@ import java.util.concurrent.ConcurrentHashMap;
 @Component
 public class SseEmitterRegistry {
 
-    private final Map<UUID, SseEmitter> emitters = new ConcurrentHashMap<>();
+    private final Map<String, SseEmitter> emitters = new ConcurrentHashMap<>();
 
+    private static String key(UUID sessionUuid, String deviceId) {
+        return sessionUuid + "|" + deviceId;
+    }
+
+    /** 기존 단일키 등록 */
     public SseEmitter register(UUID sessionUuid) {
         SseEmitter emitter = new SseEmitter(0L);
-        emitters.put(sessionUuid, emitter);
-        emitter.onCompletion(() -> emitters.remove(sessionUuid));
-        emitter.onTimeout(() -> emitters.remove(sessionUuid));
-        emitter.onError(e -> emitters.remove(sessionUuid));
+        emitters.put(sessionUuid.toString(), emitter);
+        emitter.onCompletion(() -> emitters.remove(sessionUuid.toString()));
+        emitter.onTimeout(() -> emitters.remove(sessionUuid.toString()));
+        emitter.onError(e -> emitters.remove(sessionUuid.toString()));
         return emitter;
     }
 
-    public SseEmitter get(UUID sessionUuid) {
-        return emitters.get(sessionUuid);
+    /** ✅ 디바이스 단위 다중 등록 + (옵션) lastEventId */
+    public SseEmitter create(UUID sessionUuid, String deviceId, String lastEventId) {
+        String k = key(sessionUuid, deviceId);
+        SseEmitter emitter = new SseEmitter(0L);
+        emitters.put(k, emitter);
+        emitter.onCompletion(() -> emitters.remove(k));
+        emitter.onTimeout(() -> emitters.remove(k));
+        emitter.onError(e -> emitters.remove(k));
+        // 여기서 lastEventId 기반 replay 로직을 붙일 수 있음(현재는 패스)
+        return emitter;
     }
 
-    public void remove(UUID sessionUuid) {
-        emitters.remove(sessionUuid);
+    public SseEmitter get(UUID sessionUuid, String deviceId) {
+        return emitters.get(key(sessionUuid, deviceId));
+    }
+
+    public void remove(UUID sessionUuid, String deviceId) {
+        emitters.remove(key(sessionUuid, deviceId));
     }
 }

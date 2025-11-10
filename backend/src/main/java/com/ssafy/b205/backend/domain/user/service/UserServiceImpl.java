@@ -49,8 +49,7 @@ public class UserServiceImpl implements UserService {
                 .email(email)
                 .nickname(nickname)
                 .build());
-        log.info("[UserSvc-02] 사용자 저장 완료 id={}, uuid={}, email={}",
-                u.getId(), u.getUuid(), u.getEmail());
+        log.info("[UserSvc-02] 사용자 저장 완료 id={}, uuid={}, email={}", u.getId(), u.getUuid(), u.getEmail());
 
         credentialRepository.save(UserCredential.builder()
                 .user(u)
@@ -89,8 +88,7 @@ public class UserServiceImpl implements UserService {
     public String createAccessFor(User user, String deviceId) {
         String did = normalize(deviceId);
         String access = tokenProvider.createAccessToken(user.getUuid().toString(), did);
-        log.info("[UserSvc-21] (회원가입 직후) 액세스 토큰 발급 완료 userUuid={}, deviceId(normalized)={}",
-                user.getUuid(), did);
+        log.info("[UserSvc-21] (회원가입 직후) 액세스 토큰 발급 완료 userUuid={}, deviceId(normalized)={}", user.getUuid(), did);
         return access;
     }
 
@@ -101,41 +99,46 @@ public class UserServiceImpl implements UserService {
                     log.warn("[UserSvc-E04] 활성 사용자 없음 email={}", email);
                     return new IllegalArgumentException("사용자를 찾을 수 없습니다.");
                 });
-        log.info("[UserSvc-31] 이메일로 사용자 조회 완료 id={}, uuid={}, email={}",
-                u.getId(), u.getUuid(), u.getEmail());
+        log.info("[UserSvc-31] 이메일로 사용자 조회 완료 id={}, uuid={}, email={}", u.getId(), u.getUuid(), u.getEmail());
         return u;
     }
 
     @Override
     public User getByUuid(String userUuid) {
-        User u = userRepository.findByUuid(UUID.fromString(userUuid))
+        User u = userRepository.findByUuidAndDeletedAtIsNull(UUID.fromString(userUuid))
                 .orElseThrow(() -> {
-                    log.warn("[UserSvc-E05] UUID로 사용자 없음 uuid={}", userUuid);
+                    log.warn("[UserSvc-E05] UUID로 활성 사용자 없음 uuid={}", userUuid);
                     return new IllegalArgumentException("사용자를 찾을 수 없습니다.");
                 });
-        log.info("[UserSvc-41] UUID로 사용자 조회 완료 id={}, uuid={}, email={}",
-                u.getId(), u.getUuid(), u.getEmail());
+        log.info("[UserSvc-41] UUID로 사용자 조회 완료 id={}, uuid={}, email={}", u.getId(), u.getUuid(), u.getEmail());
         return u;
     }
 
     @Override
     @Transactional
     public void changeNickname(String userUuid, String nickname) {
-        User user = userRepository.findByUuid(UUID.fromString(userUuid))
+        User user = userRepository.findByUuidAndDeletedAtIsNull(UUID.fromString(userUuid))
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "[UserSvc-E05] UUID로 사용자 없음: " + userUuid));
 
-        if (userRepository.existsByNickname(nickname)) {
+        // 동일 닉네임(대소문자 무시)로 변경 시 빠른 종료
+        if (user.getNickname() != null && user.getNickname().equalsIgnoreCase(nickname)) {
+            log.info("[UserSvc-51] 닉네임 동일(대소문자 무시) → 변경 스킵 userId={}, nickname={}", user.getId(), nickname);
+            return;
+        }
+
+        // 자기 자신 제외하고 중복 검사
+        if (userRepository.existsByNicknameIgnoreCaseAndDeletedAtIsNullAndIdNot(nickname, user.getId())) {
             throw new AppException(ErrorCode.CONFLICT, "[UserSvc-E07] 닉네임 중복: " + nickname);
         }
 
         user.updateNickname(nickname);
-        // flush는 트랜잭션 종료 시점에 JPA가 처리
+        log.info("[UserSvc-52] 닉네임 변경 완료 userId={}, newNickname={}", user.getId(), nickname);
     }
 
     @Override
     @Transactional
     public void changePassword(String userUuid, String oldPassword, String newPassword) {
-        User user = userRepository.findByUuid(UUID.fromString(userUuid))
+        User user = userRepository.findByUuidAndDeletedAtIsNull(UUID.fromString(userUuid))
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "[UserSvc-E05] UUID로 사용자 없음: " + userUuid));
 
         UserCredential cred = credentialRepository.findByUser(user)
@@ -149,13 +152,15 @@ public class UserServiceImpl implements UserService {
         }
 
         cred.updatePassword(passwordEncoder.encode(newPassword));
+        log.info("[UserSvc-61] 비밀번호 변경 완료 userId={}", user.getId());
     }
 
     @Override
     @Transactional
     public void softDelete(String userUuid) {
-        User user = userRepository.findByUuid(UUID.fromString(userUuid))
+        User user = userRepository.findByUuidAndDeletedAtIsNull(UUID.fromString(userUuid))
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "[UserSvc-E05] UUID로 사용자 없음: " + userUuid));
         user.markWithdrawn();
+        log.info("[UserSvc-71] 소프트 삭제 완료 userId={}", user.getId());
     }
 }

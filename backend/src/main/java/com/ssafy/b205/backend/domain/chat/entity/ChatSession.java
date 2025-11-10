@@ -1,21 +1,23 @@
 package com.ssafy.b205.backend.domain.chat.entity;
 
+import com.ssafy.b205.backend.support.jpa.AuditableBase;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
-import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
 @Table(name = "chat_sessions")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class ChatSession {
+public class ChatSession extends AuditableBase {
 
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
     @Column(nullable = false, columnDefinition = "uuid")
@@ -25,7 +27,8 @@ public class ChatSession {
     private Integer userId;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "topic_type", nullable = false, length = 20)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(name = "topic_type", nullable = false, columnDefinition = "chat_topic_type")
     private ChatTopicType topicType;
 
     @Column(length = 256)
@@ -33,17 +36,11 @@ public class ChatSession {
 
     @Column(length = 16)
     private String ticker;
-    
+
     @Column(name = "company_news_id")
     private Long companyNewsId;
 
-    @CreationTimestamp
-    @Column(name = "created_at", updatable = false)
-    private LocalDateTime createdAt;
-
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
-
+    // 생성 팩토리
     public static ChatSession create(Integer userId,
                                      ChatTopicType topicType,
                                      String title,
@@ -60,6 +57,8 @@ public class ChatSession {
 
     @PrePersist
     private void prePersist() {
-        if (uuid == null) uuid = UUID.randomUUID();
+        if (uuid == null) {
+            uuid = UUID.randomUUID();
+        }
     }
 }
