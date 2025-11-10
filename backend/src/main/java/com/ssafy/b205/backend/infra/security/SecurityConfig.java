@@ -28,20 +28,29 @@ public class SecurityConfig {
                         .accessDeniedHandler(new JsonAccessDeniedHandler())           // 403
                 )
                 .authorizeHttpRequests(reg -> reg
-                        // ✅ 프리플라이트 전면 허용
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                        // 공개 API
-                        .requestMatchers("/api/public/**").permitAll()
-                        .requestMatchers("/api/auth/signup", "/api/auth/login", "/api/auth/refresh").permitAll()
-                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
-                        .requestMatchers("/actuator/**").permitAll()
+                        // 공개 API (접두 유무 모두 허용)
+                        .requestMatchers("/api/public/**", "/public/**").permitAll()
+                        .requestMatchers(
+                                "/api/auth/signup", "/api/auth/login", "/api/auth/refresh",
+                                "/auth/signup",     "/auth/login",     "/auth/refresh"
+                        ).permitAll()
 
-                        // 그 외 보호
+                        // 문서/헬스 (접두 유무 모두 허용)
+                        .requestMatchers(
+                                "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html",
+                                "/api/v3/api-docs/**", "/api/swagger-ui/**", "/api/swagger-ui.html"
+                        ).permitAll()
+                        .requestMatchers("/actuator/**", "/api/actuator/**").permitAll()
+
+                        // 에러 디스패치 경로
+                        .requestMatchers("/error", "/api/error").permitAll()
+
                         .anyRequest().authenticated()
                 );
 
-        // ✅ 필터 순서: 둘 다 UsernamePasswordAuthenticationFilter "앞"에 배치
+        // 필터 순서: 둘 다 UsernamePasswordAuthenticationFilter "앞"에 배치
         http.addFilterBefore(deviceHeaderFilter, UsernamePasswordAuthenticationFilter.class);
         http.addFilterBefore(tokenFilter, UsernamePasswordAuthenticationFilter.class);
 
