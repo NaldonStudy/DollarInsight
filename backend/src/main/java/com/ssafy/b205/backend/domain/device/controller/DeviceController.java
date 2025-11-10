@@ -3,6 +3,7 @@ package com.ssafy.b205.backend.domain.device.controller;
 import com.ssafy.b205.backend.domain.device.entity.UserDevice;
 import com.ssafy.b205.backend.domain.device.service.DeviceService;
 import com.ssafy.b205.backend.support.response.ApiResponse;
+import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -61,11 +62,12 @@ public class DeviceController {
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "기기 삭제", description = "특정 기기를 삭제합니다. (경로의 id는 user_device의 PK)",
-            responses = { @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "No Content") })
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@AuthenticationPrincipal String userUuid, @PathVariable Integer id) {
-        deviceService.delete(userUuid, id);
+    @Operation(summary = "기기 삭제(deviceId)", description = "deviceId(UUID)로 내 기기를 삭제합니다.",
+            security = @SecurityRequirement(name = "bearerAuth"))
+    @DeleteMapping("/by-device/{deviceId}")
+    public ResponseEntity<Void> deleteByDeviceId(@AuthenticationPrincipal String userUuid,
+                                                 @PathVariable String deviceId) {
+        deviceService.deleteByDeviceId(userUuid, deviceId);
         return ResponseEntity.noContent().build();
     }
 }

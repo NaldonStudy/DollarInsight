@@ -78,13 +78,15 @@ public class SessionController {
     }
 
     @Operation(
-            summary = "세션 강제 로그아웃",
-            description = "path의 세션 id가 본인 소유가 아니면 403",
+            summary = "세션 강제 로그아웃 (UUID)",
+            description = "path의 세션 UUID가 본인 계정에 속하지 않으면 404",
             security = @SecurityRequirement(name = "bearerAuth")
     )
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> revoke(@AuthenticationPrincipal String userUuid, @PathVariable Integer id) {
-        sessionService.revokeById(userUuid, id);
+    @DeleteMapping("/uuid/{sid}")
+    public ResponseEntity<Void> revokeByUuid(@AuthenticationPrincipal String userUuid,
+                                             @PathVariable("sid") java.util.UUID sessionUuid) {
+        sessionService.revokeByUuid(userUuid, sessionUuid);
         return ResponseEntity.noContent().build();
     }
+
 }

@@ -3,10 +3,12 @@ package com.ssafy.b205.backend.infra.security;
 import com.ssafy.b205.backend.support.error.ErrorCode;
 import com.ssafy.b205.backend.support.error.ErrorHttpWriter;
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jws;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -15,36 +17,51 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.Collection;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.stream.Collectors;
 
+import static com.ssafy.b205.backend.infra.security.SecurityConstants.BEARER_PREFIX;
+
 @Component
+@RequiredArgsConstructor
 public class TokenFilter extends OncePerRequestFilter {
 
     private final TokenProvider tokenProvider;
 
-    public TokenFilter(TokenProvider tokenProvider) {
-        this.tokenProvider = tokenProvider;
+    private static String normalizedPath(HttpServletRequest req) {
+        String uri = req.getRequestURI();
+        String ctx = req.getContextPath();
+        String p = (ctx != null && !ctx.isEmpty() && uri.startsWith(ctx))
+                ? uri.substring(ctx.length())
+                : uri;
+        return p.replaceAll("/{2,}", "/");
     }
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest req) {
-        String p = req.getRequestURI();
+        final String path = normalizedPath(req);
 
-        // 공개/문서/헬스체크/인증 경로는 토큰 검사 스킵
-        if (p.equals("/api/public") || p.startsWith("/api/public/")) return true;
-        if (p.startsWith("/api/auth/login"))   return true;
-        if (p.startsWith("/api/auth/refresh")) return true;
-        if (p.startsWith("/api/auth/signup"))  return true;
-        if (p.startsWith("/v3/api-docs"))      return true;
-        if (p.startsWith("/swagger-ui"))       return true;
-        if (p.equals("/swagger-ui.html"))      return true;
-        if (p.startsWith("/actuator/health"))  return true;
-
-        // CORS preflight도 통과
         if ("OPTIONS".equalsIgnoreCase(req.getMethod())) return true;
+        if ("/error".equals(path)) return true;
+
+        // 공개/예외 경로 (컨텍스트 유무 모두 허용)
+        if (path.equals("/public") || path.startsWith("/public/")
+                || path.equals("/api/public") || path.startsWith("/api/public/")) return true;
+
+        if (path.equals("/auth/login") || path.startsWith("/auth/login")
+                || path.equals("/api/auth/login") || path.startsWith("/api/auth/login")) return true;
+
+        if (path.equals("/auth/refresh") || path.startsWith("/auth/refresh")
+                || path.equals("/api/auth/refresh") || path.startsWith("/api/auth/refresh")) return true;
+
+        if (path.equals("/auth/signup") || path.startsWith("/auth/signup")
+                || path.equals("/api/auth/signup") || path.startsWith("/api/auth/signup")) return true;
+
+        // 문서/헬스 (둘 다 커버)
+        if (path.startsWith("/v3/api-docs") || path.startsWith("/api/v3/api-docs")) return true;
+        if (path.startsWith("/swagger-ui")  || path.startsWith("/api/swagger-ui"))  return true;
+        if (path.equals("/swagger-ui.html") || path.equals("/api/swagger-ui.html")) return true;
+        if (path.startsWith("/actuator")    || path.startsWith("/api/actuator"))    return true;
 
         return false;
     }
@@ -53,47 +70,61 @@ public class TokenFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res, FilterChain chain)
             throws ServletException, IOException {
 
-        String h = req.getHeader(HttpHeaders.AUTHORIZATION);
-        if (h == null || !h.startsWith(SecurityConstants.BEARER_PREFIX)) {
-            // 보호 자원 접근 시 최종 401 처리는 Security의 EntryPoint가 담당
+        // 이미 인증됨 → 통과
+        if (SecurityContextHolder.getContext().getAuthentication() != null) {
             chain.doFilter(req, res);
             return;
         }
 
-        String token = h.substring(SecurityConstants.BEARER_PREFIX.length());
-        try {
-            var jws = tokenProvider.parse(token);   // Jws<Claims>
-            Claims c = jws.getPayload();
+        // 1) Authorization: Bearer
+        String token = null;
+        String authHeader = req.getHeader(HttpHeaders.AUTHORIZATION);
+        if (authHeader != null && authHeader.startsWith(BEARER_PREFIX)) {
+            token = authHeader.substring(BEARER_PREFIX.length()).trim();
+        }
 
-            // ── Device binding 검증
-            String didInToken  = String.valueOf(c.get("did"));              // TokenProvider에서 normalize하여 저장됨
-            String didInHeader = DeviceIdResolver.resolveValidOrNull(req);  // 헤더도 normalize + 빈값 거절
-            if (didInHeader == null || !didInToken.equals(didInHeader)) {
-                ErrorHttpWriter.write(
-                        req, res,
-                        ErrorCode.FORBIDDEN,
-                        "[AuthService-013] 토큰의 디바이스와 요청 디바이스가 일치하지 않습니다."
-                );
+        // 2) ?access_token=
+        if (token == null || token.isBlank()) {
+            String fromQuery = req.getParameter("access_token");
+            if (fromQuery != null && !fromQuery.isBlank()) {
+                token = fromQuery.trim();
+            }
+        }
+
+        // 토큰 없음 → 체인 진행 (컨트롤러에서 401 처리)
+        if (token == null || token.isBlank()) {
+            chain.doFilter(req, res);
+            return;
+        }
+
+        try {
+            // JWT 파싱/검증
+            Jws<Claims> jws = tokenProvider.parse(token);
+            Claims claims = jws.getPayload();
+
+            // Device Binding (동일 정규화로 비교)
+            String tokenDid  = claims.get("did", String.class);
+            String headerDid = com.ssafy.b205.backend.infra.security.DeviceIdResolver.normalize(
+                    req.getHeader("X-Device-Id")
+            );
+            if (headerDid == null || headerDid.isBlank() || tokenDid == null || !tokenDid.equals(headerDid)) {
+                ErrorHttpWriter.write(req, res, ErrorCode.FORBIDDEN, "[AuthSvc-E07] token.did ≠ X-Device-Id");
                 return;
             }
 
-            // ── 권한 설정: roles 클레임이 있으면 반영, 없으면 ROLE_USER 기본
-            var authorities = extractAuthorities(c);
+            // 권한
+            var authorities = extractAuthorities(claims);
             if (authorities.isEmpty()) {
                 authorities = List.of(new SimpleGrantedAuthority("ROLE_USER"));
             }
 
-            var auth = new UsernamePasswordAuthenticationToken(
-                    c.getSubject(), null, authorities);
+            // principal = userUuid
+            String userUuid = claims.getSubject();
+            var auth = new UsernamePasswordAuthenticationToken(userUuid, null, authorities);
             SecurityContextHolder.getContext().setAuthentication(auth);
 
         } catch (Exception ex) {
-            // 토큰 파싱/검증 실패 → 401 고정 포맷으로 응답
-            ErrorHttpWriter.write(
-                    req, res,
-                    ErrorCode.UNAUTHORIZED,
-                    "유효하지 않은 토큰입니다."
-            );
+            ErrorHttpWriter.write(req, res, ErrorCode.UNAUTHORIZED, "invalid token");
             return;
         }
 
@@ -112,8 +143,7 @@ public class TokenFilter extends OncePerRequestFilter {
                     .collect(Collectors.toList());
         }
         if (rolesObj instanceof String s && !s.isBlank()) {
-            // 쉼표구분 문자열도 허용: "USER,ADMIN"
-            return List.of(s.split("\\s*,\\s*")).stream()
+            return Arrays.stream(s.split("\\s*,\\s*"))
                     .filter(str -> !str.isBlank())
                     .map(r -> r.startsWith("ROLE_") ? r : "ROLE_" + r)
                     .map(SimpleGrantedAuthority::new)
