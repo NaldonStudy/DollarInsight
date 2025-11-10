@@ -74,11 +74,15 @@ management:
     web:
       base-path: /actuator
       exposure:
-        include: health,info,metrics
+        include: health,info,metrics,prometheus
   endpoint:
     health:
       show-details: when-authorized
       probes:
+        enabled: true
+  metrics:
+    export:
+      prometheus:
         enabled: true
   health:
     redis:
