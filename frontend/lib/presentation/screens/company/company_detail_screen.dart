@@ -627,6 +627,9 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
       Map<String, String> news, List<Map<String, String>> newsList) {
     final index = newsList.indexOf(news);
     final isLast = index == newsList.length - 1;
+    final size = MediaQuery.of(context).size;
+    final w = size.width;
+    final h = size.height;
 
     return Column(
       children: [
@@ -636,28 +639,34 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => const CompanyNewsDetailScreen(),
+                builder: (context) => CompanyNewsDetailScreen(
+                  companyId: widget.companyId,
+                  newsId: news['id'] ?? '1',
+                ),
               ),
             );
           },
           child: Container(
-            color: Colors.transparent,
-            padding: EdgeInsets.symmetric(vertical: AppSpacing.small(context)),
+            width: double.infinity,
+            padding: EdgeInsets.symmetric(
+              horizontal: w * 0.04,
+              vertical: h * 0.018,
+            ),
             child: Text(
               news['title'] ?? '',
               style: const TextStyle(
-                color: Colors.black,
-                fontSize: 13,
+                fontSize: 14,
                 fontFamily: 'Pretendard',
                 fontWeight: FontWeight.w500,
+                height: 1.4,
               ),
             ),
           ),
         ),
         if (!isLast)
           Container(
-            height: 0.7,
-            color: const Color(0xFFE4E4E4),
+            height: 1,
+            color: const Color(0xFFE0E0E0),
           ),
       ],
     );

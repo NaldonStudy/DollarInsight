@@ -20,38 +20,59 @@ public class DeviceHeaderFilter extends OncePerRequestFilter {
         String p = (ctx != null && !ctx.isEmpty() && uri.startsWith(ctx))
                 ? uri.substring(ctx.length()) // => //swagger-ui/index.html
                 : uri;
-        // 연속 슬래시 압축
         return p.replaceAll("/{2,}", "/");   // => /swagger-ui/index.html
     }
 
-    @Override
-    protected boolean shouldNotFilter(HttpServletRequest req) {
-        if ("OPTIONS".equalsIgnoreCase(req.getMethod())) return true;
+    private static boolean isWhitelisted(String path) {
+        if (path.equals("/error")) return true;
 
-        String path = normalizedPath(req);
-        if (path.equals("/error")) return true;           // ✅ error 디스패치 면제
-        if (path.startsWith("/v3/api-docs")) return true;
-        if (path.startsWith("/swagger-ui")) return true;
-        if (path.equals("/swagger-ui.html")) return true;
-        if (path.startsWith("/actuator")) return true;
-        // 공개 엔드포인트 면제 (컨텍스트를 뺀 경로 기준)
+        // Swagger / OpenAPI
+        if (path.startsWith("/v3/api-docs") || path.startsWith("/swagger-ui") || path.equals("/swagger-ui.html")) return true;
+        if (path.startsWith("/api/v3/api-docs") || path.startsWith("/api/swagger-ui") || path.equals("/api/swagger-ui.html")) return true;
+
+        // Actuator
+        if (path.startsWith("/actuator") || path.startsWith("/api/actuator")) return true;
+
+        // Public
         if (path.equals("/public") || path.startsWith("/public/")) return true;
+        if (path.equals("/api/public") || path.startsWith("/api/public/")) return true;
+
+        // Auth (로그인/회원가입/재발급은 헤더/토큰 검사 면제)
+        if (path.equals("/auth/login") || path.equals("/auth/signup") || path.equals("/auth/refresh")) return true;
+        if (path.equals("/api/auth/login") || path.equals("/api/auth/signup") || path.equals("/api/auth/refresh")) return true;
+
+        // (운영에서 자주 오는 정적 리퀘스트)
+        if (path.equals("/favicon.ico") || path.equals("/robots.txt")) return true;
+        if (path.equals("/api/favicon.ico") || path.equals("/api/robots.txt")) return true;
 
         return false;
     }
 
     @Override
+    protected boolean shouldNotFilter(HttpServletRequest req) {
+        if ("OPTIONS".equalsIgnoreCase(req.getMethod())) return true;
+        String path = normalizedPath(req);
+        return isWhitelisted(path);
+    }
+
+    @Override
     protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res, FilterChain chain)
             throws ServletException, IOException {
-        String deviceId = com.ssafy.b205.backend.infra.security.DeviceIdResolver.normalize(
-                req.getHeader("X-Device-Id")
-        ); // ← 존재만 확인 + 동일 규칙으로 정규화
-        if (deviceId == null || deviceId.isBlank()) {
+
+        // 🔒 null-safe: normalize 이전에 헤더 존재/공백 체크
+        String raw = req.getHeader("X-Device-Id");
+        if (raw == null || raw.isBlank()) {
             ErrorHttpWriter.write(req, res, ErrorCode.BAD_REQUEST,
                     "[DeviceSvc-E01] required header missing or empty: X-Device-Id");
             return;
         }
+
+        // 여기서부터는 null 아님이 보장됨
+        String deviceId = DeviceIdResolver.normalize(raw);
+
+        // (선택) 정규화된 값을 다시 헤더에 덮어써두면 뒤 필터에서 동일 규칙 사용 가능
+        // req.setAttribute("X-Device-Id-Normalized", deviceId);
+
         chain.doFilter(req, res);
     }
-
 }

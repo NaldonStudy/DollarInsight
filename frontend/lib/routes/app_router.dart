@@ -218,13 +218,14 @@ class AppRouter {
       GoRoute(
         path: '/company/:companyId/news/:newsId',
         name: 'company-news-detail',
-        builder: (context, state) => const CompanyNewsDetailScreen(),
-        //param 데이터 주어질 때 이걸로 바꾸세요
-        // builder: (context, state) {
-        //   final companyId = state.pathParameters['companyId']!;
-        //   final newsId = state.pathParameters['newsId']!;
-        //   return CompanyNewsDetailScreen(companyId: companyId, newsId: newsId);
-        // },
+        builder: (context, state) {
+          final companyId = state.pathParameters['companyId']!;
+          final newsId = state.pathParameters['newsId']!;
+          return CompanyNewsDetailScreen(
+            companyId: companyId,
+            newsId: newsId,
+          );
+        },
         redirect: (context, state) => RouteGuards.requireAuth(context, state),
       ),
 
