@@ -3,6 +3,7 @@ package com.ssafy.b205.backend.domain.auth.controller;
 import com.ssafy.b205.backend.domain.auth.dto.response.AccessTokenResponse;
 import com.ssafy.b205.backend.domain.auth.dto.response.SessionResponse;
 import com.ssafy.b205.backend.domain.auth.service.SessionService;
+import com.ssafy.b205.backend.infra.docs.DocRefs;
 import com.ssafy.b205.backend.support.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -19,6 +20,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @Tag(
         name = "Auth Session",
@@ -51,11 +53,11 @@ public class SessionController {
                                     """)
                             )
                     ),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "BadRequestError"),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "UnauthorizedError"),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "ForbiddenError"),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "NotFoundError"),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "InternalServerError")
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", ref = DocRefs.BAD_REQUEST),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", ref = DocRefs.UNAUTHORIZED),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", ref = DocRefs.FORBIDDEN),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", ref = DocRefs.NOT_FOUND),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", ref = DocRefs.INTERNAL)
             }
     )
     @PostMapping("/refresh")
@@ -81,10 +83,10 @@ public class SessionController {
             security = @SecurityRequirement(name = "bearerAuth"),
             responses = {
                     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "No Content"),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "UnauthorizedError"),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "ForbiddenError"),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "NotFoundError"),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "InternalServerError")
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", ref = DocRefs.UNAUTHORIZED),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", ref = DocRefs.FORBIDDEN),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", ref = DocRefs.NOT_FOUND),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", ref = DocRefs.INTERNAL)
             }
     )
     @PostMapping("/logout")
@@ -124,8 +126,8 @@ public class SessionController {
                                     """)
                             )
                     ),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "UnauthorizedError"),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "InternalServerError")
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", ref = DocRefs.UNAUTHORIZED),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", ref = DocRefs.INTERNAL)
             }
     )
     @Parameter(name = "X-Device-Id", in = ParameterIn.HEADER, required = true,
@@ -144,9 +146,9 @@ public class SessionController {
             security = @SecurityRequirement(name = "bearerAuth"),
             responses = {
                     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "No Content"),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "UnauthorizedError"),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "NotFoundError"),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "InternalServerError")
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", ref = DocRefs.UNAUTHORIZED),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", ref = DocRefs.NOT_FOUND),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", ref = DocRefs.INTERNAL)
             }
     )
     @Parameter(name = "X-Device-Id", in = ParameterIn.HEADER, required = true,
@@ -156,7 +158,7 @@ public class SessionController {
             @AuthenticationPrincipal String userUuid,
             @Parameter(name = "sid", in = ParameterIn.PATH, required = true,
                     description = "강제 종료할 세션의 UUID")
-            @PathVariable("sid") java.util.UUID sessionUuid
+            @PathVariable("sid") UUID sessionUuid
     ) {
         sessionService.revokeByUuid(userUuid, sessionUuid);
         return ResponseEntity.noContent().build();

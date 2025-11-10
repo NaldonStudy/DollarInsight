@@ -5,9 +5,10 @@ import com.ssafy.b205.backend.domain.chat.dto.request.ChangePaceRequest;
 import com.ssafy.b205.backend.domain.chat.dto.request.CreateSessionRequest;
 import com.ssafy.b205.backend.domain.chat.dto.response.AppendMessageResponse;
 import com.ssafy.b205.backend.domain.chat.dto.response.CreateSessionResponse;
-import com.ssafy.b205.backend.domain.chat.dto.response.HistoryResponse;
 import com.ssafy.b205.backend.domain.chat.dto.response.HistoryCursorResponse;
+import com.ssafy.b205.backend.domain.chat.dto.response.HistoryResponse;
 import com.ssafy.b205.backend.domain.chat.service.ChatService;
+import com.ssafy.b205.backend.infra.docs.DocRefs;
 import com.ssafy.b205.backend.support.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -62,10 +63,10 @@ public class ChatController {
                                     """)
                             )
                     ),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "BadRequestError"),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "UnauthorizedError"),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "ForbiddenError"),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "InternalServerError")
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", ref = DocRefs.BAD_REQUEST),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", ref = DocRefs.UNAUTHORIZED),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", ref = DocRefs.FORBIDDEN),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", ref = DocRefs.INTERNAL)
             }
     )
     @Parameter(name = "X-Device-Id", in = ParameterIn.HEADER, required = true,
@@ -116,11 +117,11 @@ public class ChatController {
                                     """)
                             )
                     ),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "BadRequestError"),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "UnauthorizedError"),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "ForbiddenError"),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "NotFoundError"),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "InternalServerError")
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", ref = DocRefs.BAD_REQUEST),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", ref = DocRefs.UNAUTHORIZED),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", ref = DocRefs.FORBIDDEN),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", ref = DocRefs.NOT_FOUND),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", ref = DocRefs.INTERNAL)
             }
     )
     @Parameter(name = "X-Device-Id", in = ParameterIn.HEADER, required = true,
@@ -167,10 +168,10 @@ public class ChatController {
                             responseCode = "200", description = "스트림 시작",
                             content = @Content(mediaType = "text/event-stream")
                     ),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "UnauthorizedError"),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "ForbiddenError"),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "NotFoundError"),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "InternalServerError")
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", ref = DocRefs.UNAUTHORIZED),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", ref = DocRefs.FORBIDDEN),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", ref = DocRefs.NOT_FOUND),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", ref = DocRefs.INTERNAL)
             }
     )
     @GetMapping(value = "/sessions/{sid}/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
@@ -196,10 +197,10 @@ public class ChatController {
             security = @SecurityRequirement(name = "bearerAuth"),
             responses = {
                     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "중단 성공"),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "UnauthorizedError"),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "ForbiddenError"),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "NotFoundError"),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "InternalServerError")
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", ref = DocRefs.UNAUTHORIZED),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", ref = DocRefs.FORBIDDEN),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", ref = DocRefs.NOT_FOUND),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", ref = DocRefs.INTERNAL)
             }
     )
     @Parameter(name = "X-Device-Id", in = ParameterIn.HEADER, required = true,
@@ -219,10 +220,10 @@ public class ChatController {
             security = @SecurityRequirement(name = "bearerAuth"),
             responses = {
                     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "재개 성공"),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "UnauthorizedError"),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "ForbiddenError"),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "NotFoundError"),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "InternalServerError")
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", ref = DocRefs.UNAUTHORIZED),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", ref = DocRefs.FORBIDDEN),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", ref = DocRefs.NOT_FOUND),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", ref = DocRefs.INTERNAL)
             }
     )
     @Parameter(name = "X-Device-Id", in = ParameterIn.HEADER, required = true,
@@ -242,11 +243,11 @@ public class ChatController {
             security = @SecurityRequirement(name = "bearerAuth"),
             responses = {
                     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "변경 성공"),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "BadRequestError"),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "UnauthorizedError"),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "ForbiddenError"),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "NotFoundError"),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "InternalServerError")
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", ref = DocRefs.BAD_REQUEST),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", ref = DocRefs.UNAUTHORIZED),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", ref = DocRefs.FORBIDDEN),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", ref = DocRefs.NOT_FOUND),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", ref = DocRefs.INTERNAL)
             }
     )
     @Parameter(name = "X-Device-Id", in = ParameterIn.HEADER, required = true,
@@ -295,10 +296,10 @@ public class ChatController {
                                     """)
                             )
                     ),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "UnauthorizedError"),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "ForbiddenError"),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "NotFoundError"),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "InternalServerError")
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", ref = DocRefs.UNAUTHORIZED),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", ref = DocRefs.FORBIDDEN),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", ref = DocRefs.NOT_FOUND),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", ref = DocRefs.INTERNAL)
             }
     )
     @Parameter(name = "X-Device-Id", in = ParameterIn.HEADER, required = true,
@@ -340,10 +341,10 @@ public class ChatController {
                                     """)
                             )
                     ),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "UnauthorizedError"),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "ForbiddenError"),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "NotFoundError"),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "InternalServerError")
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", ref = DocRefs.UNAUTHORIZED),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", ref = DocRefs.FORBIDDEN),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", ref = DocRefs.NOT_FOUND),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", ref = DocRefs.INTERNAL)
             }
     )
     @Parameter(name = "X-Device-Id", in = ParameterIn.HEADER, required = true,

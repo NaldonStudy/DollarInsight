@@ -4,6 +4,7 @@ import com.ssafy.b205.backend.domain.user.dto.request.LoginRequest;
 import com.ssafy.b205.backend.domain.user.dto.request.SignupRequest;
 import com.ssafy.b205.backend.domain.user.dto.response.TokenPairResponse;
 import com.ssafy.b205.backend.domain.auth.service.AuthApplicationService;
+import com.ssafy.b205.backend.infra.docs.DocRefs;
 import com.ssafy.b205.backend.support.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -40,9 +41,9 @@ public class AuthController {
                             examples = @ExampleObject(name = "success", value = """
                             { "accessToken": "eyJhbGciOi...", "refreshToken": "eyJhbGciOi..." }
                             """))),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "BadRequestError"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "ConflictError"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "InternalServerError")
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", ref = DocRefs.BAD_REQUEST),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", ref = DocRefs.CONFLICT),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", ref = DocRefs.INTERNAL)
     })
     @Parameter(name = "X-Device-Id", in = ParameterIn.HEADER, required = true,
             description = "디바이스 식별자(임의 문자열; 서버가 정규화)", example = "my-phone-01")
@@ -69,9 +70,9 @@ public class AuthController {
                             examples = @ExampleObject(name = "success", value = """
                             { "accessToken": "eyJhbGciOi...", "refreshToken": "eyJhbGciOi..." }
                             """))),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "BadRequestError"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "UnauthorizedError"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "InternalServerError")
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", ref = DocRefs.BAD_REQUEST),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", ref = DocRefs.UNAUTHORIZED),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", ref = DocRefs.INTERNAL)
     })
     @Parameter(name = "X-Device-Id", in = ParameterIn.HEADER, required = true,
             description = "디바이스 식별자(임의 문자열; 서버가 정규화)", example = "office-laptop#a")
