@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../providers/company_detail_provider.dart';
 import '../../widgets/company/watch_button.dart';
 import '../../widgets/company/stock_price_chart.dart';
+import '../../widgets/company/stock_score_chart.dart';
 import '../../widgets/common/scroll_fab_button.dart';
 import '../../widgets/common/top_navigation.dart';
 import '../chat/chat_list_screen.dart';
@@ -328,7 +329,7 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
     );
   }
 
-  /// 주가 그래프 페이지 (일봉/주봉/월봉)
+            /// 주가 그래프 페이지 (일봉/주봉/월봉)
   Widget _buildStockChartPage() {
     return Container(
       margin: EdgeInsets.symmetric(
@@ -376,7 +377,7 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
             controller: _scorePageController,
             children: [
               _buildIndicatorsPage(provider), // 투자지표
-              _buildStockScorePage(), // 주식점수
+              _buildStockScorePage(provider), // 주식점수
             ],
           ),
         ),
@@ -421,7 +422,7 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
   }
 
   /// 주식점수 페이지
-  Widget _buildStockScorePage() {
+  Widget _buildStockScorePage(CompanyDetailProvider provider) {
     return Container(
       margin: EdgeInsets.symmetric(
         horizontal: AppSpacing.horizontal(context),
@@ -432,12 +433,8 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
         color: Colors.white,
         borderRadius: BorderRadius.circular(8),
       ),
-      child: const Center(
-        child: Text(
-          'TODO: 주식점수 안내\n백엔드 API에서 점수 데이터 받아오기',
-          textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 14, color: Color(0xFF757575)),
-        ),
+      child: StockScoreChart(
+        scores: provider.stockScores,
       ),
     );
   }
