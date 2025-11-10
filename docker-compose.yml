@@ -282,7 +282,7 @@ services:
       - /var/lib/docker:/var/lib/docker:ro
       - /dev/disk:/dev/disk:ro
     ports:
-      - "8080:8080"
+      - "8888:8080"
     networks:
       - dollar-insight-network
 
