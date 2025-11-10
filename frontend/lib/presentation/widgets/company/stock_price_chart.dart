@@ -13,7 +13,7 @@ class StockPriceChart extends StatefulWidget {
 
 class _StockPriceChartState extends State<StockPriceChart> {
   // 선택된 차트 타입 (일봉, 주봉, 월봉)
-  String selectedPeriod = '일봉';
+  String selectedPeriod = '1일';
 
   // 더미 데이터 - 일봉 (상승하는 추세)
   final List<FlSpot> dailyData = [
@@ -49,9 +49,9 @@ class _StockPriceChartState extends State<StockPriceChart> {
   // 현재 선택된 데이터 가져오기
   List<FlSpot> get currentData {
     switch (selectedPeriod) {
-      case '주봉':
+      case '1주':
         return weeklyData;
-      case '월봉':
+      case '1월':
         return monthlyData;
       default:
         return dailyData;
@@ -67,9 +67,6 @@ class _StockPriceChartState extends State<StockPriceChart> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // 기간 선택 탭
-        _buildPeriodSelector(),
-        const SizedBox(height: 16),
         // 최저/최고치 표시
         _buildPriceInfo(),
         const SizedBox(height: 16),
@@ -82,6 +79,9 @@ class _StockPriceChartState extends State<StockPriceChart> {
             ),
           ),
         ),
+        const SizedBox(height: 16),
+        // 기간 선택 탭
+        _buildPeriodSelector(),
       ],
     );
   }

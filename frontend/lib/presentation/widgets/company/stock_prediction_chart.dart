@@ -1,230 +1,68 @@
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
-/// 주가 예측 그래프 위젯 (추차춥스 모양)
-/// 1주 후, 1달 후 예측치를 최저/예상/최고로 표시
+/// 주가예측 차트 위젯
+/// 1주/1달 각각에 최저/예상/최고 퍼센트를 세로로 쌓은 막대 그래프
 class StockPredictionChart extends StatelessWidget {
-  final List<PredictionData> predictions;
+  /// 1주 예측 데이터 (최저%, 예상%, 최고%)
+  final Map<String, double>? weekPrediction;
+
+  /// 1달 예측 데이터 (최저%, 예상%, 최고%)
+  final Map<String, double>? monthPrediction;
 
   const StockPredictionChart({
     super.key,
-    required this.predictions,
+    this.weekPrediction,
+    this.monthPrediction,
   });
+
+  // 색상 정의
+  static const lowColor = Color(0xFF2196F3); // 최저 - 파란색
+  static const expectedColor = Color(0xFF4CAF50); // 예상 - 초록색
+  static const highColor = Color(0xFFFF5252); // 최고 - 빨간색
+  static const betweenSpace = 0.2;
+
+  // 기본 더미 데이터
+  Map<String, double> get _defaultWeekPrediction => {
+        '최저': 2.5,
+        '예상': 3.5,
+        '최고': 4.0,
+      };
+
+  Map<String, double> get _defaultMonthPrediction => {
+        '최저': 3.0,
+        '예상': 5.0,
+        '최고': 6.0,
+      };
+
+  Map<String, double> get _weekData =>
+      weekPrediction ?? _defaultWeekPrediction;
+  Map<String, double> get _monthData =>
+      monthPrediction ?? _defaultMonthPrediction;
 
   @override
   Widget build(BuildContext context) {
-    if (predictions.isEmpty) {
-      return const Center(
-        child: Text(
-          '예측 데이터가 없습니다.',
-          style: TextStyle(color: Color(0xFF757575)),
-        ),
-      );
-    }
-
-    // 전체 데이터에서 최대/최소값 찾기
-    double globalMax = 0;
-    double globalMin = double.infinity;
-
-    for (var prediction in predictions) {
-      if (prediction.high > globalMax) globalMax = prediction.high;
-      if (prediction.low < globalMin) globalMin = prediction.low;
-    }
-
-    final range = globalMax - globalMin;
-    final chartHeight = 300.0;
-    final barWidth = 60.0;
-    final spacing = 40.0;
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
-          padding: EdgeInsets.only(left: 8, bottom: 16),
-          child: Text(
-            '주가 예측',
-            style: TextStyle(
-              color: Colors.black,
-              fontSize: 16,
-              fontFamily: 'Pretendard',
-              fontWeight: FontWeight.w700,
-            ),
+        const Text(
+          '주가 예측',
+          style: TextStyle(
+            color: Colors.black,
+            fontSize: 15,
+            fontFamily: 'Pretendard',
+            fontWeight: FontWeight.w700,
+            height: 1.87,
           ),
         ),
-        Expanded(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final totalWidth = predictions.length * (barWidth + spacing);
-              final availableWidth = constraints.maxWidth;
-              final leftPadding = (availableWidth - totalWidth) / 2;
-
-              return SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Container(
-                  height: chartHeight,
-                  padding: EdgeInsets.only(
-                    left: leftPadding > 0 ? leftPadding : 20,
-                    right: 20,
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: predictions.asMap().entries.map((entry) {
-                      return _buildPredictionBar(
-                        entry.value,
-                        globalMin,
-                        globalMax,
-                        range,
-                        chartHeight,
-                        barWidth,
-                        entry.key < predictions.length - 1 ? spacing : 0,
-                      );
-                    }).toList(),
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 8),
         _buildLegend(),
-      ],
-    );
-  }
-
-  Widget _buildPredictionBar(
-    PredictionData prediction,
-    double globalMin,
-    double globalMax,
-    double range,
-    double chartHeight,
-    double barWidth,
-    double rightMargin,
-  ) {
-    // 각 값의 높이 계산 (차트 하단부터의 높이)
-    final maxHeight = chartHeight - 40; // 상단 여백
-    final lowHeight = ((prediction.low - globalMin) / range) * maxHeight;
-    final expectedHeight = ((prediction.expected - globalMin) / range) * maxHeight;
-    final highHeight = ((prediction.high - globalMin) / range) * maxHeight;
-
-    // 선 높이 (최저가부터 최고가까지)
-    final lineHeight = highHeight - lowHeight;
-
-    return Container(
-      margin: EdgeInsets.only(right: rightMargin),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          // 차트 영역
-          SizedBox(
-            height: chartHeight - 40,
-            width: barWidth,
-            child: Stack(
-              alignment: Alignment.bottomCenter,
-              children: [
-                // 최저가부터 최고가까지 세로 선
-                Positioned(
-                  bottom: lowHeight,
-                  child: Container(
-                    width: 2,
-                    height: lineHeight,
-                    color: const Color(0xFF757575),
-                  ),
-                ),
-                // 최저가 점
-                Positioned(
-                  bottom: lowHeight - 6,
-                  child: _buildDot(
-                    Colors.blue,
-                    NumberFormat('#,###').format(prediction.low),
-                    '최저',
-                  ),
-                ),
-                // 예상가 점 (중간)
-                Positioned(
-                  bottom: expectedHeight - 6,
-                  child: _buildDot(
-                    const Color(0xFF2196F3),
-                    NumberFormat('#,###').format(prediction.expected),
-                    '예상',
-                  ),
-                ),
-                // 최고가 점
-                Positioned(
-                  bottom: highHeight - 6,
-                  child: _buildDot(
-                    Colors.red,
-                    NumberFormat('#,###').format(prediction.high),
-                    '최고',
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 8),
-          // X축 라벨
-          Text(
-            prediction.label,
-            style: const TextStyle(
-              color: Color(0xFF757575),
-              fontSize: 12,
-              fontFamily: 'Pretendard',
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDot(Color color, String value, String label) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // 왼쪽 라벨
-        Container(
-          constraints: const BoxConstraints(minWidth: 60),
-          child: Text(
-            value,
-            textAlign: TextAlign.right,
-            style: const TextStyle(
-              color: Color(0xFF595959),
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-        const SizedBox(width: 8),
-        // 점
-        Container(
-          width: 12,
-          height: 12,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: Colors.white,
-              width: 2,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.1),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(width: 8),
-        // 오른쪽 라벨
-        SizedBox(
-          width: 30,
-          child: Text(
-            label,
-            style: TextStyle(
-              color: color,
-              fontSize: 9,
-              fontWeight: FontWeight.w600,
+        const SizedBox(height: 16),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.only(right: 16, top: 8),
+            child: BarChart(
+              _buildBarChartData(),
             ),
           ),
         ),
@@ -232,19 +70,17 @@ class StockPredictionChart extends StatelessWidget {
     );
   }
 
+  /// 범례
   Widget _buildLegend() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          _buildLegendItem(Colors.red, '예측 최고가'),
-          const SizedBox(width: 16),
-          _buildLegendItem(const Color(0xFF2196F3), '예상가'),
-          const SizedBox(width: 16),
-          _buildLegendItem(Colors.blue, '예측 최저가'),
-        ],
-      ),
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        _buildLegendItem(lowColor, '최저'),
+        const SizedBox(width: 16),
+        _buildLegendItem(expectedColor, '예상'),
+        const SizedBox(width: 16),
+        _buildLegendItem(highColor, '최고'),
+      ],
     );
   }
 
@@ -265,25 +101,170 @@ class StockPredictionChart extends StatelessWidget {
           style: const TextStyle(
             color: Color(0xFF757575),
             fontSize: 10,
+            fontFamily: 'Pretendard',
             fontWeight: FontWeight.w500,
           ),
         ),
       ],
     );
   }
-}
 
-/// 예측 데이터 모델
-class PredictionData {
-  final String label; // '1주 후', '1달 후'
-  final double low; // 최저 예측가
-  final double expected; // 예상가
-  final double high; // 최고 예측가
+  /// 막대 그래프 데이터 구성
+  BarChartData _buildBarChartData() {
+    // 최대값 계산
+    final maxWeek = _weekData.values.reduce((a, b) => a + b);
+    final maxMonth = _monthData.values.reduce((a, b) => a + b);
+    final maxY = (maxWeek > maxMonth ? maxWeek : maxMonth) +
+        (betweenSpace * 2) +
+        2; // 여유 공간
 
-  PredictionData({
-    required this.label,
-    required this.low,
-    required this.expected,
-    required this.high,
-  });
+    return BarChartData(
+      alignment: BarChartAlignment.spaceAround,
+      maxY: maxY,
+      barTouchData: BarTouchData(
+        enabled: true,
+        touchTooltipData: BarTouchTooltipData(
+          getTooltipColor: (_) => Colors.black87,
+          tooltipRoundedRadius: 8,
+          tooltipPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          getTooltipItem: (group, groupIndex, rod, rodIndex) {
+            String period = group.x == 0 ? '1주' : '1달';
+            String type = rodIndex == 0
+                ? '최저'
+                : rodIndex == 1
+                    ? '예상'
+                    : '최고';
+            double value = rodIndex == 0
+                ? rod.toY
+                : rod.toY - rod.fromY - betweenSpace;
+
+            return BarTooltipItem(
+              '$period - $type\n',
+              const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 12,
+                fontFamily: 'Pretendard',
+              ),
+              children: <TextSpan>[
+                TextSpan(
+                  text: '${value.toStringAsFixed(1)}%',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    fontFamily: 'Pretendard',
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+      titlesData: FlTitlesData(
+        leftTitles: AxisTitles(
+          sideTitles: SideTitles(
+            showTitles: true,
+            reservedSize: 40,
+            getTitlesWidget: (value, meta) {
+              return Text(
+                '${value.toInt()}%',
+                style: const TextStyle(
+                  color: Color(0xFF757575),
+                  fontSize: 10,
+                  fontFamily: 'Pretendard',
+                  fontWeight: FontWeight.w500,
+                ),
+              );
+            },
+          ),
+        ),
+        rightTitles: const AxisTitles(
+          sideTitles: SideTitles(showTitles: false),
+        ),
+        topTitles: const AxisTitles(
+          sideTitles: SideTitles(showTitles: false),
+        ),
+        bottomTitles: AxisTitles(
+          sideTitles: SideTitles(
+            showTitles: true,
+            getTitlesWidget: _bottomTitles,
+            reservedSize: 30,
+          ),
+        ),
+      ),
+      borderData: FlBorderData(
+        show: true,
+        border: Border(
+          bottom: BorderSide(color: const Color(0xFFE0E0E0), width: 1),
+          left: BorderSide(color: const Color(0xFFE0E0E0), width: 1),
+        ),
+      ),
+      gridData: FlGridData(
+        show: true,
+        drawVerticalLine: false,
+        getDrawingHorizontalLine: (value) {
+          return FlLine(
+            color: const Color(0xFFE0E0E0),
+            strokeWidth: 1,
+          );
+        },
+      ),
+      barGroups: [
+        _generateGroupData(0, _weekData), // 1주
+        _generateGroupData(1, _monthData), // 1달
+      ],
+    );
+  }
+
+  /// 하단 타이틀
+  Widget _bottomTitles(double value, TitleMeta meta) {
+    const style = TextStyle(
+      color: Color(0xFF757575),
+      fontSize: 12,
+      fontFamily: 'Pretendard',
+      fontWeight: FontWeight.w600,
+    );
+    String text = value.toInt() == 0 ? '1주' : '1달';
+    return SideTitleWidget(
+      axisSide: meta.axisSide,
+      child: Text(text, style: style),
+    );
+  }
+
+  /// 막대 그룹 데이터 생성 (세로로 쌓기)
+  BarChartGroupData _generateGroupData(int x, Map<String, double> data) {
+    final low = data['최저'] ?? 0;
+    final expected = data['예상'] ?? 0;
+    final high = data['최고'] ?? 0;
+
+    return BarChartGroupData(
+      x: x,
+      groupVertically: true,
+      barRods: [
+        BarChartRodData(
+          fromY: 0,
+          toY: low,
+          color: lowColor,
+          width: 40,
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(4),
+            topRight: Radius.circular(4),
+          ),
+        ),
+        BarChartRodData(
+          fromY: low + betweenSpace,
+          toY: low + betweenSpace + expected,
+          color: expectedColor,
+          width: 40,
+        ),
+        BarChartRodData(
+          fromY: low + betweenSpace + expected + betweenSpace,
+          toY: low + betweenSpace + expected + betweenSpace + high,
+          color: highColor,
+          width: 40,
+        ),
+      ],
+    );
+  }
 }

@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
-/// 기업 상세 화면의 상태와 비즈니스 로직을 관리하는 Provider
-class CompanyDetailProvider with ChangeNotifier {
-  final String companyId;
+/// ETF 상세 화면의 상태와 비즈니스 로직을 관리하는 Provider
+class ETFDetailProvider with ChangeNotifier {
+  final String etfId;
 
-  CompanyDetailProvider({required this.companyId}) {
-    _loadCompanyData();
+  ETFDetailProvider({required this.etfId}) {
+    _loadETFData();
   }
 
   // ============= 상태 변수들 =============
@@ -16,8 +16,8 @@ class CompanyDetailProvider with ChangeNotifier {
   bool _isWatching = false;
   bool get isWatching => _isWatching;
 
-  String? _companyName;
-  String? get companyName => _companyName;
+  String? _etfName;
+  String? get etfName => _etfName;
 
   String? _currentPrice;
   String? get currentPrice => _currentPrice;
@@ -28,11 +28,9 @@ class CompanyDetailProvider with ChangeNotifier {
   String? _logoUrl;
   String? get logoUrl => _logoUrl;
 
-  Map<String, String>? _indicators;
-  Map<String, String>? get indicators => _indicators;
-
-  Map<String, double>? _stockScores;
-  Map<String, double>? get stockScores => _stockScores;
+  // ETF 투자지표 (시가총액, 배당수익률, 운용자산, 순자산가치, 괴리율, 운용보수)
+  Map<String, String>? _etfIndicators;
+  Map<String, String>? get etfIndicators => _etfIndicators;
 
   // 주가예측 데이터 (1주, 1달)
   Map<String, double>? _weekPrediction;
@@ -49,30 +47,27 @@ class CompanyDetailProvider with ChangeNotifier {
 
   // ============= 비즈니스 로직 =============
 
-  /// 기업 데이터 로드 (API 연결 지점)
-  Future<void> _loadCompanyData() async {
+  /// ETF 데이터 로드 (API 연결 지점)
+  Future<void> _loadETFData() async {
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
       // ============= API 연결 지점 =============
-      // 1. 기업 기본 정보 API 호출
-      await _fetchCompanyInfo();
+      // 1. ETF 기본 정보 API 호출
+      await _fetchETFInfo();
 
-      // 2. 투자지표 API 호출
-      await _fetchIndicators();
+      // 2. ETF 투자지표 API 호출
+      await _fetchETFIndicators();
 
-      // 3. 주식 점수 API 호출
-      await _fetchStockScores();
-
-      // 4. 주가예측 API 호출
+      // 3. 주가예측 API 호출
       await _fetchPredictions();
 
-      // 5. 기업 뉴스 API 호출 (최대 5개)
-      await _fetchCompanyNews();
+      // 4. ETF 뉴스 API 호출 (최대 5개)
+      await _fetchETFNews();
 
-      // 6. 관심종목 상태 확인
+      // 5. 관심종목 상태 확인
       await _checkWatchlistStatus();
 
       _isLoading = false;
@@ -84,70 +79,45 @@ class CompanyDetailProvider with ChangeNotifier {
     }
   }
 
-  /// 기업 기본 정보 API 호출
-  Future<void> _fetchCompanyInfo() async {
+  /// ETF 기본 정보 API 호출
+  Future<void> _fetchETFInfo() async {
     // TODO: API 연결
-    // final response = await companyRepository.getCompanyInfo(companyId);
-    // _companyName = response.name;
+    // final response = await etfRepository.getETFInfo(etfId);
+    // _etfName = response.name;
     // _currentPrice = response.currentPrice;
     // _currentPriceUsd = response.currentPriceUsd;
     // _logoUrl = response.logoUrl;
 
     // 임시 더미 데이터 (API 연결 후 삭제)
     await Future.delayed(const Duration(milliseconds: 300));
-    _companyName = '엔비디아';
-    _currentPrice = '293,027원';
-    _currentPriceUsd = '\$204.32';
+    _etfName = 'TIGER 미국S&P500';
+    _currentPrice = '15,320원';
+    _currentPriceUsd = '\$10.68';
     _logoUrl = null;
   }
 
-  /// 투자지표 API 호출
-  Future<void> _fetchIndicators() async {
+  /// ETF 투자지표 API 호출
+  Future<void> _fetchETFIndicators() async {
     // TODO: API 연결
-    // final response = await companyRepository.getIndicators(companyId);
-    // _indicators = response.indicators;
+    // final response = await etfRepository.getETFIndicators(etfId);
+    // _etfIndicators = response.indicators;
 
     // 임시 더미 데이터 (API 연결 후 삭제)
     await Future.delayed(const Duration(milliseconds: 300));
-    _indicators = {
-      '시가총액': '7000억원',
-      '배당수익률': '0.02%',
-      'PBR': '48.8배',
-      'PER': '56.4배',
-      'ROE': '109.4%',
-      'PSR': '29.6배',
-    };
-  }
-
-  /// 주식 점수 API 호출
-  Future<void> _fetchStockScores() async {
-    // TODO: API 연결
-    // final response = await companyRepository.getStockScores(companyId);
-    // _stockScores = {
-    //   '총점': response.totalScore.toDouble(),
-    //   '모멘텀': response.momentumScore.toDouble(),
-    //   '가치': response.valueScore.toDouble(),
-    //   '성장': response.growthScore.toDouble(),
-    //   '수급': response.supplyDemandScore.toDouble(),
-    //   '위험': response.riskScore.toDouble(),
-    // };
-
-    // 임시 더미 데이터 (API 연결 후 삭제)
-    await Future.delayed(const Duration(milliseconds: 300));
-    _stockScores = {
-      '총점': 70.0,
-      '모멘텀': 80.0,
-      '가치': 55.0,
-      '성장': 75.0,
-      '수급': 90.0,
-      '위험': 75.0,
+    _etfIndicators = {
+      '시가총액': '3조 2000억원',
+      '배당수익률': '1.5%',
+      '운용자산': '3조 1500억원',
+      '순자산가치': '15,310원',
+      '괴리율': '0.07%',
+      '운용보수(연)': '0.07%',
     };
   }
 
   /// 주가예측 API 호출
   Future<void> _fetchPredictions() async {
     // TODO: API 연결
-    // final response = await companyRepository.getPredictions(companyId);
+    // final response = await etfRepository.getPredictions(etfId);
     // _weekPrediction = {
     //   '최저': response.weekLow.toDouble(),
     //   '예측': response.weekExpected.toDouble(),
@@ -162,22 +132,22 @@ class CompanyDetailProvider with ChangeNotifier {
     // 임시 더미 데이터 (API 연결 후 삭제)
     await Future.delayed(const Duration(milliseconds: 300));
     _weekPrediction = {
-      '최저': 2.5, // %
-      '예상': 3.5, // %
-      '최고': 4.0, // %
+      '최저': 1.5, // %
+      '예상': 2.5, // %
+      '최고': 3.5, // %
     };
     _monthPrediction = {
-      '최저': 3.0, // %
-      '예상': 5.0, // %
-      '최고': 6.0, // %
+      '최저': 2.0, // %
+      '예상': 4.0, // %
+      '최고': 5.5, // %
     };
   }
 
-  /// 기업 뉴스 API 호출 (최대 5개)
-  Future<void> _fetchCompanyNews() async {
+  /// ETF 뉴스 API 호출 (최대 5개)
+  Future<void> _fetchETFNews() async {
     // TODO: API 연결
-    // final response = await newsRepository.getCompanyNews(
-    //   companyId: companyId,
+    // final response = await newsRepository.getETFNews(
+    //   etfId: etfId,
     //   limit: 5,
     // );
     // _newsList = response.newsList.map((news) => {
@@ -191,27 +161,27 @@ class CompanyDetailProvider with ChangeNotifier {
     _newsList = [
       {
         'id': '1',
-        'title': '[GAM]스텔란티스-엔비디아-우버-폭스콘, 로보택시 공동 개발',
+        'title': 'S&P500 지수, 신기록 경신...미국 증시 강세 지속',
         'url': 'https://example.com/news/1'
       },
       {
         'id': '2',
-        'title': '투자자들, 연준·기술주 실적에 대비하면서 AI 낙관론에 주가 상승',
+        'title': 'TIGER 미국S&P500, 순자산 3조원 돌파',
         'url': 'https://example.com/news/2'
       },
       {
         'id': '3',
-        'title': '트럼프, 엔비디아 \'슈퍼-듀퍼\' 블랙웰 칩에 中 시진핑과 논의할 수도',
+        'title': '해외 ETF 투자자 급증...S&P500 ETF 인기',
         'url': 'https://example.com/news/3'
       },
       {
         'id': '4',
-        'title': '엔비디아, 美 에너지부에 AI 슈퍼컴 7대 구축… 6G 인프라 구축도 추진',
+        'title': '미국 증시 전망, 금리 인하 기대감에 상승세',
         'url': 'https://example.com/news/4'
       },
       {
         'id': '5',
-        'title': '[오늘의 뉴욕증시 무버] 노키아, 엔비디아 10억 달러 투자 소식에 22.85%↑',
+        'title': 'ETF 시장 규모 10조원 돌파...S&P500 ETF가 주도',
         'url': 'https://example.com/news/5'
       },
     ];
@@ -220,7 +190,7 @@ class CompanyDetailProvider with ChangeNotifier {
   /// 관심종목 상태 확인 API 호출
   Future<void> _checkWatchlistStatus() async {
     // TODO: API 연결
-    // final response = await userRepository.checkWatchlist(companyId);
+    // final response = await userRepository.checkWatchlist(etfId);
     // _isWatching = response.isWatching;
 
     // 임시 더미 데이터 (API 연결 후 삭제)
@@ -230,7 +200,7 @@ class CompanyDetailProvider with ChangeNotifier {
 
   /// 데이터 새로고침
   Future<void> refresh() async {
-    await _loadCompanyData();
+    await _loadETFData();
   }
 
   /// 관심종목 추가/삭제 (API 연결 지점)
@@ -238,9 +208,9 @@ class CompanyDetailProvider with ChangeNotifier {
     try {
       // TODO: 백엔드 API 연결
       // if (_isWatching) {
-      //   await userRepository.removeFromWatchlist(companyId);
+      //   await userRepository.removeFromWatchlist(etfId);
       // } else {
-      //   await userRepository.addToWatchlist(companyId);
+      //   await userRepository.addToWatchlist(etfId);
       // }
 
       _isWatching = !_isWatching;
