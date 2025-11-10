@@ -105,9 +105,14 @@ public class TokenFilter extends OncePerRequestFilter {
             // ===== Device Binding (null-safe) =====
             String tokenDid = claims.get("did", String.class);
 
+            // 헤더에서 먼저 확인, 없으면 쿼리 파라미터에서 확인 (SSE용)
             String headerDidRaw = req.getHeader("X-Device-Id");
             if (headerDidRaw == null || headerDidRaw.isBlank()) {
-                // 장치 헤더가 없으면 토큰과 비교 이전에 차단
+                // 헤더가 없으면 쿼리 파라미터에서 확인 (SSE EventSource는 헤더 설정 불가)
+                headerDidRaw = req.getParameter("device_id");
+            }
+            if (headerDidRaw == null || headerDidRaw.isBlank()) {
+                // 장치 헤더/파라미터가 없으면 토큰과 비교 이전에 차단
                 ErrorHttpWriter.write(req, res, ErrorCode.FORBIDDEN, "[AuthSvc-E07] missing X-Device-Id");
                 return;
             }
