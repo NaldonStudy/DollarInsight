@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/constants/app_spacing.dart';
 import '../../widgets/common/top_navigation.dart';
@@ -102,6 +103,42 @@ class _AllNewsDetailScreenState extends State<AllNewsDetailScreen> {
 
           SizedBox(height: AppSpacing.section(context)),
 
+          /// ✅ 원문보기 / 채팅하기 버튼 영역
+          Padding(
+            padding: EdgeInsets.only(
+              left: w * 0.03,
+              right: w * 0.03,
+              top: AppSpacing.small(context),
+              bottom: AppSpacing.small(context),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                GestureDetector(
+                  onTap: () async {
+                    final url = Uri.parse(
+                      "https://kr.investing.com/news/stock-market-news/article-432SI-1703021",
+                    );
+                    if (await canLaunchUrl(url)) {
+                      await launchUrl(
+                        url,
+                        mode: LaunchMode.externalApplication, // ✅ 외부 브라우저 강제 실행
+                      );
+                    }
+                  },
+                  child: Text(
+                    "원문보기",
+                    style: TextStyle(
+                      fontSize: w * 0.038,
+                      color: const Color(0xFF8A8A8A),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
           /// ✅ 전체 컨텐츠 흰색 카드
           Container(
             width: double.infinity,
@@ -139,10 +176,7 @@ class _AllNewsDetailScreenState extends State<AllNewsDetailScreen> {
                 /// ✅ 날짜
                 Text(
                   "2025년 10월 30일 15:15",
-                  style: TextStyle(
-                    fontSize: w * 0.038,
-                    color: Colors.grey,
-                  ),
+                  style: TextStyle(fontSize: w * 0.038, color: Colors.grey),
                 ),
 
                 SizedBox(height: AppSpacing.medium(context)),
@@ -150,10 +184,10 @@ class _AllNewsDetailScreenState extends State<AllNewsDetailScreen> {
                 /// ✅ 본문 텍스트
                 Text(
                   "3사 모두 사상 최대 매출\n"
-                      "시장 평가는 크게 엇갈려\n"
-                      "알파벳, 클라우드 부문 고성장 견인\n"
-                      "MS, 과도한 설비 투자에 투자자 불안감 커져"
-                      "메타, 현실성 떨어진 비용에 EPS 예상 쇼크",
+                  "시장 평가는 크게 엇갈려\n"
+                  "알파벳, 클라우드 부문 고성장 견인\n"
+                  "MS, 과도한 설비 투자에 투자자 불안감 커져"
+                  "메타, 현실성 떨어진 비용에 EPS 예상 쇼크",
                   style: TextStyle(
                     fontSize: w * 0.040,
                     height: 1.5,
