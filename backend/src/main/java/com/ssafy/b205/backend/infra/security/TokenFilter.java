@@ -91,7 +91,7 @@ public class TokenFilter extends OncePerRequestFilter {
             }
         }
 
-        // 토큰 없음 → 체인 진행 (컨트롤러에서 401 처리)
+        // 토큰 없음 → 체인 진행 (컨트롤러/시큐리티가 401 처리)
         if (token == null || token.isBlank()) {
             chain.doFilter(req, res);
             return;
@@ -102,15 +102,22 @@ public class TokenFilter extends OncePerRequestFilter {
             Jws<Claims> jws = tokenProvider.parse(token);
             Claims claims = jws.getPayload();
 
-            // Device Binding (동일 정규화로 비교)
-            String tokenDid  = claims.get("did", String.class);
-            String headerDid = com.ssafy.b205.backend.infra.security.DeviceIdResolver.normalize(
-                    req.getHeader("X-Device-Id")
-            );
-            if (headerDid == null || headerDid.isBlank() || tokenDid == null || !tokenDid.equals(headerDid)) {
+            // ===== Device Binding (null-safe) =====
+            String tokenDid = claims.get("did", String.class);
+
+            String headerDidRaw = req.getHeader("X-Device-Id");
+            if (headerDidRaw == null || headerDidRaw.isBlank()) {
+                // 장치 헤더가 없으면 토큰과 비교 이전에 차단
+                ErrorHttpWriter.write(req, res, ErrorCode.FORBIDDEN, "[AuthSvc-E07] missing X-Device-Id");
+                return;
+            }
+            String headerDid = com.ssafy.b205.backend.infra.security.DeviceIdResolver.normalize(headerDidRaw);
+
+            if (tokenDid == null || !tokenDid.equals(headerDid)) {
                 ErrorHttpWriter.write(req, res, ErrorCode.FORBIDDEN, "[AuthSvc-E07] token.did ≠ X-Device-Id");
                 return;
             }
+            // =====================================
 
             // 권한
             var authorities = extractAuthorities(claims);
