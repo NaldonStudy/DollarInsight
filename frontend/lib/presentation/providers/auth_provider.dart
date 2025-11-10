@@ -16,16 +16,18 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final res = await AuthApi.signup(
+      // ✅ AuthApi는 {accessToken, refreshToken} 형태로 반환함
+      final tokens = await AuthApi.signup(
         email: email,
         nickname: nickname,
         password: password,
         pushEnabled: pushEnabled,
       );
 
+      // ✅ 토큰 저장
       await TokenStorage.saveTokens(
-        res['accessToken'],
-        res['refreshToken'],
+        tokens['accessToken'],
+        tokens['refreshToken'],
       );
     } catch (e) {
       rethrow;
@@ -44,14 +46,15 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final res = await AuthApi.login(
+      // ✅ 동일 구조
+      final tokens = await AuthApi.login(
         email: email,
         password: password,
       );
 
       await TokenStorage.saveTokens(
-        res['accessToken'],
-        res['refreshToken'],
+        tokens['accessToken'],
+        tokens['refreshToken'],
       );
     } catch (e) {
       rethrow;
@@ -64,11 +67,9 @@ class AuthProvider with ChangeNotifier {
   /// ✅ AccessToken 재발급
   Future<String> refresh() async {
     try {
-      final newToken = await AuthApi.refreshAccessToken();
-      return newToken;
+      return await AuthApi.refreshAccessToken();
     } catch (e) {
       rethrow;
     }
   }
-
 }
