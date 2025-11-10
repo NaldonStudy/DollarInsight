@@ -41,9 +41,12 @@ public class DeviceHeaderFilter extends OncePerRequestFilter {
         if (path.equals("/auth/login") || path.equals("/auth/signup") || path.equals("/auth/refresh")) return true;
         if (path.equals("/api/auth/login") || path.equals("/api/auth/signup") || path.equals("/api/auth/refresh")) return true;
 
+        // (운영에서 자주 오는 정적 리퀘스트)
+        if (path.equals("/favicon.ico") || path.equals("/robots.txt")) return true;
+        if (path.equals("/api/favicon.ico") || path.equals("/api/robots.txt")) return true;
+
         return false;
     }
-
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest req) {
@@ -55,12 +58,21 @@ public class DeviceHeaderFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res, FilterChain chain)
             throws ServletException, IOException {
-        String deviceId = DeviceIdResolver.normalize(req.getHeader("X-Device-Id"));
-        if (deviceId == null || deviceId.isBlank()) {
+
+        // 🔒 null-safe: normalize 이전에 헤더 존재/공백 체크
+        String raw = req.getHeader("X-Device-Id");
+        if (raw == null || raw.isBlank()) {
             ErrorHttpWriter.write(req, res, ErrorCode.BAD_REQUEST,
                     "[DeviceSvc-E01] required header missing or empty: X-Device-Id");
             return;
         }
+
+        // 여기서부터는 null 아님이 보장됨
+        String deviceId = DeviceIdResolver.normalize(raw);
+
+        // (선택) 정규화된 값을 다시 헤더에 덮어써두면 뒤 필터에서 동일 규칙 사용 가능
+        // req.setAttribute("X-Device-Id-Normalized", deviceId);
+
         chain.doFilter(req, res);
     }
 }
