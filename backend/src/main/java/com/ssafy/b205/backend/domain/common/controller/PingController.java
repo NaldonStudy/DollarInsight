@@ -1,5 +1,7 @@
 package com.ssafy.b205.backend.domain.common.controller;
 
+import com.ssafy.b205.backend.infra.docs.DocRefs;
+import com.ssafy.b205.backend.infra.security.TokenProvider;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
@@ -15,8 +17,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
-
-import com.ssafy.b205.backend.infra.security.TokenProvider;
 
 import java.util.Arrays;
 import java.util.Map;
@@ -42,13 +42,14 @@ public class PingController {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "200", description = "OK",
                     content = @Content(
+                            mediaType = "application/json",
                             schema = @Schema(implementation = Object.class),
                             examples = @ExampleObject(value = """
                             { "ok": true, "scope": "public" }
                             """)
                     )
             ),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "InternalServerError")
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", ref = DocRefs.INTERNAL)
     })
     @GetMapping("/public/ping")
     public ResponseEntity<?> publicPing() {
@@ -64,15 +65,16 @@ public class PingController {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "200", description = "OK",
                     content = @Content(
+                            mediaType = "application/json",
                             schema = @Schema(implementation = Object.class),
                             examples = @ExampleObject(value = """
                             { "ok": true, "scope": "secured" }
                             """)
                     )
             ),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "UnauthorizedError"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "ForbiddenError"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "InternalServerError")
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", ref = DocRefs.UNAUTHORIZED),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", ref = DocRefs.FORBIDDEN),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", ref = DocRefs.INTERNAL)
     })
     @Parameter(name = "X-Device-Id", in = ParameterIn.HEADER, required = true,
             description = "디바이스 식별자", example = "11111111-1111-1111-1111-111111111111")
@@ -93,15 +95,16 @@ public class PingController {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "200", description = "발급 성공",
                     content = @Content(
+                            mediaType = "application/json",
                             schema = @Schema(implementation = Object.class),
                             examples = @ExampleObject(value = """
-                            { "accessToken": "eyJhbGciOi..." }
-                            """)
+                        { "accessToken": "eyJhbGciOi..." }
+                        """)
                     )
             ),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "BadRequestError"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "NotFoundError"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "InternalServerError")
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", ref = DocRefs.BAD_REQUEST),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", ref = DocRefs.NOT_FOUND),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", ref = DocRefs.INTERNAL)
     })
     @Parameter(name = "X-Device-Id", in = ParameterIn.HEADER, required = true,
             description = "디바이스 식별자", example = "11111111-1111-1111-1111-111111111111")
