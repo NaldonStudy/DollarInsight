@@ -6,6 +6,8 @@ import com.ssafy.b205.backend.domain.user.dto.response.UserResponse;
 import com.ssafy.b205.backend.domain.user.service.UserService;
 import com.ssafy.b205.backend.support.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -17,7 +19,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-@Tag(name = "Users")
+@Tag(name = "Users", description = "사용자 프로필 조회/수정 및 계정 탈퇴 API")
 @RestController
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
@@ -42,16 +44,42 @@ public class UserController {
                                           "status": "ACTIVE",
                                           "createdAt": "2025-11-01T08:21:34.123Z"
                                         }
-                                    """)))
+                                    """)
+                            )
+                    ),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "UnauthorizedError"),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "InternalServerError")
             }
     )
+    @Parameter(name = "X-Device-Id", in = ParameterIn.HEADER, required = true,
+            description = "디바이스 식별자", example = "11111111-1111-1111-1111-111111111111")
     @GetMapping("/me")
     public ApiResponse<UserResponse> me(@AuthenticationPrincipal String userUuid) {
         return ApiResponse.ok(new UserResponse(userService.getByUuid(userUuid)));
     }
 
-    @Operation(summary = "닉네임 변경", description = "닉네임은 2~20자",
-            responses = { @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "No Content") })
+    @Operation(
+            summary = "닉네임 변경",
+            description = "닉네임은 2~20자",
+            responses = {
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "No Content"),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "BadRequestError"),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "UnauthorizedError"),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "ConflictError"),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "InternalServerError")
+            }
+    )
+    @Parameter(name = "X-Device-Id", in = ParameterIn.HEADER, required = true,
+            description = "디바이스 식별자", example = "11111111-1111-1111-1111-111111111111")
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            required = true,
+            content = @Content(
+                    schema = @Schema(implementation = NicknameUpdateRequest.class),
+                    examples = @ExampleObject(value = """
+                        { "nickname": "NewNick_2025" }
+                    """)
+            )
+    )
     @PatchMapping("/me/nickname")
     public ResponseEntity<Void> changeNickname(@AuthenticationPrincipal String userUuid,
                                                @RequestBody @Valid NicknameUpdateRequest req) {
@@ -59,8 +87,27 @@ public class UserController {
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "비밀번호 변경", description = "oldPassword 검증 후 newPassword로 변경",
-            responses = { @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "No Content") })
+    @Operation(
+            summary = "비밀번호 변경",
+            description = "oldPassword 검증 후 newPassword로 변경",
+            responses = {
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "No Content"),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "BadRequestError"),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "UnauthorizedError"),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "InternalServerError")
+            }
+    )
+    @Parameter(name = "X-Device-Id", in = ParameterIn.HEADER, required = true,
+            description = "디바이스 식별자", example = "11111111-1111-1111-1111-111111111111")
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            required = true,
+            content = @Content(
+                    schema = @Schema(implementation = PasswordChangeRequest.class),
+                    examples = @ExampleObject(value = """
+                        { "oldPassword": "P@ssw0rd!", "newPassword": "N3wP@ssw0rd!" }
+                    """)
+            )
+    )
     @PatchMapping("/me/password")
     public ResponseEntity<Void> changePassword(@AuthenticationPrincipal String userUuid,
                                                @RequestBody @Valid PasswordChangeRequest req) {
@@ -68,8 +115,16 @@ public class UserController {
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "계정 탈퇴(soft delete)",
-            responses = { @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "No Content") })
+    @Operation(
+            summary = "계정 탈퇴(soft delete)",
+            responses = {
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "No Content"),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "UnauthorizedError"),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "InternalServerError")
+            }
+    )
+    @Parameter(name = "X-Device-Id", in = ParameterIn.HEADER, required = true,
+            description = "디바이스 식별자", example = "11111111-1111-1111-1111-111111111111")
     @DeleteMapping("/me")
     public ResponseEntity<Void> deleteMe(@AuthenticationPrincipal String userUuid) {
         userService.softDelete(userUuid);
