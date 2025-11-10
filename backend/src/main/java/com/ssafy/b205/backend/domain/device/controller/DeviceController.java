@@ -2,6 +2,7 @@ package com.ssafy.b205.backend.domain.device.controller;
 
 import com.ssafy.b205.backend.domain.device.entity.UserDevice;
 import com.ssafy.b205.backend.domain.device.service.DeviceService;
+import com.ssafy.b205.backend.infra.docs.DocRefs;
 import com.ssafy.b205.backend.support.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -44,8 +45,8 @@ public class DeviceController {
                                     """)
                             )
                     ),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "UnauthorizedError"),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "InternalServerError")
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", ref = DocRefs.UNAUTHORIZED),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", ref = DocRefs.INTERNAL)
             }
     )
     @Parameter(name = "X-Device-Id", in = ParameterIn.HEADER, required = true,
@@ -60,10 +61,10 @@ public class DeviceController {
             description = "헤더 X-Device-Id로 현재 기기를 찾아 pushToken / enabled 상태를 갱신합니다.",
             responses = {
                     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "No Content"),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "BadRequestError"),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "UnauthorizedError"),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "NotFoundError"),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "InternalServerError")
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", ref = DocRefs.BAD_REQUEST),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", ref = DocRefs.UNAUTHORIZED),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", ref = DocRefs.NOT_FOUND),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", ref = DocRefs.INTERNAL)
             }
     )
     @Parameter(name = "X-Device-Id", in = ParameterIn.HEADER, required = true,
@@ -88,9 +89,9 @@ public class DeviceController {
             description = "deviceId(UUID)로 내 기기를 삭제합니다.",
             responses = {
                     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "삭제 성공"),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "UnauthorizedError"),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "NotFoundError"),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "InternalServerError")
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", ref = DocRefs.UNAUTHORIZED),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", ref = DocRefs.NOT_FOUND),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", ref = DocRefs.INTERNAL)
             }
     )
     @Parameter(name = "X-Device-Id", in = ParameterIn.HEADER, required = true,

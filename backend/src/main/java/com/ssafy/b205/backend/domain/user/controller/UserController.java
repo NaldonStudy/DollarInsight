@@ -4,6 +4,7 @@ import com.ssafy.b205.backend.domain.user.dto.request.NicknameUpdateRequest;
 import com.ssafy.b205.backend.domain.user.dto.request.PasswordChangeRequest;
 import com.ssafy.b205.backend.domain.user.dto.response.UserResponse;
 import com.ssafy.b205.backend.domain.user.service.UserService;
+import com.ssafy.b205.backend.infra.docs.DocRefs;
 import com.ssafy.b205.backend.support.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -11,6 +12,7 @@ import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -47,8 +49,8 @@ public class UserController {
                                     """)
                             )
                     ),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "UnauthorizedError"),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "InternalServerError")
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", ref = DocRefs.UNAUTHORIZED),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", ref = DocRefs.INTERNAL)
             }
     )
     @Parameter(name = "X-Device-Id", in = ParameterIn.HEADER, required = true,
@@ -63,10 +65,10 @@ public class UserController {
             description = "닉네임은 2~20자",
             responses = {
                     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "No Content"),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "BadRequestError"),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "UnauthorizedError"),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "ConflictError"),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "InternalServerError")
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", ref = DocRefs.BAD_REQUEST),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", ref = DocRefs.UNAUTHORIZED),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", ref = DocRefs.CONFLICT),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", ref = DocRefs.INTERNAL)
             }
     )
     @Parameter(name = "X-Device-Id", in = ParameterIn.HEADER, required = true,
@@ -74,6 +76,7 @@ public class UserController {
     @io.swagger.v3.oas.annotations.parameters.RequestBody(
             required = true,
             content = @Content(
+                    mediaType = "application/json",
                     schema = @Schema(implementation = NicknameUpdateRequest.class),
                     examples = @ExampleObject(value = """
                         { "nickname": "NewNick_2025" }
@@ -92,9 +95,9 @@ public class UserController {
             description = "oldPassword 검증 후 newPassword로 변경",
             responses = {
                     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "No Content"),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "BadRequestError"),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "UnauthorizedError"),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "InternalServerError")
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", ref = DocRefs.BAD_REQUEST),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", ref = DocRefs.UNAUTHORIZED),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", ref = DocRefs.INTERNAL)
             }
     )
     @Parameter(name = "X-Device-Id", in = ParameterIn.HEADER, required = true,
@@ -102,6 +105,7 @@ public class UserController {
     @io.swagger.v3.oas.annotations.parameters.RequestBody(
             required = true,
             content = @Content(
+                    mediaType = "application/json",
                     schema = @Schema(implementation = PasswordChangeRequest.class),
                     examples = @ExampleObject(value = """
                         { "oldPassword": "P@ssw0rd!", "newPassword": "N3wP@ssw0rd!" }
@@ -119,8 +123,8 @@ public class UserController {
             summary = "계정 탈퇴(soft delete)",
             responses = {
                     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "No Content"),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "UnauthorizedError"),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(ref = "InternalServerError")
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", ref = DocRefs.UNAUTHORIZED),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", ref = DocRefs.INTERNAL)
             }
     )
     @Parameter(name = "X-Device-Id", in = ParameterIn.HEADER, required = true,
