@@ -178,13 +178,20 @@ public class ChatController {
     public SseEmitter stream(
             @AuthenticationPrincipal String userUuid,
             @Parameter(name = "sid", description = "세션 UUID") @PathVariable("sid") UUID sessionId,
-            @Parameter(name = "X-Device-Id", in = ParameterIn.HEADER, required = true,
-                    description = "디바이스 식별자(UUID v4)", example = "11111111-1111-1111-1111-111111111111")
-            @RequestHeader("X-Device-Id") String deviceId,
+            @Parameter(name = "X-Device-Id", in = ParameterIn.HEADER, required = false,
+                    description = "디바이스 식별자(UUID v4, 헤더 또는 쿼리 파라미터 device_id)", example = "11111111-1111-1111-1111-111111111111")
+            @RequestHeader(value = "X-Device-Id", required = false) String deviceIdHeader,
+            @Parameter(name = "device_id", in = ParameterIn.QUERY, required = false,
+                    description = "디바이스 식별자(UUID v4, SSE용 쿼리 파라미터)", example = "11111111-1111-1111-1111-111111111111")
+            @RequestParam(value = "device_id", required = false) String deviceIdParam,
             @Parameter(name = "Last-Event-ID", in = ParameterIn.HEADER, required = false,
                     description = "SSE 재연결용 마지막 이벤트 ID(옵션)", example = "128")
             @RequestHeader(value = "Last-Event-ID", required = false) String lastEventId
     ) {
+        // 헤더 또는 쿼리 파라미터에서 deviceId 가져오기
+        String deviceId = (deviceIdHeader != null && !deviceIdHeader.isBlank())
+                ? deviceIdHeader
+                : deviceIdParam;
         return chatService.streamAssistant(userUuid, sessionId, deviceId, lastEventId);
     }
 
