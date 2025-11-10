@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/company_detail_provider.dart';
 import '../../widgets/company/watch_button.dart';
+import '../../widgets/company/stock_price_chart.dart';
 import '../../widgets/common/scroll_fab_button.dart';
 import '../../widgets/common/top_navigation.dart';
 import '../chat/chat_list_screen.dart';
@@ -327,7 +328,7 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
     );
   }
 
-  /// 주가 그래프 페이지 (MVP: 일봉)
+  /// 주가 그래프 페이지 (일봉/주봉/월봉)
   Widget _buildStockChartPage() {
     return Container(
       margin: EdgeInsets.symmetric(
@@ -339,13 +340,7 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
         color: Colors.white,
         borderRadius: BorderRadius.circular(8),
       ),
-      child: const Center(
-        child: Text(
-          'TODO: 주가 그래프 (일봉)\n백엔드 API에서 차트 데이터 받아오기',
-          textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 14, color: Color(0xFF757575)),
-        ),
-      ),
+      child: const StockPriceChart(),
     );
   }
 
