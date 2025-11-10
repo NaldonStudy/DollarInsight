@@ -35,12 +35,9 @@ dependencies:
   go_router: ^13.0.0
   shared_preferences: ^2.2.2
   provider: ^6.1.5+1
-<<<<<<< HEAD
   url_launcher: ^6.3.1
   fl_chart: ^0.69.0
-=======
   uuid: ^4.3.3
->>>>>>> 0718b11198324ccfad1fa5b2c68098d97fe435be
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
