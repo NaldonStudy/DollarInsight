@@ -1,0 +1,18 @@
+# Airflow Docker ignore 파일
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+venv/
+env/
+.venv
+*.log
+.git/
+.gitignore
+*.md
+.DS_Store
+*.swp
+*.swo
+*~
+

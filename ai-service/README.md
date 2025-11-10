@@ -10,6 +10,234 @@ FastAPI 기반 AI 마이크로서비스
 - **Database**: MongoDB, ChromaDB (Vector DB)
 - **Cache**: Redis
 
+## Docker 빌드 및 실행
+
+### 우분투에서 빠른 실행 (권장)
+
+```bash
+# 1. 이미지 빌드
+docker build -t ai-service:latest .
+
+# 2. 컨테이너 실행 (백그라운드)
+docker run -d \
+  --name ai-service \
+  -p 8000:8000 \
+  ai-service:latest
+
+# 3. 실행 확인
+curl http://localhost:8000/health
+
+# 4. 로그 확인
+docker logs ai-service
+
+# 5. 컨테이너 중지
+docker stop ai-service
+
+# 6. 컨테이너 삭제
+docker rm ai-service
+```
+
+### 기존 컨테이너가 있는 경우
+
+```bash
+# 기존 컨테이너 중지 및 삭제
+docker stop ai-service 2>/dev/null || true
+docker rm ai-service 2>/dev/null || true
+
+# 이미지 재빌드
+docker build -t ai-service:latest .
+
+# 새로 실행
+docker run -d \
+  --name ai-service \
+  -p 8000:8000 \
+  ai-service:latest
+```
+
+### 환경 변수 설정 (필요시)
+
+```bash
+# .env 파일이 있다면 (이미 .dockerignore에서 제외 해제되어 이미지에 포함됨)
+# 또는 실행 시 직접 전달:
+docker run -d \
+  --name ai-service \
+  --env-file .env \
+  -p 8000:8000 \
+  ai-service:latest
+```
+
+## API 사용 예시
+
+### 1. 헬스 체크
+```bash
+curl http://localhost:8000/health
+# 응답: {"status":"ok","service":"ai-service"}
+```
+
+### 2. 루트 엔드포인트
+```bash
+curl http://localhost:8000/
+# 응답: {"message":"AI 투자 토론 시스템 API"}
+```
+
+### 3. 세션 시작 (토론 시작)
+```bash
+curl -X POST http://localhost:8000/start \
+  -H "Content-Type: application/json" \
+  -d '{
+    "session_id": "test-session-001",
+    "user_input": "테슬라 주식에 대해 토론해주세요",
+    "pace_ms": 3000,
+    "personas": ["희열", "덕수", "지율"]
+  }'
+
+# 응답 예시:
+# {
+#   "ok": true,
+#   "session_id": "test-session-001",
+#   "pace_ms": 3000,
+#   "active_agents": ["희열", "덕수", "지율"]
+# }
+```
+
+**파라미터 설명:**
+- `session_id`: 세션 고유 ID
+- `user_input`: 토론 주제/질문
+- `pace_ms`: 메시지 간 간격 (밀리초, 기본값: 3000)
+- `personas`: 참여할 AI 에이전트 목록 (선택사항, 기본값: 모든 에이전트)
+
+**사용 가능한 에이전트:**
+- `희열`: 🔥 긍정적이고 열정적인 투자자
+- `덕수`: 🧘 신중하고 안정적인 투자자
+- `지율`: 📊 데이터 중심의 분석가
+- `테오`: 🚀 기술 및 혁신 전문가
+- `민지`: 📱 트렌드 및 소셜 분석가
+
+### 4. SSE 스트림으로 실시간 토론 수신
+```bash
+# 별도 터미널에서 실행
+curl -N http://localhost:8000/stream?session_id=test-session-001
+
+# 응답 예시 (SSE 형식):
+# id: 0
+# event: message
+# data: {"session_id":"test-session-001","speaker":"희열","text":"테슬라는...","turn":1,"ts_ms":1234567890}
+# 
+# id: 1
+# event: message
+# data: {"session_id":"test-session-001","speaker":"덕수","text":"하지만...","turn":2,"ts_ms":1234567891}
+```
+
+### 5. 사용자 입력 전송
+```bash
+curl -X POST http://localhost:8000/input \
+  -H "Content-Type: application/json" \
+  -d '{
+    "session_id": "test-session-001",
+    "user_input": "그럼 애플은 어떨까요?"
+  }'
+
+# 응답: {"ok": true, "message": "User input received"}
+```
+
+### 6. 세션 제어 (일시정지/재개/속도 조절)
+```bash
+# 일시정지
+curl -X POST http://localhost:8000/control \
+  -H "Content-Type: application/json" \
+  -d '{
+    "session_id": "test-session-001",
+    "action": "STOP"
+  }'
+
+# 재개
+curl -X POST http://localhost:8000/control \
+  -H "Content-Type: application/json" \
+  -d '{
+    "session_id": "test-session-001",
+    "action": "RESUME"
+  }'
+
+# 속도 변경 (1초마다 메시지)
+curl -X POST http://localhost:8000/control \
+  -H "Content-Type: application/json" \
+  -d '{
+    "session_id": "test-session-001",
+    "action": "CHANGE_PACE",
+    "pace_ms": 1000
+  }'
+```
+
+### 7. 활성 세션 목록 조회
+```bash
+curl http://localhost:8000/sessions
+
+# 응답 예시:
+# {
+#   "sessions": [
+#     {
+#       "session_id": "test-session-001",
+#       "updated_at": 1234567890.123,
+#       "speakers": ["희열", "덕수", "지율"],
+#       "pause_mode": false
+#     }
+#   ]
+# }
+```
+
+### 전체 워크플로우 예시
+
+```bash
+# 1. 세션 시작
+SESSION_ID="demo-$(date +%s)"
+curl -X POST http://localhost:8000/start \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"session_id\": \"$SESSION_ID\",
+    \"user_input\": \"비트코인 투자에 대해 토론해주세요\",
+    \"pace_ms\": 2000,
+    \"personas\": [\"희열\", \"덕수\", \"지율\", \"테오\", \"민지\"]
+  }"
+
+# 2. SSE 스트림으로 실시간 메시지 수신 (별도 터미널)
+curl -N "http://localhost:8000/stream?session_id=$SESSION_ID"
+
+# 3. 사용자 입력 추가 (원하는 시점에)
+curl -X POST http://localhost:8000/input \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"session_id\": \"$SESSION_ID\",
+    \"user_input\": \"이더리움은 어떨까요?\"
+  }"
+
+# 4. 세션 상태 확인
+curl "http://localhost:8000/sessions"
+```
+
+### 스크립트를 사용하는 경우
+
+```bash
+# 이미지 빌드
+./scripts/build.sh
+
+# 또는 특정 버전으로
+./scripts/build.sh v1.0.0
+
+# Windows
+scripts\build.bat
+```
+
+### Docker Compose로 전체 스택 실행
+
+```bash
+# 루트 디렉토리에서
+cd ..
+docker-compose up -d ai-service
+
+# 또는 전체 스택
+docker-compose up -d
+```
+
 ## 프로젝트 구조
 
 ```
@@ -72,52 +300,6 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
 # 프로덕션 모드
 uvicorn main:app --host 0.0.0.0 --port 8000
-```
-
-## Docker 빌드 및 실행
-
-### 1. 환경 변수 설정
-
-```bash
-# .env 파일 생성
-cp .env.template .env
-
-# 필요에 따라 .env 파일 수정
-vim .env
-```
-
-### 2. Docker 이미지 빌드
-
-```bash
-# 이미지 빌드
-./scripts/build.sh
-
-# 또는 특정 버전으로
-./scripts/build.sh v1.0.0
-
-# Windows
-scripts\build.bat
-```
-
-### 3. 단독 실행
-
-```bash
-docker run -d \
-  --name ai-service \
-  --env-file .env \
-  -p 8000:8000 \
-  dollar-insight-ai-service:latest
-```
-
-### 4. Docker Compose로 전체 스택 실행
-
-```bash
-# 루트 디렉토리에서
-cd ..
-docker-compose up -d ai-service
-
-# 또는 전체 스택
-docker-compose up -d
 ```
 
 ## API 엔드포인트
