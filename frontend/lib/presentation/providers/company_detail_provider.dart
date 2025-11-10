@@ -46,59 +46,18 @@ class CompanyDetailProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      // TODO: 백엔드 API 연결
+      // ============= API 연결 지점 =============
       // 1. 기업 기본 정보 API 호출
-      // final companyInfo = await companyRepository.getCompanyInfo(companyId);
+      await _fetchCompanyInfo();
 
       // 2. 투자지표 API 호출
-      // final indicatorData = await companyRepository.getIndicators(companyId);
+      await _fetchIndicators();
 
-      // 3. 기업 뉴스 API 호출
-      // final newsData = await newsRepository.getCompanyNews(companyId);
+      // 3. 기업 뉴스 API 호출 (최대 5개)
+      await _fetchCompanyNews();
 
       // 4. 관심종목 상태 확인
-      // final watchStatus = await userRepository.checkWatchlist(companyId);
-
-      // 임시 더미 데이터 (API 연결 후 삭제)
-      await Future.delayed(const Duration(seconds: 1));
-
-      _companyName = '엔비디아';
-      _currentPrice = '293,027원';
-      _currentPriceUsd = '\$204.32';
-      _logoUrl = null;
-      _isWatching = false;
-
-      _indicators = {
-        '시가총액': '7000억원',
-        '배당수익률': '0.02%',
-        'PBR': '48.8배',
-        'PER': '56.4배',
-        'ROE': '109.4%',
-        'PSR': '29.6배',
-      };
-
-      _newsList = [
-        {
-          'title': '[GAM]스텔란티스-엔비디아-우버-폭스콘, 로보택시 공동 개발',
-          'url': 'https://example.com/news/1'
-        },
-        {
-          'title': '투자자들, 연준·기술주 실적에 대비하면서 AI 낙관론에 주가 상승',
-          'url': 'https://example.com/news/2'
-        },
-        {
-          'title': '트럼프, 엔비디아 \'슈퍼-듀퍼\' 블랙웰 칩에 中 시진핑과 논의할 수도',
-          'url': 'https://example.com/news/3'
-        },
-        {
-          'title': '엔비디아, 美 에너지부에 AI 슈퍼컴 7대 구축… 6G 인프라 구축도 추진',
-          'url': 'https://example.com/news/4'
-        },
-        {
-          'title': '[오늘의 뉴욕증시 무버] 노키아, 엔비디아 10억 달러 투자 소식에 22.85%↑',
-          'url': 'https://example.com/news/5'
-        },
-      ];
+      await _checkWatchlistStatus();
 
       _isLoading = false;
       notifyListeners();
@@ -107,6 +66,96 @@ class CompanyDetailProvider with ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  /// 기업 기본 정보 API 호출
+  Future<void> _fetchCompanyInfo() async {
+    // TODO: API 연결
+    // final response = await companyRepository.getCompanyInfo(companyId);
+    // _companyName = response.name;
+    // _currentPrice = response.currentPrice;
+    // _currentPriceUsd = response.currentPriceUsd;
+    // _logoUrl = response.logoUrl;
+
+    // 임시 더미 데이터 (API 연결 후 삭제)
+    await Future.delayed(const Duration(milliseconds: 300));
+    _companyName = '엔비디아';
+    _currentPrice = '293,027원';
+    _currentPriceUsd = '\$204.32';
+    _logoUrl = null;
+  }
+
+  /// 투자지표 API 호출
+  Future<void> _fetchIndicators() async {
+    // TODO: API 연결
+    // final response = await companyRepository.getIndicators(companyId);
+    // _indicators = response.indicators;
+
+    // 임시 더미 데이터 (API 연결 후 삭제)
+    await Future.delayed(const Duration(milliseconds: 300));
+    _indicators = {
+      '시가총액': '7000억원',
+      '배당수익률': '0.02%',
+      'PBR': '48.8배',
+      'PER': '56.4배',
+      'ROE': '109.4%',
+      'PSR': '29.6배',
+    };
+  }
+
+  /// 기업 뉴스 API 호출 (최대 5개)
+  Future<void> _fetchCompanyNews() async {
+    // TODO: API 연결
+    // final response = await newsRepository.getCompanyNews(
+    //   companyId: companyId,
+    //   limit: 5,
+    // );
+    // _newsList = response.newsList.map((news) => {
+    //   'id': news.id,
+    //   'title': news.title,
+    //   'url': news.url,
+    // }).toList();
+
+    // 임시 더미 데이터 (API 연결 후 삭제)
+    await Future.delayed(const Duration(milliseconds: 300));
+    _newsList = [
+      {
+        'id': '1',
+        'title': '[GAM]스텔란티스-엔비디아-우버-폭스콘, 로보택시 공동 개발',
+        'url': 'https://example.com/news/1'
+      },
+      {
+        'id': '2',
+        'title': '투자자들, 연준·기술주 실적에 대비하면서 AI 낙관론에 주가 상승',
+        'url': 'https://example.com/news/2'
+      },
+      {
+        'id': '3',
+        'title': '트럼프, 엔비디아 \'슈퍼-듀퍼\' 블랙웰 칩에 中 시진핑과 논의할 수도',
+        'url': 'https://example.com/news/3'
+      },
+      {
+        'id': '4',
+        'title': '엔비디아, 美 에너지부에 AI 슈퍼컴 7대 구축… 6G 인프라 구축도 추진',
+        'url': 'https://example.com/news/4'
+      },
+      {
+        'id': '5',
+        'title': '[오늘의 뉴욕증시 무버] 노키아, 엔비디아 10억 달러 투자 소식에 22.85%↑',
+        'url': 'https://example.com/news/5'
+      },
+    ];
+  }
+
+  /// 관심종목 상태 확인 API 호출
+  Future<void> _checkWatchlistStatus() async {
+    // TODO: API 연결
+    // final response = await userRepository.checkWatchlist(companyId);
+    // _isWatching = response.isWatching;
+
+    // 임시 더미 데이터 (API 연결 후 삭제)
+    await Future.delayed(const Duration(milliseconds: 300));
+    _isWatching = false;
   }
 
   /// 데이터 새로고침

@@ -260,8 +260,8 @@ class _CompanyNewsListScreenState extends State<CompanyNewsListScreen> {
             // 뉴스 제목
             Text(
               news['title'] ?? '',
-              style: TextStyle(
-                fontSize: w * 0.04,
+              style: const TextStyle(
+                fontSize: 14,
                 fontWeight: FontWeight.w500,
                 height: 1.4,
               ),
@@ -302,8 +302,10 @@ class _CompanyNewsListScreenState extends State<CompanyNewsListScreen> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) =>
-                                const CompanyNewsDetailScreen(),
+                            builder: (context) => CompanyNewsDetailScreen(
+                              companyId: widget.companyId,
+                              newsId: news['id'] ?? '1',
+                            ),
                           ),
                         );
                       },
