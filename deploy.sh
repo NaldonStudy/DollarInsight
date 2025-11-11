@@ -175,7 +175,8 @@ deploy_airflow() {
     
     # Step 2: Airflow 이미지 Pull
     info "Pulling Airflow Docker images..."
-    if ! docker compose -f "$AIRFLOW_COMPOSE_FILE" pull 2>&1 | tee -a "$LOG_FILE"; then
+    # AIRFLOW_VERSION 환경변수를 docker-compose에 전달
+    if ! AIRFLOW_VERSION="${AIRFLOW_VERSION:-latest}" docker compose -f "$AIRFLOW_COMPOSE_FILE" pull 2>&1 | tee -a "$LOG_FILE"; then
         warn "Failed to pull some Airflow images, continuing with existing images"
     fi
     log "Airflow images pulled ✓"
@@ -196,7 +197,7 @@ deploy_airflow() {
     fi
     
     # 새 Airflow 컨테이너 시작
-    if ! docker compose -f "$AIRFLOW_COMPOSE_FILE" up -d 2>&1 | tee -a "$LOG_FILE"; then
+    if ! AIRFLOW_VERSION="${AIRFLOW_VERSION:-latest}" docker compose -f "$AIRFLOW_COMPOSE_FILE" up -d 2>&1 | tee -a "$LOG_FILE"; then
         error "Failed to start Airflow services"
     fi
     
