@@ -37,6 +37,9 @@ public class SecurityConfig {
                                 "/auth/signup",     "/auth/login",     "/auth/refresh"
                         ).permitAll()
 
+                        // kakao OAuth를 위한
+                        .requestMatchers("/api/auth/oauth/**").permitAll()
+
                         // 문서/헬스 (접두 유무 모두 허용)
                         .requestMatchers(
                                 "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html",
