@@ -116,7 +116,11 @@ app:
       http://localhost,
       http://localhost:3000,
       http://localhost:50645,
-      http://localhost:56113
+      http://localhost:56113,
+      http://localhost:*,
+      http://127.0.0.1:*,
+      https://localhost:*,
+      https://127.0.0.1:*
 
   market:
     fx:
