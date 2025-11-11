@@ -25,6 +25,16 @@ logging:
     console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
     file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
 
+app:
+  oauth:
+    kakao:
+      client-id: ${KAKAO_REST_API_KEY}
+      client-secret: ${KAKAO_CLIENT_SECRET}
+      default-redirect-uri: https://<YOUR-PROD-DOMAIN>/auth/callback/kakao
+      allow-default-redirect: ${KAKAO_ALLOW_DEFAULT_REDIRECT:false}  # 기본 OFF, 켤 땐 env로 true
+
+
+
 # (선택) 필수 비밀/주소는 지정 안되면 부팅 실패하도록 강제
 # spring:
 #   datasource:

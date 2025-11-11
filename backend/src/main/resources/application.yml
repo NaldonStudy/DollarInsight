@@ -112,6 +112,11 @@ app:
   cors:
     allowed-origins: http://k13b205.p.ssafy.io
 
+  oauth:
+    kakao:
+      timeout-seconds: ${KAKAO_TIMEOUT_SECONDS:5}
+      allow-default-redirect: ${KAKAO_ALLOW_DEFAULT_REDIRECT:false}  # 기본 OFF
+
 external:
   chromadb:
     base-url: ${CHROMADB_BASE_URL:http://127.0.0.1:9000}
