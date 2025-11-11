@@ -3,7 +3,13 @@
 from __future__ import annotations
 
 import datetime as dt
+import logging
 from typing import Dict, Iterable, List
+
+try:
+    import pandas_market_calendars as mcal  # type: ignore
+except ImportError:  # pragma: no cover
+    mcal = None
 
 from pipelines.env_loader import load_env
 from pipelines.db import get_connection
@@ -26,8 +32,29 @@ def _resolve_target_date(
     if target_date:
         return dt.date.fromisoformat(target_date)
     if execution_date:
-        return (execution_date - dt.timedelta(days=1)).date()
+        return execution_date.date()
     return (dt.datetime.utcnow() - dt.timedelta(days=1)).date()
+
+
+logger = logging.getLogger(__name__)
+_HOLIDAY_FALLBACK_WARNED = False
+
+
+def _is_us_trading_day(date: dt.date) -> bool:
+    if date.weekday() >= 5:
+        return False
+    if mcal is None:
+        global _HOLIDAY_FALLBACK_WARNED
+        if not _HOLIDAY_FALLBACK_WARNED:
+            logger.warning(
+                "pandas_market_calendars 패키지가 없어 주말 외 휴장일 체크를 건너뜁니다. "
+                "해당 패키지를 설치하면 정확한 휴장일 검사가 가능합니다."
+            )
+            _HOLIDAY_FALLBACK_WARNED = True
+        return True
+    nyse = mcal.get_calendar("XNYS")
+    schedule = nyse.schedule(start_date=date, end_date=date)
+    return not schedule.empty
 
 
 def _upsert_metrics(records: Iterable[dict]) -> None:
@@ -184,11 +211,16 @@ def run_pipeline(
     target_date: str | None = None,
     execution_date: dt.datetime | None = None,
 ) -> None:
-    metrics = calculate_stock_metrics(target_date=target_date, execution_date=execution_date)
+    resolved_date = _resolve_target_date(execution_date, target_date)
+    if not _is_us_trading_day(resolved_date):
+        logger.info("미국 휴장일(%s)이므로 metrics/scores pipeline을 건너뜁니다.", resolved_date)
+        return
+
+    target_iso = resolved_date.isoformat()
+    metrics = calculate_stock_metrics(target_date=target_iso)
     metric_map = {rec["ticker"]: rec for rec in metrics}
     calculate_stock_scores(
-        target_date=target_date,
-        execution_date=execution_date,
+        target_date=target_iso,
         metrics_cache=metric_map,
     )
 

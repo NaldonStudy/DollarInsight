@@ -1,289 +1,333 @@
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
-/// 주가 예측 그래프 위젯 (추차춥스 모양)
-/// 1주 후, 1달 후 예측치를 최저/예상/최고로 표시
-class StockPredictionChart extends StatelessWidget {
-  final List<PredictionData> predictions;
+/// 주가예측 차트 위젯
+/// 1주/1달 각각에 최저/예상/최고 퍼센트를 독립적인 막대로 표시
+/// 0 기준선 기준으로 양수는 파란색, 음수는 보라색
+class StockPredictionChart extends StatefulWidget {
+  /// 1주 예측 데이터 (최저%, 예상%, 최고%)
+  final Map<String, double>? weekPrediction;
+
+  /// 1달 예측 데이터 (최저%, 예상%, 최고%)
+  final Map<String, double>? monthPrediction;
 
   const StockPredictionChart({
     super.key,
-    required this.predictions,
+    this.weekPrediction,
+    this.monthPrediction,
   });
 
   @override
+  State<StockPredictionChart> createState() => _StockPredictionChartState();
+}
+
+class _StockPredictionChartState extends State<StockPredictionChart> {
+  int touchedIndex = -1;
+  String selectedPeriod = '1주'; // 선택된 기간 (1주 또는 1달)
+
+  // 색상 정의
+  static const positiveColor = Color(0xFFFFD0EA); // 양수 - 보라색 (기본)
+  static const positiveColorTouched = Color(0xFFDA60A4); // 양수 - 보라색 (터치)
+  static const negativeColor = Color(0xFFABCEEA); // 음수 - 파란색 (기본)
+  static const negativeColorTouched = Color(0xFF60A4DA); // 음수 - 파란색 (터치)
+
+  // 기본 더미 데이터
+  Map<String, double> get _defaultWeekPrediction => {
+        '최저': -2.5,
+        '예상': 3.5,
+        '최고': 4.0,
+      };
+
+  Map<String, double> get _defaultMonthPrediction => {
+        '최저': -1.5,
+        '예상': 5.0,
+        '최고': 6.0,
+      };
+
+  Map<String, double> get _weekData =>
+      widget.weekPrediction ?? _defaultWeekPrediction;
+  Map<String, double> get _monthData =>
+      widget.monthPrediction ?? _defaultMonthPrediction;
+
+  // 선택된 기간의 데이터만 반환
+  Map<String, double> get _currentData {
+    return selectedPeriod == '1주' ? _weekData : _monthData;
+  }
+
+  // 현재 선택된 데이터를 리스트로 변환
+  List<MapEntry<String, double>> get _allData {
+    return _currentData.entries.toList();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    if (predictions.isEmpty) {
-      return const Center(
-        child: Text(
-          '예측 데이터가 없습니다.',
-          style: TextStyle(color: Color(0xFF757575)),
-        ),
-      );
-    }
-
-    // 전체 데이터에서 최대/최소값 찾기
-    double globalMax = 0;
-    double globalMin = double.infinity;
-
-    for (var prediction in predictions) {
-      if (prediction.high > globalMax) globalMax = prediction.high;
-      if (prediction.low < globalMin) globalMin = prediction.low;
-    }
-
-    final range = globalMax - globalMin;
-    final chartHeight = 300.0;
-    final barWidth = 60.0;
-    final spacing = 40.0;
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
-          padding: EdgeInsets.only(left: 8, bottom: 16),
-          child: Text(
-            '주가 예측',
-            style: TextStyle(
-              color: Colors.black,
-              fontSize: 16,
-              fontFamily: 'Pretendard',
-              fontWeight: FontWeight.w700,
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              '주가 예측',
+              style: TextStyle(
+                color: Colors.black,
+                fontSize: 15,
+                fontFamily: 'Pretendard',
+                fontWeight: FontWeight.w700,
+                height: 1.87,
+              ),
+            ),
+            _buildPeriodSelector(),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.only(right: 8, bottom: 8),
+            child: BarChart(
+              _buildBarChartData(),
             ),
           ),
         ),
-        Expanded(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final totalWidth = predictions.length * (barWidth + spacing);
-              final availableWidth = constraints.maxWidth;
-              final leftPadding = (availableWidth - totalWidth) / 2;
-
-              return SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Container(
-                  height: chartHeight,
-                  padding: EdgeInsets.only(
-                    left: leftPadding > 0 ? leftPadding : 20,
-                    right: 20,
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: predictions.asMap().entries.map((entry) {
-                      return _buildPredictionBar(
-                        entry.value,
-                        globalMin,
-                        globalMax,
-                        range,
-                        chartHeight,
-                        barWidth,
-                        entry.key < predictions.length - 1 ? spacing : 0,
-                      );
-                    }).toList(),
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-        const SizedBox(height: 16),
-        _buildLegend(),
       ],
     );
   }
 
-  Widget _buildPredictionBar(
-    PredictionData prediction,
-    double globalMin,
-    double globalMax,
-    double range,
-    double chartHeight,
-    double barWidth,
-    double rightMargin,
-  ) {
-    // 각 값의 높이 계산 (차트 하단부터의 높이)
-    final maxHeight = chartHeight - 40; // 상단 여백
-    final lowHeight = ((prediction.low - globalMin) / range) * maxHeight;
-    final expectedHeight = ((prediction.expected - globalMin) / range) * maxHeight;
-    final highHeight = ((prediction.high - globalMin) / range) * maxHeight;
+  /// 기간 선택 인디케이터 (1주/1달)
+  Widget _buildPeriodSelector() {
+    return Row(
+      children: ['1주', '1달'].map((period) {
+        final isSelected = selectedPeriod == period;
+        return GestureDetector(
+          onTap: () {
+            setState(() {
+              selectedPeriod = period;
+              touchedIndex = -1; // 터치 상태 초기화
+            });
+          },
+          child: Container(
+            margin: const EdgeInsets.only(left: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            decoration: BoxDecoration(
+              color: isSelected ? const Color(0xFFE5E5E5) : Colors.transparent,
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Text(
+              period,
+              style: TextStyle(
+                color: isSelected ? Colors.black : const Color(0xFF757575),
+                fontSize: 12,
+                fontFamily: 'Pretendard',
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
 
-    // 선 높이 (최저가부터 최고가까지)
-    final lineHeight = highHeight - lowHeight;
+  /// 막대 그래프 데이터 구성
+  BarChartData _buildBarChartData() {
+    // 최소/최대값 계산
+    final allValues = _allData.map((e) => e.value).toList();
+    final double minValue = allValues.reduce((a, b) => a < b ? a : b);
+    final double maxValue = allValues.reduce((a, b) => a > b ? a : b);
 
-    return Container(
-      margin: EdgeInsets.only(right: rightMargin),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          // 차트 영역
-          SizedBox(
-            height: chartHeight - 40,
-            width: barWidth,
-            child: Stack(
-              alignment: Alignment.bottomCenter,
-              children: [
-                // 최저가부터 최고가까지 세로 선
-                Positioned(
-                  bottom: lowHeight,
-                  child: Container(
-                    width: 2,
-                    height: lineHeight,
-                    color: const Color(0xFF757575),
-                  ),
-                ),
-                // 최저가 점
-                Positioned(
-                  bottom: lowHeight - 6,
-                  child: _buildDot(
-                    Colors.blue,
-                    NumberFormat('#,###').format(prediction.low),
-                    '최저',
-                  ),
-                ),
-                // 예상가 점 (중간)
-                Positioned(
-                  bottom: expectedHeight - 6,
-                  child: _buildDot(
-                    const Color(0xFF2196F3),
-                    NumberFormat('#,###').format(prediction.expected),
-                    '예상',
-                  ),
-                ),
-                // 최고가 점
-                Positioned(
-                  bottom: highHeight - 6,
-                  child: _buildDot(
-                    Colors.red,
-                    NumberFormat('#,###').format(prediction.high),
-                    '최고',
+    // Y축 범위 설정 (0 기준선 포함)
+    final double minY = minValue < 0 ? minValue - 1 : -1;
+    final double maxY = maxValue > 0 ? maxValue + 1 : 1;
+
+    return BarChartData(
+      // 터치 설정
+      barTouchData: BarTouchData(
+        enabled: true,
+        touchTooltipData: BarTouchTooltipData(
+          getTooltipColor: (_) => Colors.black87,
+          tooltipRoundedRadius: 8,
+          tooltipPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          getTooltipItem: (group, groupIndex, rod, rodIndex) {
+            final data = _allData[group.x.toInt()];
+            final label = data.key;
+            final value = data.value;
+
+            return BarTooltipItem(
+              '$selectedPeriod - $label\n',
+              const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 12,
+                fontFamily: 'Pretendard',
+              ),
+              children: <TextSpan>[
+                TextSpan(
+                  text: '${value.toStringAsFixed(1)}%',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    fontFamily: 'Pretendard',
                   ),
                 ),
               ],
-            ),
+            );
+          },
+        ),
+        touchCallback: (FlTouchEvent event, barTouchResponse) {
+          setState(() {
+            if (!event.isInterestedForInteractions ||
+                barTouchResponse == null ||
+                barTouchResponse.spot == null) {
+              touchedIndex = -1;
+              return;
+            }
+            touchedIndex = barTouchResponse.spot!.touchedBarGroupIndex;
+          });
+        },
+      ),
+      // 타이틀 설정
+      titlesData: FlTitlesData(
+        show: true,
+        // 하단 타이틀 (항목명)
+        bottomTitles: AxisTitles(
+          sideTitles: SideTitles(
+            showTitles: true,
+            reservedSize: 50,
+            getTitlesWidget: _getBottomTitles,
           ),
-          const SizedBox(height: 8),
-          // X축 라벨
+        ),
+        // 왼쪽, 오른쪽, 상단 타이틀 숨기기
+        leftTitles: const AxisTitles(
+          sideTitles: SideTitles(showTitles: false),
+        ),
+        topTitles: const AxisTitles(
+          sideTitles: SideTitles(showTitles: false),
+        ),
+        rightTitles: const AxisTitles(
+          sideTitles: SideTitles(showTitles: false),
+        ),
+      ),
+      // 테두리 설정 (숨김)
+      borderData: FlBorderData(
+        show: false,
+      ),
+      // 그리드 설정 (0 기준선만 표시)
+      gridData: FlGridData(
+        show: true,
+        drawVerticalLine: false,
+        horizontalInterval: maxY - minY, // 큰 값으로 설정해서 0만 그리도록
+        checkToShowHorizontalLine: (value) => value == 0,
+        getDrawingHorizontalLine: (value) {
+          if (value == 0) {
+            return FlLine(
+              color: const Color(0xFF757575),
+              strokeWidth: 1,
+            );
+          }
+          return FlLine(color: Colors.transparent);
+        },
+      ),
+      // 막대 그룹 데이터
+      barGroups: _createBarGroups(),
+      // Y축 범위 설정
+      minY: minY,
+      maxY: maxY,
+      alignment: BarChartAlignment.spaceEvenly,
+    );
+  }
+
+  /// 하단 타이틀 위젯 (항목명과 값)
+  Widget _getBottomTitles(double value, TitleMeta meta) {
+    final index = value.toInt();
+
+    if (index < 0 || index >= _allData.length) {
+      return const SizedBox();
+    }
+
+    final data = _allData[index];
+    final label = data.key;
+    final percentage = data.value;
+
+    return SideTitleWidget(
+      axisSide: meta.axisSide,
+      space: 8,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
           Text(
-            prediction.label,
+            label,
+            textAlign: TextAlign.center,
             style: const TextStyle(
               color: Color(0xFF757575),
-              fontSize: 12,
+              fontSize: 10,
               fontFamily: 'Pretendard',
               fontWeight: FontWeight.w600,
+              height: 1.40,
+              letterSpacing: 0.30,
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDot(Color color, String value, String label) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // 왼쪽 라벨
-        Container(
-          constraints: const BoxConstraints(minWidth: 60),
-          child: Text(
-            value,
-            textAlign: TextAlign.right,
+          const SizedBox(height: 4),
+          Text(
+            '${percentage.toStringAsFixed(1)}%',
+            textAlign: TextAlign.center,
             style: const TextStyle(
-              color: Color(0xFF595959),
+              color: Color(0xFF757575),
               fontSize: 10,
-              fontWeight: FontWeight.w600,
+              fontFamily: 'Pretendard',
+              fontWeight: FontWeight.w400,
             ),
           ),
-        ),
-        const SizedBox(width: 8),
-        // 점
-        Container(
-          width: 12,
-          height: 12,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: Colors.white,
-              width: 2,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.1),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(width: 8),
-        // 오른쪽 라벨
-        SizedBox(
-          width: 30,
-          child: Text(
-            label,
-            style: TextStyle(
-              color: color,
-              fontSize: 9,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildLegend() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          _buildLegendItem(Colors.red, '예측 최고가'),
-          const SizedBox(width: 16),
-          _buildLegendItem(const Color(0xFF2196F3), '예상가'),
-          const SizedBox(width: 16),
-          _buildLegendItem(Colors.blue, '예측 최저가'),
         ],
       ),
     );
   }
 
-  Widget _buildLegendItem(Color color, String label) {
-    return Row(
-      children: [
-        Container(
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-          ),
-        ),
-        const SizedBox(width: 4),
-        Text(
-          label,
-          style: const TextStyle(
-            color: Color(0xFF757575),
-            fontSize: 10,
-            fontWeight: FontWeight.w500,
-          ),
+  /// 막대 그룹 생성
+  List<BarChartGroupData> _createBarGroups() {
+    return List.generate(_allData.length, (index) {
+      final value = _allData[index].value;
+      final isTouched = index == touchedIndex;
+
+      return _makeGroupData(
+        index,
+        value,
+        isTouched: isTouched,
+      );
+    });
+  }
+
+  /// 개별 막대 그룹 데이터 생성
+  BarChartGroupData _makeGroupData(
+    int x,
+    double y, {
+    bool isTouched = false,
+    double width = 22,
+  }) {
+    // 값에 따라 색상 결정 (양수: 파란색, 음수: 보라색)
+    final isPositive = y >= 0;
+    final barColor = isTouched
+        ? (isPositive ? positiveColorTouched : negativeColorTouched)
+        : (isPositive ? positiveColor : negativeColor);
+
+    return BarChartGroupData(
+      x: x,
+      barRods: [
+        BarChartRodData(
+          fromY: 0,
+          toY: y,
+          color: barColor,
+          width: width,
+          borderRadius: y >= 0
+              ? const BorderRadius.only(
+                  topLeft: Radius.circular(4),
+                  topRight: Radius.circular(4),
+                )
+              : const BorderRadius.only(
+                  bottomLeft: Radius.circular(4),
+                  bottomRight: Radius.circular(4),
+                ),
         ),
       ],
     );
   }
-}
-
-/// 예측 데이터 모델
-class PredictionData {
-  final String label; // '1주 후', '1달 후'
-  final double low; // 최저 예측가
-  final double expected; // 예상가
-  final double high; // 최고 예측가
-
-  PredictionData({
-    required this.label,
-    required this.low,
-    required this.expected,
-    required this.high,
-  });
 }

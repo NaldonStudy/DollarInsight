@@ -1,66 +1,51 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../providers/company_detail_provider.dart';
+import '../../providers/etf_detail_provider.dart';
 import '../../widgets/company/watch_button.dart';
 import '../../widgets/company/stock_price_chart.dart';
-import '../../widgets/company/stock_score_chart.dart';
-import '../../widgets/company/stock_prediction_chart.dart';
 import '../../widgets/common/scroll_fab_button.dart';
 import '../../widgets/common/top_navigation.dart';
 import '../chat/chat_list_screen.dart';
 import '../../../core/constants/app_spacing.dart';
 import 'package:go_router/go_router.dart';
-import 'company_chart_screen.dart';
-import 'company_news_list_screen.dart';
-import 'company_news_detail_screen.dart';
+import '../company/company_news_list_screen.dart';
+import '../company/company_news_detail_screen.dart';
 
-/// 기업 상세 페이지
-/// Provider를 사용하여 데이터 로직과 UI 로직 분리
+/// ETF 상세 페이지
+/// Provid~er를 사용하여 데이터 로직과 UI 로직 분리
 /// TopNavigation 포함 (기업분석/채팅 토글)
-/// 차트, 종목지표, 주가예측 탭으로 구성
-/// 하단에 기업별 뉴스 리스트 표시
-class CompanyDetailScreen extends StatefulWidget {
-  /// 기업 코드 또는 ID (API 호출용)
-  final String companyId;
+/// 차트, 종목정보(투자지표만) 탭으로 구성
+/// 하단에 ETF 뉴스 리스트 표시
+class ETFDetailScreen extends StatefulWidget {
+  /// ETF 코드 또는 ID (API 호출용)
+  final String etfId;
 
-  const CompanyDetailScreen({
+  const ETFDetailScreen({
     super.key,
-    required this.companyId,
+    required this.etfId,
   });
 
   @override
-  State<CompanyDetailScreen> createState() => _CompanyDetailScreenState();
+  State<ETFDetailScreen> createState() => _ETFDetailScreenState();
 }
 
-class _CompanyDetailScreenState extends State<CompanyDetailScreen>
+class _ETFDetailScreenState extends State<ETFDetailScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final ScrollController _scrollController = ScrollController();
-  final PageController _scorePageController = PageController(); // 종목정보 탭 내부 페이지
 
   bool showFab = false;
   bool isCompany = true; // 기업분석/채팅 토글 상태
-  int scorePageIndex = 0; // 종목정보 탭 페이지 인덱스 (0: 투자지표, 1: 주식점수)
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this); // 3개 탭 (차트, 종목정보, 주가예측)
+    _tabController = TabController(length: 2, vsync: this); // 2개 탭 (차트, 종목정보)
 
     _scrollController.addListener(() {
       setState(() {
         showFab = _scrollController.offset > 40;
       });
-    });
-
-    // 종목정보 페이지 인디케이터
-    _scorePageController.addListener(() {
-      final page = _scorePageController.page;
-      if (page != null) {
-        setState(() {
-          scorePageIndex = page.round();
-        });
-      }
     });
   }
 
@@ -68,7 +53,6 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
   void dispose() {
     _tabController.dispose();
     _scrollController.dispose();
-    _scorePageController.dispose();
     super.dispose();
   }
 
@@ -79,7 +63,7 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
     final h = size.height;
 
     return ChangeNotifierProvider(
-      create: (_) => CompanyDetailProvider(companyId: widget.companyId),
+      create: (_) => ETFDetailProvider(etfId: widget.etfId),
       child: Scaffold(
         backgroundColor: const Color(0xFFF7F8FB),
         floatingActionButton: ScrollFabButton(
@@ -110,10 +94,10 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
                 },
               ),
 
-              /// 화면 전환 (기업분석 / 채팅)
+              /// 화면 전환 (ETF분석 / 채팅)
               Expanded(
                 child: isCompany
-                    ? _buildCompanyAnalysisBody(w, h)
+                    ? _buildETFAnalysisBody(w, h)
                     : const ChatListScreen(),
               ),
             ],
@@ -123,9 +107,9 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
     );
   }
 
-  /// 기업분석 화면 바디
-  Widget _buildCompanyAnalysisBody(double w, double h) {
-    return Consumer<CompanyDetailProvider>(
+  /// ETF 분석 화면 바디
+  Widget _buildETFAnalysisBody(double w, double h) {
+    return Consumer<ETFDetailProvider>(
       builder: (context, provider, child) {
         // 에러 처리
         if (provider.error != null) {
@@ -150,7 +134,7 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
           child: Column(
             children: [
               SizedBox(height: AppSpacing.medium(context)),
-              _buildCompanyHeader(w, provider),
+              _buildETFHeader(w, provider),
               SizedBox(height: AppSpacing.section(context)),
               _buildTabBar(),
               SizedBox(
@@ -159,8 +143,7 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
                   controller: _tabController,
                   children: [
                     _buildChartTab(),
-                    _buildScoreTabWithPages(w, h, provider),
-                    _buildPredictionTab(provider),
+                    _buildIndicatorsTab(provider),
                   ],
                 ),
               ),
@@ -174,13 +157,13 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
     );
   }
 
-  /// 기업 정보 헤더 (로고, 기업명, 현재가, 관심 버튼)
-  Widget _buildCompanyHeader(double w, CompanyDetailProvider provider) {
+  /// ETF 정보 헤더 (로고, ETF명, 현재가, 관심 버튼)
+  Widget _buildETFHeader(double w, ETFDetailProvider provider) {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: AppSpacing.horizontal(context)),
       child: Row(
         children: [
-          // 기업 로고
+          // ETF 로고
           Container(
             width: 45,
             height: 45,
@@ -200,13 +183,13 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
                 : null,
           ),
           SizedBox(width: AppSpacing.small(context)),
-          // 기업명 및 현재가
+          // ETF명 및 현재가
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  provider.companyName ?? '',
+                  provider.etfName ?? '',
                   style: const TextStyle(
                     color: Colors.black,
                     fontSize: 13,
@@ -254,7 +237,6 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
               try {
                 await provider.toggleWatchlist();
               } catch (e) {
-                // Provider에서 에러를 던지면 여기서 처리
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text('관심종목 설정에 실패했습니다: $e')),
@@ -269,7 +251,7 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
     );
   }
 
-  /// 탭바 (차트 / 종목정보 / 주가예측)
+  /// 탭바 (차트 / 종목정보)
   Widget _buildTabBar() {
     return Container(
       margin: EdgeInsets.symmetric(horizontal: AppSpacing.horizontal(context)),
@@ -291,7 +273,6 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
         tabs: const [
           Tab(text: '차트'),
           Tab(text: '종목정보'),
-          Tab(text: '주가예측'),
         ],
       ),
     );
@@ -299,11 +280,6 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
 
   /// 차트 탭 (주가그래프만 표시)
   Widget _buildChartTab() {
-    return _buildStockChartPage();
-  }
-
-  /// 주가 그래프 페이지 (일봉/주봉/월봉)
-  Widget _buildStockChartPage() {
     return Container(
       margin: EdgeInsets.symmetric(
         horizontal: AppSpacing.horizontal(context),
@@ -318,49 +294,8 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
     );
   }
 
-  /// 주가예측 탭 (1주/1달 모두 표시)
-  Widget _buildPredictionTab(CompanyDetailProvider provider) {
-    return Container(
-      margin: EdgeInsets.symmetric(
-        horizontal: AppSpacing.horizontal(context),
-        vertical: AppSpacing.small(context),
-      ),
-      padding: EdgeInsets.all(AppSpacing.medium(context)),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: StockPredictionChart(
-        weekPrediction: provider.weekPrediction,
-        monthPrediction: provider.monthPrediction,
-      ),
-    );
-  }
-
-  /// 종목정보 탭 (PageView로 투자지표와 주식점수 스와이프)
-  Widget _buildScoreTabWithPages(double w, double h, CompanyDetailProvider provider) {
-    return Column(
-      children: [
-        // PageView
-        Expanded(
-          child: PageView(
-            controller: _scorePageController,
-            children: [
-              _buildIndicatorsPage(provider), // 투자지표
-              _buildStockScorePage(provider), // 주식점수
-            ],
-          ),
-        ),
-        // 회색 인디케이터
-        SizedBox(height: AppSpacing.small(context)),
-        _buildPageIndicator(scorePageIndex, 2),
-        SizedBox(height: AppSpacing.medium(context)),
-      ],
-    );
-  }
-
-  /// 투자지표 페이지
-  Widget _buildIndicatorsPage(CompanyDetailProvider provider) {
+  /// 종목정보 탭 (ETF 투자지표만)
+  Widget _buildIndicatorsTab(ETFDetailProvider provider) {
     return Container(
       margin: EdgeInsets.symmetric(
         horizontal: AppSpacing.horizontal(context),
@@ -385,33 +320,15 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
             ),
           ),
           SizedBox(height: AppSpacing.small(context)),
-          Expanded(child: _buildIndicatorGrid(provider)),
+          Expanded(child: _buildETFIndicatorGrid(provider)),
         ],
       ),
     );
   }
 
-  /// 주식점수 페이지
-  Widget _buildStockScorePage(CompanyDetailProvider provider) {
-    return Container(
-      margin: EdgeInsets.symmetric(
-        horizontal: AppSpacing.horizontal(context),
-        vertical: AppSpacing.small(context),
-      ),
-      padding: EdgeInsets.all(AppSpacing.medium(context)),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: StockScoreChart(
-        scores: provider.stockScores,
-      ),
-    );
-  }
-
-  /// 투자지표 그리드
-  Widget _buildIndicatorGrid(CompanyDetailProvider provider) {
-    if (provider.indicators == null || provider.indicators!.isEmpty) {
+  /// ETF 투자지표 그리드
+  Widget _buildETFIndicatorGrid(ETFDetailProvider provider) {
+    if (provider.etfIndicators == null || provider.etfIndicators!.isEmpty) {
       return const Center(
         child: Text(
           '투자지표 데이터가 없습니다.',
@@ -421,7 +338,7 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
     }
 
     final List<MapEntry<String, String>> indicatorList =
-        provider.indicators!.entries.toList();
+        provider.etfIndicators!.entries.toList();
 
     return GridView.builder(
       shrinkWrap: true,
@@ -479,9 +396,8 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
     );
   }
 
-
   /// 뉴스 섹션
-  Widget _buildNewsSection(double w, CompanyDetailProvider provider) {
+  Widget _buildNewsSection(double w, ETFDetailProvider provider) {
     return Container(
       margin: EdgeInsets.symmetric(horizontal: AppSpacing.horizontal(context)),
       child: Column(
@@ -563,7 +479,7 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
     );
   }
 
-  /// 개별 뉴스 아이템 (클릭 시 링크 연결)
+  /// 개별 뉴스 아이템
   Widget _buildNewsItem(
       Map<String, String> news, List<Map<String, String>> newsList) {
     final index = newsList.indexOf(news);
@@ -581,7 +497,7 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
               context,
               MaterialPageRoute(
                 builder: (context) => CompanyNewsDetailScreen(
-                  companyId: widget.companyId,
+                  companyId: widget.etfId,
                   newsId: news['id'] ?? '1',
                 ),
               ),
@@ -610,26 +526,6 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
             color: const Color(0xFFE0E0E0),
           ),
       ],
-    );
-  }
-
-  /// 회색 인디케이터 dots (페이지 표시)
-  Widget _buildPageIndicator(int currentIndex, int totalPages) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: List.generate(totalPages, (index) {
-        return Container(
-          margin: const EdgeInsets.symmetric(horizontal: 4),
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: currentIndex == index
-                ? const Color(0xFF5A5A5A) // 현재 페이지 (진한 회색)
-                : const Color(0xFFD9D9D9), // 다른 페이지 (연한 회색)
-          ),
-        );
-      }),
     );
   }
 }

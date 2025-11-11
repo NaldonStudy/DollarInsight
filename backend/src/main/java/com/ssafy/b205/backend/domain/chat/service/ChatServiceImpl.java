@@ -27,7 +27,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import org.bson.types.ObjectId;
-import org.springframework.data.domain.PageRequest;
 import reactor.core.Disposable;
 
 import java.time.Instant;
@@ -141,6 +140,12 @@ public class ChatServiceImpl implements ChatService {
                         final String eventName = (sse.event() != null ? sse.event() : "message");
                         final String data = sse.data();
 
+                        // close 이벤트 처리: FastAPI가 스트림 종료를 알릴 때
+                        if ("close".equals(eventName)) {
+                            emitter.complete();
+                            return;
+                        }
+
                         // 메시지 이벤트는 Mongo에 저장 (token chunk가 아니라 완성 텍스트 기준이면 게이트웨이 쪽에서 제어)
                         if ("message".equals(eventName) && data != null && !data.isBlank()) {
                             msgRepo.save(ChatMessageDoc.builder()
@@ -172,7 +177,7 @@ public class ChatServiceImpl implements ChatService {
         final int userId = toUserId(userUuid);
         loadOwnedSession(userId, sessionUuid);
         try {
-            gateway.control(sessionUuid.toString(), "INTERRUPT", null);
+            gateway.control(sessionUuid.toString(), "STOP", null); // FastAPI는 STOP 액션 사용
         } catch (Exception e) {
             throw new AppException(ErrorCode.BAD_REQUEST, T_FAIL);
         }

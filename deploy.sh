@@ -175,7 +175,8 @@ deploy_airflow() {
     
     # Step 2: Airflow 이미지 Pull
     info "Pulling Airflow Docker images..."
-    if ! docker compose -f "$AIRFLOW_COMPOSE_FILE" pull 2>&1 | tee -a "$LOG_FILE"; then
+    # AIRFLOW_VERSION 환경변수를 docker-compose에 전달
+    if ! AIRFLOW_VERSION="${AIRFLOW_VERSION:-latest}" docker compose -f "$AIRFLOW_COMPOSE_FILE" pull 2>&1 | tee -a "$LOG_FILE"; then
         warn "Failed to pull some Airflow images, continuing with existing images"
     fi
     log "Airflow images pulled ✓"
@@ -196,7 +197,7 @@ deploy_airflow() {
     fi
     
     # 새 Airflow 컨테이너 시작
-    if ! docker compose -f "$AIRFLOW_COMPOSE_FILE" up -d 2>&1 | tee -a "$LOG_FILE"; then
+    if ! AIRFLOW_VERSION="${AIRFLOW_VERSION:-latest}" docker compose -f "$AIRFLOW_COMPOSE_FILE" up -d --force-recreate 2>&1 | tee -a "$LOG_FILE"; then
         error "Failed to start Airflow services"
     fi
     
@@ -280,6 +281,14 @@ restart_app_services() {
     
     # Step 8: Airflow 배포
     deploy_airflow
+
+    # Step 9: Nginx 재시작 (동적 DNS 캐시 갱신)
+    info "Restarting Nginx to refresh DNS cache..."
+    if docker compose restart nginx 2>&1 | tee -a "$LOG_FILE"; then
+        log "Nginx restarted successfully ✓"
+    else
+        warn "Failed to restart Nginx (service may not be running)"
+    fi
     
     log "========================================="
     log "All Application Services Restarted Successfully"
