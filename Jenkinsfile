@@ -101,6 +101,14 @@ pipeline {
                             export BACKEND_VERSION=${IMAGE_TAG}
                             export AI_VERSION=${IMAGE_TAG}
                             
+                            # Airflow 존재 여부 확인
+                            if [ -d "ai-service/AI_airflow" ]; then
+                                export AIRFLOW_VERSION=${IMAGE_TAG}
+                                echo "=== Airflow detected, will be deployed ==="
+                            else
+                                echo "=== Airflow not found, will deploy Backend & AI Service only ==="
+                            fi
+                            
                             # deploy.sh 실행 권한 부여
                             chmod +x deploy.sh
                             
@@ -163,7 +171,7 @@ pipeline {
             echo '=== ✅ CD Pipeline Success ==='
             echo "Build Number: ${BUILD_NUMBER}"
             echo "Image Tag: ${IMAGE_TAG}"
-            echo "Deployed Services: backend, ai-service"
+            echo "Deployed Services: backend, ai-service (+ airflow if available)"
             echo "Preserved Services: postgres, mongodb, redis, chromadb, nginx, admin tools"
             echo "Deployment completed successfully"
             echo "Deployed at: ${new Date()}"
