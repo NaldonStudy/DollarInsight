@@ -7,7 +7,6 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.mongodb.repository.Query;
 
 import java.util.List;
-import java.time.Instant;
 import java.util.UUID;
 
 public interface ChatMessageRepository extends MongoRepository<ChatMessageDoc, String> {

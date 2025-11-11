@@ -112,6 +112,10 @@ app:
   cors:
     allowed-origins: http://k13b205.p.ssafy.io
 
+  market:
+    fx:
+      usd-krw: ${APP_MARKET_FX_USD_KRW:1350.0}
+
   oauth:
     kakao:
       timeout-seconds: ${KAKAO_TIMEOUT_SECONDS:5}

@@ -5,8 +5,6 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
-
 @Entity
 @Table(name = "user_personas",
         indexes = { @Index(name = "ux_user_persona", columnList = "user_id, persona_id", unique = true) })
