@@ -110,7 +110,13 @@ app:
     refresh-pepper: ${APP_JWT_REFRESH_PEPPER:}
 
   cors:
-    allowed-origins: http://k13b205.p.ssafy.io
+    allowed-origins: >
+      http://k13b205.p.ssafy.io,
+      https://k13b205.p.ssafy.io,
+      http://localhost,
+      http://localhost:3000,
+      http://localhost:50645,
+      http://localhost:56113
 
   market:
     fx:
