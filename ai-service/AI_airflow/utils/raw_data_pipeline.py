@@ -99,6 +99,7 @@ def collect_etf_prices(
         client=client,
         save_to_db=True,
     )
+    update_etf_master_and_metrics(target_date=date, tickers=US_ETFS)
 
 
 def collect_index_prices(
@@ -192,7 +193,6 @@ def run_pipeline(
     collect_etf_prices(target_date=target_iso)
     collect_index_prices(target_date=target_iso)
     collect_macro_indicators(target_date=target_iso)
-    collect_etf_metrics(target_date=target_iso)
 
 
 __all__ = [
