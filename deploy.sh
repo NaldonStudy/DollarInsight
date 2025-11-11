@@ -197,7 +197,7 @@ deploy_airflow() {
     fi
     
     # 새 Airflow 컨테이너 시작
-    if ! AIRFLOW_VERSION="${AIRFLOW_VERSION:-latest}" docker compose -f "$AIRFLOW_COMPOSE_FILE" up -d 2>&1 | tee -a "$LOG_FILE"; then
+    if ! AIRFLOW_VERSION="${AIRFLOW_VERSION:-latest}" docker compose -f "$AIRFLOW_COMPOSE_FILE" up -d --force-recreate 2>&1 | tee -a "$LOG_FILE"; then
         error "Failed to start Airflow services"
     fi
     
