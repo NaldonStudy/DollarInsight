@@ -26,10 +26,10 @@ class _StockPredictionChartState extends State<StockPredictionChart> {
   String selectedPeriod = '1주'; // 선택된 기간 (1주 또는 1달)
 
   // 색상 정의
-  static const positiveColor = Color(0xFFABCEEA); // 양수 - 파란색 (기본)
-  static const positiveColorTouched = Color(0xFF60A4DA); // 양수 - 파란색 (터치)
-  static const negativeColor = Color(0xFFFFD0EA); // 음수 - 보라색 (기본)
-  static const negativeColorTouched = Color(0xFFDA60A4); // 음수 - 보라색 (터치)
+  static const positiveColor = Color(0xFFFFD0EA); // 양수 - 보라색 (기본)
+  static const positiveColorTouched = Color(0xFFDA60A4); // 양수 - 보라색 (터치)
+  static const negativeColor = Color(0xFFABCEEA); // 음수 - 파란색 (기본)
+  static const negativeColorTouched = Color(0xFF60A4DA); // 음수 - 파란색 (터치)
 
   // 기본 더미 데이터
   Map<String, double> get _defaultWeekPrediction => {
