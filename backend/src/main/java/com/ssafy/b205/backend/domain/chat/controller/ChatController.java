@@ -200,7 +200,7 @@ public class ChatController {
     // ---------------------------------------------------------------------
     @Operation(
             summary = "중단(인터럽트)",
-            description = "진행 중인 스트림에 `INTERRUPT` 제어 신호를 보냅니다.",
+            description = "진행 중인 스트림에 `STOP` 제어 신호를 보냅니다. (FastAPI의 STOP 액션 사용)",
             security = @SecurityRequirement(name = "bearerAuth"),
             responses = {
                     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "중단 성공"),
