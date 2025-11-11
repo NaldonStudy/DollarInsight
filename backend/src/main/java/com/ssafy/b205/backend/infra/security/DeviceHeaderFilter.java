@@ -41,6 +41,9 @@ public class DeviceHeaderFilter extends OncePerRequestFilter {
         if (path.equals("/auth/login") || path.equals("/auth/signup") || path.equals("/auth/refresh")) return true;
         if (path.equals("/api/auth/login") || path.equals("/api/auth/signup") || path.equals("/api/auth/refresh")) return true;
 
+        // OAuth
+        if (path.startsWith("/api/auth/oauth/")) return true;
+
         // (운영에서 자주 오는 정적 리퀘스트)
         if (path.equals("/favicon.ico") || path.equals("/robots.txt")) return true;
         if (path.equals("/api/favicon.ico") || path.equals("/api/robots.txt")) return true;
