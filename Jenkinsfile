@@ -49,7 +49,7 @@ pipeline {
         
         stage('Build Docker Images') {
             steps {
-                echo '=== Building Docker Images in Jenkins (Backend & AI Service Only) ==='
+                echo '=== Building Docker Images in Jenkins (Backend, AI Service & Airflow) ==='
                 script {
                     // Backend 이미지 빌드
                     docker.build("${IMAGE_BASE}/dollar-backend:${IMAGE_TAG}", "./backend")
@@ -59,6 +59,10 @@ pipeline {
                     docker.build("${IMAGE_BASE}/dollar-ai:${IMAGE_TAG}", "./ai-service")
                     docker.build("${IMAGE_BASE}/dollar-ai:latest", "./ai-service")
                     
+                    // Airflow 이미지 빌드
+                    docker.build("${IMAGE_BASE}/dollar-airflow:${IMAGE_TAG}", "-f ./ai-service/AI_airflow/Dockerfile.airflow ./ai-service/AI_airflow")
+                    docker.build("${IMAGE_BASE}/dollar-airflow:latest", "-f ./ai-service/AI_airflow/Dockerfile.airflow ./ai-service/AI_airflow")
+                    
                     // Note: Nginx 이미지는 빌드하지 않음 (설정 변경 시에만 별도 빌드 필요)
                 }
             }
@@ -66,7 +70,7 @@ pipeline {
         
         stage('Push to Registry') {
             steps {
-                echo '=== Pushing Images to Docker Hub (Backend & AI Service Only) ==='
+                echo '=== Pushing Images to Docker Hub (Backend, AI Service & Airflow) ==='
                 script {
                     docker.withRegistry('https://index.docker.io/v1/', DOCKERHUB_CREDENTIAL) {
                         // Backend 푸시
@@ -76,6 +80,10 @@ pipeline {
                         // AI Service 푸시
                         docker.image("${IMAGE_BASE}/dollar-ai:${IMAGE_TAG}").push()
                         docker.image("${IMAGE_BASE}/dollar-ai:latest").push()
+                        
+                        // Airflow 푸시
+                        docker.image("${IMAGE_BASE}/dollar-airflow:${IMAGE_TAG}").push()
+                        docker.image("${IMAGE_BASE}/dollar-airflow:latest").push()
                         
                         // Note: Nginx 이미지는 푸시하지 않음
                     }
@@ -104,7 +112,7 @@ pipeline {
                             # Airflow 존재 여부 확인
                             if [ -d "ai-service/AI_airflow" ]; then
                                 export AIRFLOW_VERSION=${IMAGE_TAG}
-                                echo "=== Airflow detected, will be deployed ==="
+                                echo "=== Airflow detected, will be deployed with version ${IMAGE_TAG} ==="
                             else
                                 echo "=== Airflow not found, will deploy Backend & AI Service only ==="
                             fi
@@ -171,7 +179,7 @@ pipeline {
             echo '=== ✅ CD Pipeline Success ==='
             echo "Build Number: ${BUILD_NUMBER}"
             echo "Image Tag: ${IMAGE_TAG}"
-            echo "Deployed Services: backend, ai-service (+ airflow if available)"
+            echo "Deployed Services: backend, ai-service, airflow"
             echo "Preserved Services: postgres, mongodb, redis, chromadb, nginx, admin tools"
             echo "Deployment completed successfully"
             echo "Deployed at: ${new Date()}"
