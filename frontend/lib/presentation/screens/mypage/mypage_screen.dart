@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../widgets/common/custom_back_button.dart';
 import '../../providers/user_provider.dart';
+import '../../../data/datasources/remote/user_api.dart';
 
 class MypageScreen extends StatefulWidget {
   const MypageScreen({super.key});
@@ -12,7 +13,6 @@ class MypageScreen extends StatefulWidget {
 }
 
 class _MypageScreenState extends State<MypageScreen> {
-
   @override
   void initState() {
     super.initState();
@@ -136,6 +136,19 @@ class _MypageScreenState extends State<MypageScreen> {
                   label: '관심 종목 변경',
                   onTap: () => context.push('/mypage/watchlist/edit'),
                 ),
+                _menuButton(
+                  w: w,
+                  h: h,
+                  label: '로그아웃',
+                  onTap: () async {
+                    final status = await UserApi.logout();
+
+                    if (status == 204 && context.mounted) {
+                      context.go('/login');
+                    }
+                  },
+                ),
+
                 _menuButton(
                   w: w,
                   h: h,

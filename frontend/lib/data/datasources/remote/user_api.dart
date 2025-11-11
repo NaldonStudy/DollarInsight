@@ -15,17 +15,49 @@ class UserApi {
     final deviceId = await DeviceIdManager.getDeviceId();
     final access = await TokenStorage.getAccessToken();
 
-    final resp = await _dio.get(
-      '/api/users/me',
-      options: Options(
-        headers: {
-          'Authorization': 'Bearer $access',
-          'X-Device-Id': deviceId,
-        },
-      ),
-    );
+    try {
+      final resp = await _dio.get(
+        '/api/users/me',
+        options: Options(
+          headers: {'Authorization': 'Bearer $access', 'X-Device-Id': deviceId},
+        ),
+      );
 
-    final data = resp.data['data'];
-    return data;
+      return resp.data['data'];
+    } catch (e) {
+      print("❌ [fetchMe] error: $e");
+      rethrow;
+    }
+  }
+
+  /// ✅ 로그아웃 API
+  static Future<int> logout() async {
+    try {
+      final deviceId = await DeviceIdManager.getDeviceId();
+      final access = await TokenStorage.getAccessToken();
+      final refresh = await TokenStorage.getRefreshToken();
+
+      final response = await _dio.post(
+        '/api/auth/logout',
+        options: Options(
+          headers: {
+            if (access != null) 'Authorization': 'Bearer $access',
+            'X-Device-Id': deviceId,
+            if (refresh != null) 'X-Refresh-Token': refresh,
+          },
+          validateStatus: (status) => true,
+        ),
+      );
+
+      // ✅ 204 OK (성공)
+      if (response.statusCode == 204) {
+        await TokenStorage.clearTokens(); // 저장된 토큰 제거
+      }
+
+      return response.statusCode ?? 500;
+    } catch (e) {
+      print('❌ logout error: $e');
+      return 500;
+    }
   }
 }
