@@ -9,9 +9,9 @@ __pycache__/
 *.egg-info/
 dist/
 build/
-.env
 .git/
 .gitignore
 .vscode/
 .idea/
 *.md
+AI_airflow/

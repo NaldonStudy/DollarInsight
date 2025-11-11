@@ -6,17 +6,42 @@ import '../../../widgets/common/custom_text_field.dart';
 import '../../../widgets/common/custom_button.dart';
 import '../../../providers/signup_form_provider.dart';
 import '../../../../data/models/signup_form_state.dart';
+import '../../../providers/auth_provider.dart';
+
 
 class SignupScreen extends StatelessWidget {
   const SignupScreen({super.key});
 
-  void _handleSignup(BuildContext context, SignupFormProvider provider) {
-    if (provider.validateAll()) {
-      context.push('/signup/watchlist-industry');
-    } else {
+  void _handleSignup(BuildContext context, SignupFormProvider provider) async {
+    if (!provider.validateAll()) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('모든 필드를 올바르게 입력해주세요'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    final auth = context.read<AuthProvider>();
+
+    try {
+      // ✅ API 요청 발생
+      await auth.signup(
+        email: provider.emailController.text.trim(),
+        nickname: provider.nicknameController.text.trim(),
+        password: provider.passwordController.text.trim(),
+        pushEnabled: true, // 기기 푸시 사용 여부, 기본 true로 설정
+      );
+
+      // ✅ 성공 시 다음 단계로 이동
+      context.push('/signup/watchlist-industry');
+
+    } catch (e) {
+      // ✅ 실패 시 에러 표시
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString()),
           backgroundColor: Colors.red,
         ),
       );

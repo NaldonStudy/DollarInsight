@@ -19,4 +19,8 @@ public class UserCredential {
 
     @Column(name = "password_hash", nullable = false)
     private String passwordHash;
+
+    public void updatePassword(String encodedHash) {
+        this.passwordHash = encodedHash;
+    }
 }

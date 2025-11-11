@@ -1,6 +1,14 @@
 package com.ssafy.b205.backend.domain.common.controller;
 
+import com.ssafy.b205.backend.infra.docs.DocRefs;
+import com.ssafy.b205.backend.infra.security.TokenProvider;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.core.env.Environment;
@@ -10,13 +18,10 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
-import com.ssafy.b205.backend.infra.security.TokenProvider;
-
 import java.util.Arrays;
-import java.util.List;
 import java.util.Map;
 
-@Tag(name = "Common")
+@Tag(name = "Common", description = "핑/헬스체크 및 개발 편의 API")
 @RestController
 @RequestMapping("/api")
 public class PingController {
@@ -29,7 +34,23 @@ public class PingController {
         this.env = env;
     }
 
-    @Operation(summary = "Public ping (no auth)")
+    @Operation(
+            summary = "Public ping (no auth)",
+            description = "인증 없이 호출 가능한 단순 상태 확인"
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200", description = "OK",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = Object.class),
+                            examples = @ExampleObject(value = """
+                            { "ok": true, "scope": "public" }
+                            """)
+                    )
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", ref = DocRefs.INTERNAL)
+    })
     @GetMapping("/public/ping")
     public ResponseEntity<?> publicPing() {
         return ResponseEntity.ok(Map.of("ok", true, "scope", "public"));
@@ -37,26 +58,56 @@ public class PingController {
 
     @Operation(
             summary = "Secured ping (requires X-Device-Id + Bearer)",
-            security = {
-                    @SecurityRequirement(name = "deviceId"),
-                    @SecurityRequirement(name = "bearerAuth")
-            }
+            description = "Authorization(Bearer) 필수, 헤더로 `X-Device-Id`도 전송해야 합니다.",
+            security = @SecurityRequirement(name = "bearerAuth")
     )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200", description = "OK",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = Object.class),
+                            examples = @ExampleObject(value = """
+                            { "ok": true, "scope": "secured" }
+                            """)
+                    )
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", ref = DocRefs.UNAUTHORIZED),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", ref = DocRefs.FORBIDDEN),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", ref = DocRefs.INTERNAL)
+    })
+    @Parameter(name = "X-Device-Id", in = ParameterIn.HEADER, required = true,
+            description = "디바이스 식별자", example = "11111111-1111-1111-1111-111111111111")
     @PreAuthorize("hasRole('USER')")
     @GetMapping("/ping")
     public ResponseEntity<?> securedPing() {
         return ResponseEntity.ok(Map.of("ok", true, "scope", "secured"));
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────
     // ⭐ dev 전용 토큰 발급 (로컬/개발 프로필에서만 동작)
-    // Swagger Authorize의 deviceId만 필요. Bearer는 필요 없음.
-    // ─────────────────────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────
     @Operation(
             summary = "[DEV] Issue access token (local only)",
-            description = "로컬/개발 환경에서만 활성화. X-Device-Id 헤더 필요.",
-            security = { @SecurityRequirement(name = "deviceId") } // 헤더 자동 주입
+            description = "로컬/개발 환경에서만 활성화. `X-Device-Id` 헤더 필요."
     )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200", description = "발급 성공",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = Object.class),
+                            examples = @ExampleObject(value = """
+                        { "accessToken": "eyJhbGciOi..." }
+                        """)
+                    )
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", ref = DocRefs.BAD_REQUEST),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", ref = DocRefs.NOT_FOUND),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", ref = DocRefs.INTERNAL)
+    })
+    @Parameter(name = "X-Device-Id", in = ParameterIn.HEADER, required = true,
+            description = "디바이스 식별자", example = "11111111-1111-1111-1111-111111111111")
     @PostMapping("/public/dev/token")
     public ResponseEntity<?> issueDevToken(@RequestHeader(value = "X-Device-Id", required = false) String deviceId) {
         // 1) 프로필 가드: local 또는 dev에서만 허용
@@ -75,11 +126,8 @@ public class PingController {
             ));
         }
 
-        // 3) 액세스 토큰 발급
-        // TokenFilter가 'sub'(subject), 'did'(deviceId), 'roles'를 읽으므로 동일한 클레임으로 발급해야 함.
-        // TokenProvider 시그니처에 맞춰 아래 한 줄을 조정하세요.
+        // 3) 액세스 토큰 발급 (TokenFilter가 읽는 클레임 구조에 맞춰 발급)
         String accessToken = tokenProvider.createAccessToken("dev-user-1", deviceId);
-
         return ResponseEntity.ok(Map.of("accessToken", accessToken));
     }
 }

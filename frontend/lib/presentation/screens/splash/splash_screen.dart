@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:frontend/core/utils/device_id_manager.dart';  // ✅ 경로 맞춰줘야 함
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -13,11 +14,15 @@ class _SplashScreenState extends State<SplashScreen> {
   void initState() {
     super.initState();
 
-    // ✅ 위젯이 완전히 빌드된 후 실행되도록 보장
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      // ✅ 디바이스 ID 생성 또는 기존 ID 가져오기
+      final deviceId = await DeviceIdManager.getDeviceId();
+      debugPrint("✅ 생성된 Device ID: $deviceId");
+
+      // ✅ 3초 뒤 이동
       Future.delayed(const Duration(seconds: 3), () {
         if (mounted) {
-          context.go('/landing'); // ✅ 랜딩 페이지로 이동하도록 수정
+          context.go('/landing');
         }
       });
     });
@@ -47,7 +52,7 @@ class _SplashScreenState extends State<SplashScreen> {
                 height: width * 2.06,
                 decoration: const BoxDecoration(
                   image: DecorationImage(
-                    image: AssetImage('assets/images/onboard1.png'),
+                    image: AssetImage('assets/images/onboard1.webp'),
                     fit: BoxFit.cover,
                   ),
                 ),
@@ -61,7 +66,7 @@ class _SplashScreenState extends State<SplashScreen> {
                 height: height * 0.22,
                 decoration: const BoxDecoration(
                   image: DecorationImage(
-                    image: AssetImage('assets/images/logo.png'),
+                    image: AssetImage('assets/images/logo.webp'),
                     fit: BoxFit.contain,
                   ),
                 ),

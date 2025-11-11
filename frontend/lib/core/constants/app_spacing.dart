@@ -29,6 +29,6 @@ class AppSpacing {
 
   /// ✅ 맨 아래 큰 여백
   static double bottomLarge(BuildContext context) {
-    return MediaQuery.of(context).size.height * 0.15; // 15%
+    return MediaQuery.of(context).size.height * 0.05; // 5%
   }
 }

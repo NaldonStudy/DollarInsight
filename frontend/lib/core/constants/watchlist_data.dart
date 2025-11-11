@@ -34,62 +34,62 @@ class WatchlistData {
   static const List<CompanyData> companies = [
     CompanyData(
       name: '삼성전자',
-      logoPath: 'assets/images/koreacompany/samsung.png',
+      logoPath: 'assets/images/koreacompany/samsung.webp',
       industry: '기술',
     ),
     CompanyData(
       name: '네이버',
-      logoPath: 'assets/images/koreacompany/naver.png',
+      logoPath: 'assets/images/koreacompany/naver.webp',
       industry: '커머스',
     ),
     CompanyData(
       name: '대한항공',
-      logoPath: 'assets/images/koreacompany/koreaair.png',
+      logoPath: 'assets/images/koreacompany/koreaair.webp',
       industry: '항공',
     ),
     CompanyData(
       name: '기아',
-      logoPath: 'assets/images/koreacompany/kia.png',
+      logoPath: 'assets/images/koreacompany/kia.webp',
       industry: '자동차',
     ),
     CompanyData(
       name: '하이브',
-      logoPath: 'assets/images/koreacompany/hybe.png',
+      logoPath: 'assets/images/koreacompany/hybe.webp',
       industry: '엔터',
     ),
     CompanyData(
       name: 'KG이니시스',
-      logoPath: 'assets/images/koreacompany/kg.png',
+      logoPath: 'assets/images/koreacompany/kg.webp',
       industry: '결제',
     ),
     CompanyData(
       name: 'CJ대한통운',
-      logoPath: 'assets/images/koreacompany/cjdaehan.png',
+      logoPath: 'assets/images/koreacompany/cjdaehan.webp',
       industry: '산업/물류',
     ),
     CompanyData(
       name: '이마트',
-      logoPath: 'assets/images/koreacompany/emart.png',
+      logoPath: 'assets/images/koreacompany/emart.webp',
       industry: '리테일',
     ),
     CompanyData(
       name: 'KB금융',
-      logoPath: 'assets/images/koreacompany/kb.png',
+      logoPath: 'assets/images/koreacompany/kb.webp',
       industry: '금융(은행)',
     ),
     CompanyData(
       name: '미래에셋',
-      logoPath: 'assets/images/koreacompany/miraeesset.png',
+      logoPath: 'assets/images/koreacompany/miraeesset.webp',
       industry: '금융(IB)',
     ),
     CompanyData(
       name: '삼성생명',
-      logoPath: 'assets/images/koreacompany/samsung.png', // 삼성생명 로고가 없으면 삼성 로고 재사용
+      logoPath: 'assets/images/koreacompany/samsung.webp', // 삼성생명 로고가 없으면 삼성 로고 재사용
       industry: '보험',
     ),
     CompanyData(
       name: '롯데칠성음료',
-      logoPath: 'assets/images/koreacompany/lottechilsung.png',
+      logoPath: 'assets/images/koreacompany/lottechilsung.webp',
       industry: '소비재',
     ),
   ];
@@ -126,62 +126,62 @@ class USWatchlistData {
   static const List<USCompanyData> techStocks = [
     USCompanyData(
       name: '애플',
-      logoPath: 'assets/images/company/apple.png', // 없음 - 추가 필요
+      logoPath: 'assets/images/company/apple.webp', // 없음 - 추가 필요
       category: '기술',
     ),
     USCompanyData(
       name: '마이크로소프트',
-      logoPath: 'assets/images/company/microsoft.png', // 없음 - 추가 필요
+      logoPath: 'assets/images/company/microsoft.webp', // 없음 - 추가 필요
       category: '기술',
     ),
     USCompanyData(
       name: '구글',
-      logoPath: 'assets/images/company/alphabeta.png',
+      logoPath: 'assets/images/company/alphabeta.webp',
       category: '기술',
     ),
     USCompanyData(
       name: '아마존',
-      logoPath: 'assets/images/company/amazon.png',
+      logoPath: 'assets/images/company/amazon.webp',
       category: '기술',
     ),
     USCompanyData(
       name: '메타',
-      logoPath: 'assets/images/company/meta.png', // 없음 - 추가 필요
+      logoPath: 'assets/images/company/meta.webp', // 없음 - 추가 필요
       category: '기술',
     ),
     USCompanyData(
       name: '엔비디아',
-      logoPath: 'assets/images/company/nvidia.png', // 없음 - 추가 필요
+      logoPath: 'assets/images/company/nvidia.webp', // 없음 - 추가 필요
       category: '기술',
     ),
     USCompanyData(
       name: 'AMD',
-      logoPath: 'assets/images/company/amd.png',
+      logoPath: 'assets/images/company/amd.webp',
       category: '기술',
     ),
     USCompanyData(
       name: '인텔',
-      logoPath: 'assets/images/company/intel.png',
+      logoPath: 'assets/images/company/intel.webp',
       category: '기술',
     ),
     USCompanyData(
       name: 'TSMC',
-      logoPath: 'assets/images/company/tsmc.png',
+      logoPath: 'assets/images/company/tsmc.webp',
       category: '기술',
     ),
     USCompanyData(
       name: 'ASML',
-      logoPath: 'assets/images/company/asml.png',
+      logoPath: 'assets/images/company/asml.webp',
       category: '기술',
     ),
     USCompanyData(
       name: '어도비',
-      logoPath: 'assets/images/company/adobe.png',
+      logoPath: 'assets/images/company/adobe.webp',
       category: '기술',
     ),
     USCompanyData(
       name: '오라클',
-      logoPath: 'assets/images/company/oracle.png',
+      logoPath: 'assets/images/company/oracle.webp',
       category: '기술',
     ),
   ];

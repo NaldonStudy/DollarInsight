@@ -13,22 +13,36 @@ import java.util.List;
 @Configuration
 public class CorsConfig {
 
-    // 인프라에서 yml로 주입: "https://app.example.com,https://admin.example.com"
     @Value("${app.cors.allowed-origins:*}")
     private String allowedOrigins;
 
     @Bean
     public CorsFilter corsFilter() {
         var cfg = new CorsConfiguration();
+
         List<String> origins = Arrays.stream(allowedOrigins.split(","))
-                .map(String::trim).toList();
-        cfg.setAllowedOriginPatterns(origins.isEmpty() ? List.of("*") : origins);
-        cfg.setAllowedMethods(List.of("GET","POST","PATCH","DELETE","OPTIONS"));
+                .map(String::trim)
+                .filter(s -> !s.isBlank())
+                .toList();
+
+        // allowCredentials(true) 사용 시, 와일드카드(*)는 사용할 수 없음
+        boolean wildcard = origins.size() == 1 && "*".equals(origins.get(0));
+        if (wildcard) {
+            cfg.setAllowedOriginPatterns(List.of("*"));
+            cfg.setAllowCredentials(false); // ⭐ "*"와 함께는 false 여야 함
+        } else {
+            cfg.setAllowedOriginPatterns(origins);
+            cfg.setAllowCredentials(true);
+        }
+
+        cfg.setAllowedMethods(List.of("GET","POST","PUT","PATCH","DELETE","OPTIONS"));
         cfg.setAllowedHeaders(List.of(
-                "Authorization", "Content-Type", "X-Device-Id", "X-Client-Version", "X-Refresh-Token"
+                "Authorization", "Content-Type", "X-Device-Id", "X-Client-Version",
+                "X-Refresh-Token", "Last-Event-ID" // ✅ SSE 재연결 헤더
         ));
-        cfg.setExposedHeaders(List.of("Authorization")); // 필요시 추가
-        cfg.setAllowCredentials(true);
+        // 필요 시 노출 헤더 보강
+        // cfg.setExposedHeaders(List.of("Authorization", "X-Client-Version"));
+
         cfg.setMaxAge(3600L);
 
         var source = new UrlBasedCorsConfigurationSource();

@@ -120,7 +120,7 @@ class _SignupWatchlistCompanyScreenState
                     crossAxisCount: 3,
                     mainAxisSpacing: 20,
                     crossAxisSpacing: 20,
-                    childAspectRatio: 0.9,
+                    childAspectRatio: 0.75, // 0.9에서 0.75로 변경하여 높이 확보
                   ),
                   itemBuilder: (context, index) {
                     final company = _displayCompanies[index];

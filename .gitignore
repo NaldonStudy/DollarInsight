@@ -72,6 +72,9 @@ build/
 # ❌ (중요) compose 파일은 "변수만" 쓰도록 하고 커밋 대상에 둔다. 팀원 모두 동일 로컬 환경 띄우기 위함.
 docker-compose-local.yml   
 
+# 이것도 백앤드용 더미파일
+/backend/src/main/resources/db/migration-dev/*
+
 # ========================
 # Temp
 # ========================

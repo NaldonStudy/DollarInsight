@@ -25,7 +25,7 @@ class ChatListScreen extends StatelessWidget {
           /// ✅ 빈 채팅 이미지
           Center(
             child: Image.asset(
-              "assets/images/main3.png",
+              "assets/images/main3.webp",
               width: w * 0.5,
             ),
           ),

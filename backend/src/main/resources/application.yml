@@ -28,6 +28,10 @@ spring:
     password: ${SPRING_DATASOURCE_PASSWORD}
     driver-class-name: ${SPRING_DATASOURCE_DRIVER_CLASS_NAME:org.postgresql.Driver}
 
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+
   jpa:
     hibernate:
       ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:validate}
@@ -70,11 +74,15 @@ management:
     web:
       base-path: /actuator
       exposure:
-        include: health,info,metrics
+        include: health,info,metrics,prometheus
   endpoint:
     health:
       show-details: when-authorized
       probes:
+        enabled: true
+  metrics:
+    export:
+      prometheus:
         enabled: true
   health:
     redis:
@@ -83,8 +91,6 @@ management:
       enabled: true
     db:
       enabled: true
-  server:
-    port: ${MANAGEMENT_PORT:9090}
 
 logging:
   level:
@@ -101,7 +107,16 @@ app:
     secret: ${APP_JWT_SECRET:}
     access-ttl-seconds: ${APP_JWT_ACCESS_TTL_SECONDS:900}
     refresh-ttl-days: ${APP_JWT_REFRESH_TTL_DAYS:28}
+    refresh-pepper: ${APP_JWT_REFRESH_PEPPER:}
+
+  cors:
+    allowed-origins: http://k13b205.p.ssafy.io
 
 external:
   chromadb:
     base-url: ${CHROMADB_BASE_URL:http://127.0.0.1:9000}
+
+fastai:
+  base-url: http://localhost:8000
+  connect-timeout-ms: 3000
+  read-timeout-ms: 600000  # 10분 (SSE 스트림 타임아웃)

@@ -28,6 +28,13 @@ ENV_FILE=".env"
 # Application services to update (DB, nginx, 관리 도구 제외)
 APP_SERVICES="backend ai-service"
 
+# Airflow 관련 설정
+# Note: AI_airflow 폴더가 없어도 배포는 정상 진행됩니다 (경고만 표시)
+# AI 팀원이 나중에 폴더를 추가하면 자동으로 Airflow도 배포됩니다
+AIRFLOW_DIR="${DEPLOY_DIR}/ai-service/AI_airflow"
+AIRFLOW_COMPOSE_FILE="docker-compose-airflow.yml"
+AIRFLOW_SERVICES="airflow-webserver airflow-scheduler airflow-worker airflow-init"
+
 # Logging
 LOG_FILE="${DEPLOY_DIR}/deploy.log"
 
@@ -82,6 +89,14 @@ backup_current_deployment() {
         cp -r "$DEPLOY_DIR/backend/.env" "$backup_path/backend.env" 2>/dev/null || true
         cp -r "$DEPLOY_DIR/ai-service/.env" "$backup_path/ai-service.env" 2>/dev/null || true
         
+        # Backup Airflow configuration if exists
+        if [ -d "$AIRFLOW_DIR" ] && [ -f "$AIRFLOW_DIR/$AIRFLOW_COMPOSE_FILE" ]; then
+            mkdir -p "$backup_path/airflow"
+            cp -r "$AIRFLOW_DIR/$AIRFLOW_COMPOSE_FILE" "$backup_path/airflow/" 2>/dev/null || true
+            cp -r "$AIRFLOW_DIR/.env" "$backup_path/airflow/.env" 2>/dev/null || true
+            log "Airflow configuration backed up ✓"
+        fi
+        
         log "Backup created at: $backup_path ✓"
         
         # Clean old backups
@@ -105,7 +120,7 @@ cleanup_old_backups() {
 # Pull latest Docker images (애플리케이션 서비스만)
 pull_images() {
     log "Pulling latest Docker images from Docker Hub..."
-    info "Target services: $APP_SERVICES"
+    info "Target services: $APP_SERVICES + Airflow"
     
     cd "$DEPLOY_DIR"
     
@@ -137,12 +152,72 @@ stop_all_services() {
     fi
 }
 
+# Airflow 배포 함수
+deploy_airflow() {
+    log "========================================="
+    log "Deploying Airflow Services"
+    log "Airflow Version: ${AIRFLOW_VERSION:-latest}"
+    log "========================================="
+    
+    # Airflow 디렉토리로 이동
+    if [ ! -d "$AIRFLOW_DIR" ]; then
+        warn "Airflow directory not found: $AIRFLOW_DIR - Skipping Airflow deployment"
+        return 0
+    fi
+    
+    cd "$AIRFLOW_DIR" || error "Failed to change directory to $AIRFLOW_DIR"
+    
+    # Step 1: Airflow docker-compose 파일 확인
+    if [ ! -f "$AIRFLOW_COMPOSE_FILE" ]; then
+        warn "Airflow docker-compose file not found: $AIRFLOW_COMPOSE_FILE - Skipping Airflow deployment"
+        return 0
+    fi
+    
+    # Step 2: Airflow 이미지 Pull
+    info "Pulling Airflow Docker images..."
+    if ! docker compose -f "$AIRFLOW_COMPOSE_FILE" pull 2>&1 | tee -a "$LOG_FILE"; then
+        warn "Failed to pull some Airflow images, continuing with existing images"
+    fi
+    log "Airflow images pulled ✓"
+    
+    # Step 3: Airflow 서비스 재시작
+    info "Restarting Airflow services..."
+    
+    # 기존 Airflow 컨테이너 중지
+    if docker compose -f "$AIRFLOW_COMPOSE_FILE" stop 2>&1 | tee -a "$LOG_FILE"; then
+        log "Airflow services stopped ✓"
+    else
+        warn "Some Airflow services may not have been running"
+    fi
+    
+    # 중지된 컨테이너 제거
+    if docker compose -f "$AIRFLOW_COMPOSE_FILE" rm -f 2>&1 | tee -a "$LOG_FILE"; then
+        log "Old Airflow containers removed ✓"
+    fi
+    
+    # 새 Airflow 컨테이너 시작
+    if ! docker compose -f "$AIRFLOW_COMPOSE_FILE" up -d 2>&1 | tee -a "$LOG_FILE"; then
+        error "Failed to start Airflow services"
+    fi
+    
+    log "Airflow services started successfully ✓"
+    
+    # Step 4: Airflow 초기화 대기
+    info "Waiting for Airflow to initialize..."
+    sleep 20
+    
+    log "========================================="
+    log "Airflow Deployment Completed"
+    log "========================================="
+}
+
 # Restart application services only (DB, nginx는 유지)
 restart_app_services() {
     log "========================================="
     log "Restarting Application Services"
-    log "Target: $APP_SERVICES"
-    log "Preserved: DB, Nginx, Admin Tools"
+    log "Backend Version: ${BACKEND_VERSION:-latest}"
+    log "AI Service Version: ${AI_VERSION:-latest}"
+    log "Airflow Version: ${AIRFLOW_VERSION:-latest}"
     log "========================================="
     
     cd "$DEPLOY_DIR" || error "Failed to change directory to $DEPLOY_DIR"
@@ -203,8 +278,11 @@ restart_app_services() {
     info "Waiting for services to stabilize..."
     sleep 10
     
+    # Step 8: Airflow 배포
+    deploy_airflow
+    
     log "========================================="
-    log "Application Services Restarted Successfully"
+    log "All Application Services Restarted Successfully"
     log "========================================="
 }
 
@@ -239,6 +317,7 @@ health_check() {
         local backend_healthy=false
         local ai_healthy=false
         local nginx_healthy=false
+        local airflow_healthy=false
         
         # Check Backend (포트 9090)
         if curl -f -s http://localhost:9090/actuator/health > /dev/null 2>&1; then
@@ -264,12 +343,24 @@ health_check() {
             warn "Nginx is not ready yet..."
         fi
         
-        # Check if all critical services are healthy
+        # Check Airflow (포트 8090) - optional
+        if curl -f -s http://localhost:8090/health > /dev/null 2>&1 || curl -f -s http://localhost:8090 > /dev/null 2>&1; then
+            log "Airflow is healthy ✓"
+            airflow_healthy=true
+        else
+            warn "Airflow is not ready yet (optional service)..."
+        fi
+        
+        # Check if all critical services are healthy (Airflow는 optional)
         if [ "$backend_healthy" = true ] && [ "$ai_healthy" = true ]; then
             all_healthy=true
             
             if [ "$nginx_healthy" = false ]; then
                 warn "Nginx is not healthy but core services are running"
+            fi
+            
+            if [ "$airflow_healthy" = false ]; then
+                warn "Airflow is not healthy (optional service)"
             fi
             
             break
@@ -290,20 +381,33 @@ show_status() {
     log "Current service status:"
     echo ""
     
+    # Main services status
     cd "$DEPLOY_DIR"
     
+    info "Main services:"
     if ! docker compose ps 2>/dev/null; then
-        warn "No services running or docker-compose.yml not found"
-        return
+        warn "No main services running or docker-compose.yml not found"
+    fi
+    
+    echo ""
+    
+    # Airflow services status
+    if [ -d "$AIRFLOW_DIR" ] && [ -f "$AIRFLOW_DIR/$AIRFLOW_COMPOSE_FILE" ]; then
+        info "Airflow services:"
+        cd "$AIRFLOW_DIR"
+        docker compose -f "$AIRFLOW_COMPOSE_FILE" ps 2>/dev/null || warn "Airflow services not running"
+        cd "$DEPLOY_DIR"
     fi
     
     echo ""
     log "Container resource usage:"
-    local running_containers=$(docker compose ps -q 2>/dev/null)
     
-    if [ -n "$running_containers" ]; then
+    # 모든 실행 중인 컨테이너 통계
+    local all_running_containers=$(docker ps -q 2>/dev/null)
+    
+    if [ -n "$all_running_containers" ]; then
         docker stats --no-stream --format "table {{.Container}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.NetIO}}" \
-            $running_containers
+            $all_running_containers
     else
         warn "No running containers found"
     fi
@@ -313,12 +417,28 @@ show_status() {
 view_logs() {
     local service=${1:-}
     
-    cd "$DEPLOY_DIR"
-    
     if [ -z "$service" ]; then
-        info "Showing logs for all services..."
+        # Show all services logs
+        cd "$DEPLOY_DIR"
+        info "Showing logs for all main services..."
         docker compose logs -f --tail=100
+    elif [ "$service" = "airflow" ] || [[ "$service" == airflow-* ]]; then
+        # Show Airflow logs
+        if [ -d "$AIRFLOW_DIR" ] && [ -f "$AIRFLOW_DIR/$AIRFLOW_COMPOSE_FILE" ]; then
+            cd "$AIRFLOW_DIR"
+            if [ "$service" = "airflow" ]; then
+                info "Showing logs for all Airflow services..."
+                docker compose -f "$AIRFLOW_COMPOSE_FILE" logs -f --tail=100
+            else
+                info "Showing logs for $service..."
+                docker compose -f "$AIRFLOW_COMPOSE_FILE" logs -f --tail=100 "$service"
+            fi
+        else
+            error "Airflow is not deployed or configuration not found"
+        fi
     else
+        # Show specific service logs
+        cd "$DEPLOY_DIR"
         info "Showing logs for $service..."
         docker compose logs -f --tail=100 "$service"
     fi
@@ -336,11 +456,18 @@ rollback() {
     
     log "Using backup: $latest_backup"
     
-    # Stop current application services only
+    # Stop current application services
     cd "$DEPLOY_DIR"
     docker compose stop $APP_SERVICES || true
     
+    # Stop Airflow services if exists
+    if [ -d "$AIRFLOW_DIR" ] && [ -f "$AIRFLOW_DIR/$AIRFLOW_COMPOSE_FILE" ]; then
+        cd "$AIRFLOW_DIR"
+        docker compose -f "$AIRFLOW_COMPOSE_FILE" stop || true
+    fi
+    
     # Restore backup files
+    cd "$DEPLOY_DIR"
     if [ -f "$latest_backup/$COMPOSE_FILE" ]; then
         cp "$latest_backup/$COMPOSE_FILE" "$DEPLOY_DIR/"
     fi
@@ -353,9 +480,27 @@ rollback() {
         cp "$latest_backup/ai-service.env" "$DEPLOY_DIR/ai-service/.env"
     fi
     
+    # Restore Airflow configuration if exists in backup
+    if [ -d "$latest_backup/airflow" ] && [ -d "$AIRFLOW_DIR" ]; then
+        if [ -f "$latest_backup/airflow/$AIRFLOW_COMPOSE_FILE" ]; then
+            cp "$latest_backup/airflow/$AIRFLOW_COMPOSE_FILE" "$AIRFLOW_DIR/"
+        fi
+        if [ -f "$latest_backup/airflow/.env" ]; then
+            cp "$latest_backup/airflow/.env" "$AIRFLOW_DIR/"
+        fi
+        log "Airflow configuration restored ✓"
+    fi
+    
     # Restart application services
     cd "$DEPLOY_DIR"
     docker compose up -d --force-recreate --no-deps $APP_SERVICES
+    
+    # Restart Airflow services if configuration was restored
+    if [ -d "$AIRFLOW_DIR" ] && [ -f "$AIRFLOW_DIR/$AIRFLOW_COMPOSE_FILE" ]; then
+        cd "$AIRFLOW_DIR"
+        docker compose -f "$AIRFLOW_COMPOSE_FILE" up -d --force-recreate
+        log "Airflow services restarted ✓"
+    fi
     
     log "Rollback completed ✓"
     
@@ -388,17 +533,32 @@ restart_service() {
     
     log "Restarting service: $service"
     
-    cd "$DEPLOY_DIR"
-    docker compose restart "$service"
-    
-    log "Service $service restarted ✓"
+    # Check if it's an Airflow service
+    if [ "$service" = "airflow" ] || [[ "$service" == airflow-* ]]; then
+        if [ -d "$AIRFLOW_DIR" ] && [ -f "$AIRFLOW_DIR/$AIRFLOW_COMPOSE_FILE" ]; then
+            cd "$AIRFLOW_DIR"
+            if [ "$service" = "airflow" ]; then
+                docker compose -f "$AIRFLOW_COMPOSE_FILE" restart
+                log "All Airflow services restarted ✓"
+            else
+                docker compose -f "$AIRFLOW_COMPOSE_FILE" restart "$service"
+                log "Service $service restarted ✓"
+            fi
+        else
+            error "Airflow is not deployed or configuration not found"
+        fi
+    else
+        cd "$DEPLOY_DIR"
+        docker compose restart "$service"
+        log "Service $service restarted ✓"
+    fi
 }
 
-# Main deployment function (애플리케이션 서비스만 업데이트)
+# Main deployment function (애플리케이션 서비스 + Airflow 업데이트)
 deploy() {
     log "========================================="
     log "Starting Dollar In\$ight Deployment"
-    log "Updating Application Services Only"
+    log "Updating Application Services + Airflow"
     log "DB, Nginx, Admin Tools Keep Running"
     log "========================================="
     
@@ -414,12 +574,13 @@ deploy() {
     log "Deployment completed successfully! 🎉"
     log "========================================="
     echo ""
-    log "Updated Services: $APP_SERVICES"
+    log "Updated Services: $APP_SERVICES + Airflow"
     log "Preserved Services: postgres, mongodb, redis, chromadb, nginx, pgadmin, mongo-express, redis-commander"
     echo ""
     log "Service URLs:"
     log "  - Backend API: http://localhost:9090"
     log "  - AI Service: http://localhost:8000"
+    log "  - Airflow UI: http://localhost:8090 (airflow/airflow)"
     log "  - Nginx Gateway: http://localhost:80"
     log "  - Backend Health: http://localhost:9090/actuator/health"
     log "  - AI Health: http://localhost:8000/health"
@@ -500,14 +661,15 @@ case "${1:-deploy}" in
         echo "Usage: $0 {command} [options]"
         echo ""
         echo "Commands:"
-        echo "  deploy              - Update application services only (backend, ai-service)"
+        echo "  deploy              - Update application services + Airflow"
+        echo "                        (backend, ai-service, airflow)"
         echo "                        DB, nginx, admin tools keep running [RECOMMENDED]"
         echo "  deploy-all          - Initial deployment (start all services)"
         echo "  rollback            - Rollback application services to previous version"
         echo "  status              - Show service status and resource usage"
         echo "  stop                - Stop all services"
         echo "  start               - Start all services"
-        echo "  restart             - Restart application services only"
+        echo "  restart             - Restart application services + Airflow"
         echo "  restart-all         - Restart all services"
         echo "  restart-service <n> - Restart specific service"
         echo "  logs [service]      - View logs (all services or specific service)"
@@ -515,15 +677,18 @@ case "${1:-deploy}" in
         echo "  cleanup             - Clean up unused Docker resources"
         echo ""
         echo "Examples:"
-        echo "  ./deploy.sh deploy                    # Update app services only (recommended)"
+        echo "  ./deploy.sh deploy                    # Update app services + Airflow (recommended)"
         echo "  ./deploy.sh deploy-all                # Initial deployment"
-        echo "  ./deploy.sh restart                   # Quick restart of app services"
+        echo "  ./deploy.sh restart                   # Quick restart of app services + Airflow"
         echo "  ./deploy.sh restart-all               # Full system restart"
         echo "  ./deploy.sh logs backend              # View backend logs"
+        echo "  ./deploy.sh logs airflow              # View all Airflow logs"
+        echo "  ./deploy.sh logs airflow-webserver    # View specific Airflow service logs"
         echo "  ./deploy.sh restart-service postgres  # Restart specific service"
+        echo "  ./deploy.sh restart-service airflow   # Restart all Airflow services"
         echo ""
         echo "Service Groups:"
-        echo "  Application: backend, ai-service (updated by 'deploy')"
+        echo "  Application: backend, ai-service, airflow (updated by 'deploy')"
         echo "  Infrastructure: nginx (preserved)"
         echo "  Databases: postgres, mongodb, redis, chromadb (preserved)"
         echo "  Admin Tools: pgadmin, mongo-express, redis-commander (preserved)"
