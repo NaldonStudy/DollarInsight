@@ -16,7 +16,9 @@ import java.sql.SQLException;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -39,6 +41,23 @@ public class CompanyAnalysisQueryRepository {
                         AssetType.fromDbValue(rs.getString("asset_type"))
                 ));
         return rows.isEmpty() ? Optional.empty() : Optional.of(rows.getFirst());
+    }
+
+    public Map<String, AssetMetadata> findAssetMetadata(Collection<String> tickers) {
+        if (tickers == null || tickers.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        String sql = "SELECT ticker, asset_type FROM assets_master WHERE ticker IN (:tickers)";
+        var params = new MapSqlParameterSource().addValue("tickers", tickers);
+        Map<String, AssetMetadata> result = new HashMap<>();
+        jdbc.query(sql, params, (rs) -> {
+            AssetMetadata metadata = new AssetMetadata(
+                    rs.getString("ticker"),
+                    AssetType.fromDbValue(rs.getString("asset_type"))
+            );
+            result.put(metadata.getTicker(), metadata);
+        });
+        return result;
     }
 
     public Optional<StockMasterRow> findStockMaster(String ticker) {
@@ -73,6 +92,46 @@ public class CompanyAnalysisQueryRepository {
         return rows.isEmpty() ? Optional.empty() : Optional.of(rows.getFirst());
     }
 
+    public Map<String, StockMasterRow> findStockMasters(Collection<String> tickers) {
+        if (tickers == null || tickers.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        String sql = """
+            SELECT ticker, name, name_eng, exchange, exchange_name, currency,
+                   country_name, sector_name, industry, listed_at, website,
+                   shares_outstanding, market_cap, dividend_yield_annualized,
+                   pbr, per, roe, psr
+            FROM stocks_master
+            WHERE ticker IN (:tickers)
+            """;
+        var params = new MapSqlParameterSource().addValue("tickers", tickers);
+        Map<String, StockMasterRow> result = new HashMap<>();
+        jdbc.query(sql, params, (rs) -> {
+            StockMasterRow row = new StockMasterRow(
+                    rs.getString("ticker"),
+                    rs.getString("name"),
+                    rs.getString("name_eng"),
+                    rs.getString("exchange"),
+                    rs.getString("exchange_name"),
+                    rs.getString("currency"),
+                    rs.getString("country_name"),
+                    rs.getString("sector_name"),
+                    rs.getString("industry"),
+                    rs.getObject("listed_at", LocalDate.class),
+                    rs.getString("website"),
+                    getLong(rs, "shares_outstanding"),
+                    rs.getBigDecimal("market_cap"),
+                    rs.getBigDecimal("dividend_yield_annualized"),
+                    rs.getBigDecimal("pbr"),
+                    rs.getBigDecimal("per"),
+                    rs.getBigDecimal("roe"),
+                    rs.getBigDecimal("psr")
+            );
+            result.put(row.getTicker(), row);
+        });
+        return result;
+    }
+
     public Optional<EtfMasterRow> findEtfMaster(String ticker) {
         String sql = """
             SELECT ticker, name, exchange, exchange_name, currency, currency_name,
@@ -94,12 +153,49 @@ public class CompanyAnalysisQueryRepository {
         return rows.isEmpty() ? Optional.empty() : Optional.of(rows.getFirst());
     }
 
+    public Map<String, EtfMasterRow> findEtfMasters(Collection<String> tickers) {
+        if (tickers == null || tickers.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        String sql = """
+            SELECT ticker, name, exchange, exchange_name, currency, currency_name,
+                   expense_ratio, is_leverage, leverage_factor
+            FROM etf_master
+            WHERE ticker IN (:tickers)
+            """;
+        var params = new MapSqlParameterSource().addValue("tickers", tickers);
+        Map<String, EtfMasterRow> result = new HashMap<>();
+        jdbc.query(sql, params, (rs) -> {
+            EtfMasterRow row = new EtfMasterRow(
+                    rs.getString("ticker"),
+                    rs.getString("name"),
+                    rs.getString("exchange"),
+                    rs.getString("exchange_name"),
+                    rs.getString("currency"),
+                    rs.getString("currency_name"),
+                    rs.getBigDecimal("expense_ratio"),
+                    rs.getBoolean("is_leverage"),
+                    rs.getBigDecimal("leverage_factor")
+            );
+            result.put(row.getTicker(), row);
+        });
+        return result;
+    }
+
     public Optional<LatestPriceRow> findLatestStockPrice(String ticker) {
         return findLatestPrice("stock_price_daily", ticker);
     }
 
     public Optional<LatestPriceRow> findLatestEtfPrice(String ticker) {
         return findLatestPrice("etf_price_daily", ticker);
+    }
+
+    public Map<String, LatestPriceRow> findLatestStockPrices(Collection<String> tickers) {
+        return findLatestPrices("stock_price_daily", tickers);
+    }
+
+    public Map<String, LatestPriceRow> findLatestEtfPrices(Collection<String> tickers) {
+        return findLatestPrices("etf_price_daily", tickers);
     }
 
     public List<AssetSearchResponse> searchAssets(String keyword, int limit) {
@@ -158,6 +254,33 @@ public class CompanyAnalysisQueryRepository {
                 rs.getBigDecimal("change_pct")
         ));
         return rows.isEmpty() ? Optional.empty() : Optional.of(rows.getFirst());
+    }
+
+    private Map<String, LatestPriceRow> findLatestPrices(String tableName, Collection<String> tickers) {
+        if (tickers == null || tickers.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        String sql = """
+            SELECT p.ticker, p.price_date, p.close, p.change_pct
+            FROM %s p
+            INNER JOIN (
+                SELECT ticker, MAX(price_date) AS price_date
+                FROM %s
+                WHERE ticker IN (:tickers)
+                GROUP BY ticker
+            ) latest ON p.ticker = latest.ticker AND p.price_date = latest.price_date
+            """.formatted(tableName, tableName);
+        var params = new MapSqlParameterSource().addValue("tickers", tickers);
+        Map<String, LatestPriceRow> result = new HashMap<>();
+        jdbc.query(sql, params, (rs) -> {
+            LatestPriceRow row = new LatestPriceRow(
+                    rs.getObject("price_date", LocalDate.class),
+                    rs.getBigDecimal("close"),
+                    rs.getBigDecimal("change_pct")
+            );
+            result.put(rs.getString("ticker"), row);
+        });
+        return result;
     }
 
     public List<PriceCandleResponse> fetchStockPrices(String ticker, LocalDate start, LocalDate end) {

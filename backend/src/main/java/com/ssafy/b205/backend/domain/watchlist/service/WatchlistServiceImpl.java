@@ -19,11 +19,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 
 @Slf4j
@@ -44,13 +42,42 @@ public class WatchlistServiceImpl implements WatchlistService {
             return List.of();
         }
 
-        Map<String, AssetSnapshot> cache = new HashMap<>();
+        List<String> tickers = entries.stream()
+                .map(UserWatchlist::getTicker)
+                .distinct()
+                .toList();
+
+        Map<String, AssetMetadata> metadataMap = companyRepository.findAssetMetadata(tickers);
+        tickers.forEach(ticker -> {
+            if (!metadataMap.containsKey(ticker)) {
+                throw new AppException(ErrorCode.NOT_FOUND,
+                        "[WatchSvc-E04] 존재하지 않는 티커입니다: " + ticker);
+            }
+        });
+
+        List<String> stockTickers = tickers.stream()
+                .filter(t -> metadataMap.get(t).getType() == AssetType.STOCK)
+                .toList();
+        List<String> etfTickers = tickers.stream()
+                .filter(t -> metadataMap.get(t).getType() == AssetType.ETF)
+                .toList();
+
+        Map<String, StockMasterRow> stockMasters = companyRepository.findStockMasters(stockTickers);
+        Map<String, EtfMasterRow> etfMasters = companyRepository.findEtfMasters(etfTickers);
+        Map<String, LatestPriceRow> stockPrices = companyRepository.findLatestStockPrices(stockTickers);
+        Map<String, LatestPriceRow> etfPrices = companyRepository.findLatestEtfPrices(etfTickers);
+
         return entries.stream()
                 .map(entry -> {
                     String ticker = entry.getTicker();
-                    AssetSnapshot snapshot = cache.computeIfAbsent(ticker, this::loadSnapshot);
-                    Optional<LatestPriceRow> latestPrice = findLatestPrice(snapshot.type(), ticker);
-                    LocalDate priceDate = latestPrice.map(LatestPriceRow::getPriceDate).orElse(null);
+                    AssetMetadata metadata = metadataMap.get(ticker);
+                    AssetSnapshot snapshot = toSnapshot(metadata, stockMasters, etfMasters);
+                    LatestPriceRow latestPrice = metadata.getType() == AssetType.STOCK
+                            ? stockPrices.get(ticker)
+                            : metadata.getType() == AssetType.ETF
+                                ? etfPrices.get(ticker)
+                                : null;
+                    LocalDate priceDate = latestPrice == null ? null : latestPrice.getPriceDate();
                     return new WatchlistItemResponse(
                             ticker,
                             snapshot.type(),
@@ -59,8 +86,8 @@ public class WatchlistServiceImpl implements WatchlistService {
                             snapshot.exchange(),
                             entry.getCreatedAt(),
                             priceDate,
-                            latestPrice.map(LatestPriceRow::getClose).orElse(null),
-                            latestPrice.map(LatestPriceRow::getChangePct).orElse(null)
+                            latestPrice == null ? null : latestPrice.getClose(),
+                            latestPrice == null ? null : latestPrice.getChangePct()
                     );
                 })
                 .toList();
@@ -105,11 +132,31 @@ public class WatchlistServiceImpl implements WatchlistService {
         return watchlistRepository.existsByUserAndTicker(user, ticker);
     }
 
-    private Optional<LatestPriceRow> findLatestPrice(AssetType type, String ticker) {
-        return switch (type) {
-            case STOCK -> companyRepository.findLatestStockPrice(ticker);
-            case ETF -> companyRepository.findLatestEtfPrice(ticker);
-            default -> Optional.empty();
+    private AssetSnapshot toSnapshot(AssetMetadata metadata,
+                                     Map<String, StockMasterRow> stockMasters,
+                                     Map<String, EtfMasterRow> etfMasters) {
+        String ticker = metadata.getTicker();
+        return switch (metadata.getType()) {
+            case STOCK -> {
+                StockMasterRow row = stockMasters.get(ticker);
+                if (row == null) {
+                    throw new AppException(ErrorCode.NOT_FOUND,
+                            "[WatchSvc-E05] 종목 기본정보가 없습니다: " + ticker);
+                }
+                yield new AssetSnapshot(metadata.getTicker(), metadata.getType(),
+                        row.getName(), row.getNameEng(), row.getExchange());
+            }
+            case ETF -> {
+                EtfMasterRow row = etfMasters.get(ticker);
+                if (row == null) {
+                    throw new AppException(ErrorCode.NOT_FOUND,
+                            "[WatchSvc-E06] ETF 기본정보가 없습니다: " + ticker);
+                }
+                yield new AssetSnapshot(metadata.getTicker(), metadata.getType(),
+                        row.getName(), null, row.getExchange());
+            }
+            default -> throw new AppException(ErrorCode.BAD_REQUEST,
+                    "[WatchSvc-E07] 지원하지 않는 자산 유형입니다: " + metadata.getType());
         };
     }
 
