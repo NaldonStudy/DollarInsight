@@ -86,7 +86,6 @@ investing_news.json
 investing_news.txt
 *.csv
 *.json
-*.txt
 
 # ============================================================================
 # Model Files & Cache
