@@ -281,6 +281,14 @@ restart_app_services() {
     
     # Step 8: Airflow 배포
     deploy_airflow
+
+    # Step 9: Nginx 재시작 (동적 DNS 캐시 갱신)
+    info "Restarting Nginx to refresh DNS cache..."
+    if docker compose restart nginx 2>&1 | tee -a "$LOG_FILE"; then
+        log "Nginx restarted successfully ✓"
+    else
+        warn "Failed to restart Nginx (service may not be running)"
+    fi
     
     log "========================================="
     log "All Application Services Restarted Successfully"
