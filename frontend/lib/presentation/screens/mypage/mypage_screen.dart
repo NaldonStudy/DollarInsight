@@ -1,9 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import '../../widgets/common/custom_back_button.dart';
+import '../../providers/user_provider.dart';
+import '../../../data/datasources/remote/user_api.dart';
 
-class MypageScreen extends StatelessWidget {
+class MypageScreen extends StatefulWidget {
   const MypageScreen({super.key});
+
+  @override
+  State<MypageScreen> createState() => _MypageScreenState();
+}
+
+class _MypageScreenState extends State<MypageScreen> {
+  @override
+  void initState() {
+    super.initState();
+
+    // ✅ 화면 진입 시 자동으로 내 정보 불러오기
+    Future.microtask(() {
+      context.read<UserProvider>().loadUser();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -11,9 +29,14 @@ class MypageScreen extends StatelessWidget {
     final w = size.width;
     final h = size.height;
 
+    final userProvider = context.watch<UserProvider>();
+    final user = userProvider.user;
+
+    final nickname = user?['nickname'] ?? '로딩중...';
+    final updatedAt = user?['updatedAt']?.toString().substring(0, 10) ?? '-';
+
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FB),
-
       appBar: AppBar(
         elevation: 0,
         backgroundColor: const Color(0xFFF7F8FB),
@@ -23,38 +46,36 @@ class MypageScreen extends StatelessWidget {
       body: SafeArea(
         child: SingleChildScrollView(
           child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: w * 0.09), // 33/360 ≈ 9%
+            padding: EdgeInsets.symmetric(horizontal: w * 0.09),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-
                 // ✅ 프로필 박스
                 Container(
                   width: double.infinity,
-                  height: h * 0.11, // 86/800
+                  height: h * 0.11,
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(w * 0.02),
                   ),
                   child: Stack(
                     children: [
-                      // 배경 원
                       Positioned(
-                        left: w * 0.045, // 16/360
-                        top: h * 0.016,  // 13/800
+                        left: w * 0.045,
+                        top: h * 0.016,
                         child: CircleAvatar(
-                          radius: w * 0.083, // 30/360
+                          radius: w * 0.083,
                           backgroundColor: const Color(0xFFEFF8FF),
                         ),
                       ),
 
-                      // ✅ 프로필 이미지 (반응형)
+                      // ✅ 프로필 이미지
                       Positioned(
-                        left: w * 0.025, // 9/360
-                        top: h * 0.006, // 5/800
+                        left: w * 0.025,
+                        top: h * 0.006,
                         child: Container(
-                          width: w * 0.208, // 75/360
-                          height: w * 0.208, // 항상 정사각형
+                          width: w * 0.208,
+                          height: w * 0.208,
                           decoration: const BoxDecoration(
                             shape: BoxShape.circle,
                             image: DecorationImage(
@@ -65,14 +86,14 @@ class MypageScreen extends StatelessWidget {
                         ),
                       ),
 
-                      // ✅ 이름
+                      // ✅ 사용자 이름
                       Positioned(
-                        left: w * 0.24,  // 86/360
-                        top: h * 0.029, // 23/800
+                        left: w * 0.24,
+                        top: h * 0.029,
                         child: Text(
-                          '김더미님 안녕하세요~',
+                          '$nickname님 안녕하세요~',
                           style: TextStyle(
-                            fontSize: w * 0.044, // 16px
+                            fontSize: w * 0.044,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -81,11 +102,11 @@ class MypageScreen extends StatelessWidget {
                       // ✅ 최종 로그인
                       Positioned(
                         left: w * 0.24,
-                        top: h * 0.056, // 45/800
+                        top: h * 0.056,
                         child: Text(
-                          '최종 로그인 : 2025.10.28 00:00',
+                          '최종 로그인: $updatedAt',
                           style: TextStyle(
-                            fontSize: w * 0.033, // 12px
+                            fontSize: w * 0.033,
                             color: const Color(0xFF757575),
                             fontWeight: FontWeight.w600,
                           ),
@@ -95,40 +116,44 @@ class MypageScreen extends StatelessWidget {
                   ),
                 ),
 
-                SizedBox(height: h * 0.04), // 30px → 반응형
+                SizedBox(height: h * 0.04),
 
-                // ✅ 메뉴 버튼
                 _menuButton(
                   w: w,
                   h: h,
                   label: '비밀번호 변경',
-                  onTap: () {
-                    context.push('/mypage/password-change');
-                  },
+                  onTap: () => context.push('/mypage/password-change'),
                 ),
                 _menuButton(
                   w: w,
                   h: h,
                   label: 'AI 친구 변경',
-                  onTap: () {
-                    context.push('/mypage/ai-friend');
-                  },
+                  onTap: () => context.push('/mypage/ai-friend'),
                 ),
                 _menuButton(
                   w: w,
                   h: h,
                   label: '관심 종목 변경',
-                  onTap: () {
-                    context.push('/mypage/watchlist/edit');
-                  },
+                  onTap: () => context.push('/mypage/watchlist/edit'),
                 ),
                 _menuButton(
                   w: w,
                   h: h,
-                  label: '탈퇴하기',
-                  onTap: () {
-                    context.push('/withdrawal');
+                  label: '로그아웃',
+                  onTap: () async {
+                    final status = await UserApi.logout();
+
+                    if (status == 204 && context.mounted) {
+                      context.go('/login');
+                    }
                   },
+                ),
+
+                _menuButton(
+                  w: w,
+                  h: h,
+                  label: '탈퇴하기',
+                  onTap: () => context.push('/withdrawal'),
                 ),
               ],
             ),
@@ -138,7 +163,6 @@ class MypageScreen extends StatelessWidget {
     );
   }
 
-  // ✅ 메뉴 버튼 (반응형)
   Widget _menuButton({
     required double w,
     required double h,
@@ -146,9 +170,9 @@ class MypageScreen extends StatelessWidget {
     required VoidCallback onTap,
   }) {
     return Container(
-      margin: EdgeInsets.only(bottom: h * 0.02), // 16px
+      margin: EdgeInsets.only(bottom: h * 0.02),
       width: double.infinity,
-      height: h * 0.077, // 62/800
+      height: h * 0.077,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(w * 0.022),
@@ -160,7 +184,7 @@ class MypageScreen extends StatelessWidget {
           child: Text(
             label,
             style: TextStyle(
-              fontSize: w * 0.05, // 20px
+              fontSize: w * 0.05,
               color: const Color(0xFF757575),
               fontWeight: FontWeight.w600,
             ),
