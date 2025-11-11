@@ -1,11 +1,12 @@
 import 'package:dio/dio.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../../../core/utils/device_id_manager.dart';
 import '../local/token_storage.dart';
 
 class UserApi {
   static final Dio _dio = Dio(
     BaseOptions(
-      baseUrl: 'http://k13b205.p.ssafy.io',
+      baseUrl: dotenv.env['BASE_URL'] ?? '',
       contentType: 'application/json',
     ),
   );
@@ -49,9 +50,8 @@ class UserApi {
         ),
       );
 
-      // ✅ 204 OK (성공)
       if (response.statusCode == 204) {
-        await TokenStorage.clearTokens(); // 저장된 토큰 제거
+        await TokenStorage.clearTokens();
       }
 
       return response.statusCode ?? 500;
