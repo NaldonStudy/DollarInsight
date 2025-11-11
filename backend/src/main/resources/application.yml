@@ -116,6 +116,9 @@ app:
     kakao:
       timeout-seconds: ${KAKAO_TIMEOUT_SECONDS:5}
       allow-default-redirect: ${KAKAO_ALLOW_DEFAULT_REDIRECT:false}  # 기본 OFF
+    google:
+      timeout-seconds: ${GOOGLE_TIMEOUT_SECONDS:5}
+      allow-default-redirect: ${GOOGLE_ALLOW_DEFAULT_REDIRECT:false}
 
 external:
   chromadb:

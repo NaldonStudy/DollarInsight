@@ -7,6 +7,9 @@ import com.ssafy.b205.backend.domain.user.entity.UserOauthAccount;
 import com.ssafy.b205.backend.domain.user.repository.UserOauthAccountRepository;
 import com.ssafy.b205.backend.domain.user.repository.UserRepository;
 import com.ssafy.b205.backend.domain.user.service.UserService;
+import com.ssafy.b205.backend.infra.client.google.GoogleOAuthProperties;
+import com.ssafy.b205.backend.infra.client.google.dto.GoogleTokenResponse;
+import com.ssafy.b205.backend.infra.client.google.dto.GoogleUserInfoResponse;
 import com.ssafy.b205.backend.infra.client.kakao.KakaoOAuthProperties;
 import com.ssafy.b205.backend.infra.client.kakao.dto.KakaoTokenResponse;
 import com.ssafy.b205.backend.infra.client.kakao.dto.KakaoUserResponse;
@@ -31,7 +34,9 @@ import java.util.Optional;
 public class OAuthLoginService {
 
     private final WebClient kakaoWebClient;
+    private final WebClient googleWebClient;
     private final KakaoOAuthProperties kakaoProps;
+    private final GoogleOAuthProperties googleProps;
     private final UserRepository userRepository;
     private final UserService userService;
     private final SessionService sessionService;
@@ -40,14 +45,18 @@ public class OAuthLoginService {
     // 명시 생성자 + @Qualifier
     public OAuthLoginService(
             @Qualifier("kakaoWebClient") WebClient kakaoWebClient,
+            @Qualifier("googleWebClient") WebClient googleWebClient,
             KakaoOAuthProperties kakaoProps,
+            GoogleOAuthProperties googleProps,
             UserRepository userRepository,
             UserService userService,
             SessionService sessionService,
             UserOauthAccountRepository oauthRepo
     ) {
         this.kakaoWebClient = kakaoWebClient;
+        this.googleWebClient = googleWebClient;
         this.kakaoProps = kakaoProps;
+        this.googleProps = googleProps;
         this.userRepository = userRepository;
         this.userService = userService;
         this.sessionService = sessionService;
@@ -118,6 +127,62 @@ public class OAuthLoginService {
         return new TokenPairResponse(access, refresh);
     }
 
+    @Transactional
+    public TokenPairResponse loginWithGoogle(String code, String redirectUri, String deviceId) {
+        MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
+        form.add("grant_type", "authorization_code");
+        form.add("client_id", require(googleProps.getClientId(), "[AuthSvc-G01] 구글 client_id 미설정"));
+        form.add("code", require(code, "[AuthSvc-G02] 인가코드 누락"));
+
+        if (redirectUri != null && !redirectUri.isBlank()) {
+            form.add("redirect_uri", redirectUri);
+        } else if (Boolean.TRUE.equals(googleProps.getAllowDefaultRedirect())) {
+            form.add("redirect_uri",
+                    require(googleProps.getDefaultRedirectUri(), "[AuthSvc-G03] default redirectUri 미설정"));
+        } else {
+            throw new AppException(ErrorCode.BAD_REQUEST, "[AuthSvc-G03] redirectUri 미설정");
+        }
+
+        if (googleProps.getClientSecret() != null && !googleProps.getClientSecret().isBlank()) {
+            form.add("client_secret", googleProps.getClientSecret());
+        }
+
+        GoogleTokenResponse token = googleWebClient.post()
+                .uri(googleProps.getTokenUri())
+                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                .body(BodyInserters.fromFormData(form))
+                .retrieve()
+                .bodyToMono(GoogleTokenResponse.class)
+                .block();
+
+        if (token == null || token.getAccessToken() == null) {
+            throw new AppException(ErrorCode.UNAUTHORIZED, "[AuthSvc-G10] 구글 토큰 교환 실패");
+        }
+
+        GoogleUserInfoResponse me = googleWebClient.get()
+                .uri(googleProps.getUserInfoUri())
+                .headers(h -> h.setBearerAuth(token.getAccessToken()))
+                .retrieve()
+                .bodyToMono(GoogleUserInfoResponse.class)
+                .block();
+
+        if (me == null || me.getSub() == null) {
+            throw new AppException(ErrorCode.UNAUTHORIZED, "[AuthSvc-G11] 구글 사용자 조회 실패");
+        }
+
+        final ProviderType provider = ProviderType.GOOGLE;
+        final String providerUserId = me.getSub();
+        final String emailFromProvider = me.getEmail();
+        final String nicknameFromProvider = firstNonBlank(me.getName(), me.getGivenName());
+
+        User user = resolveUser(provider, providerUserId, emailFromProvider, nicknameFromProvider);
+
+        String access = userService.createAccessFor(user, deviceId);
+        String refresh = sessionService.issueRefreshAndStore(user.getUuid().toString(), deviceId);
+
+        return new TokenPairResponse(access, refresh);
+    }
+
     private User resolveUser(ProviderType provider,
                              String providerUserId,
                              String emailFromProvider,
@@ -143,11 +208,12 @@ public class OAuthLoginService {
         }
 
         // 신규 유저 생성
+        String providerKey = provider.name().toLowerCase();
         String email = (emailFromProvider != null) ? emailFromProvider
-                : ("kakao_" + providerUserId + "@oauth.local");
+                : (providerKey + "_" + providerUserId + "@oauth.local");
         String nickname = (nicknameFromProvider != null && !nicknameFromProvider.isBlank())
                 ? nicknameFromProvider
-                : ("kakao_user_" + last4(providerUserId));
+                : (providerKey + "_user_" + last4(providerUserId));
         String randomPw = randomPassword();
 
         User created = userService.signup(email, nickname, randomPw);
@@ -175,5 +241,17 @@ public class OAuthLoginService {
 
     private static String last4(String s) {
         return s.substring(Math.max(0, s.length() - 4));
+    }
+
+    private static String firstNonBlank(String... values) {
+        if (values == null) {
+            return null;
+        }
+        for (String value : values) {
+            if (value != null && !value.isBlank()) {
+                return value;
+            }
+        }
+        return null;
     }
 }
