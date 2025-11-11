@@ -12,10 +12,7 @@ class StockPriceChart extends StatefulWidget {
 }
 
 class _StockPriceChartState extends State<StockPriceChart> {
-  // 선택된 차트 타입 (일봉, 주봉, 월봉)
-  String selectedPeriod = '1일';
-
-  // 더미 데이터 - 일봉 (상승하는 추세)
+  // 더미 데이터 - 일봉 30일 (상승하는 추세)
   final List<FlSpot> dailyData = [
     const FlSpot(0, 275000),
     const FlSpot(1, 277000),
@@ -28,39 +25,34 @@ class _StockPriceChartState extends State<StockPriceChart> {
     const FlSpot(8, 286500),
     const FlSpot(9, 289000),
     const FlSpot(10, 291000),
+    const FlSpot(11, 290000),
+    const FlSpot(12, 292000),
+    const FlSpot(13, 294000),
+    const FlSpot(14, 293500),
+    const FlSpot(15, 295000),
+    const FlSpot(16, 297000),
+    const FlSpot(17, 296500),
+    const FlSpot(18, 298000),
+    const FlSpot(19, 300000),
+    const FlSpot(20, 299500),
+    const FlSpot(21, 301000),
+    const FlSpot(22, 303000),
+    const FlSpot(23, 302500),
+    const FlSpot(24, 304000),
+    const FlSpot(25, 306000),
+    const FlSpot(26, 305500),
+    const FlSpot(27, 307000),
+    const FlSpot(28, 309000),
+    const FlSpot(29, 310000),
   ];
-
-  // 더미 데이터 - 주봉
-  final List<FlSpot> weeklyData = [
-    const FlSpot(0, 275000),
-    const FlSpot(1, 280000),
-    const FlSpot(2, 283000),
-    const FlSpot(3, 287000),
-    const FlSpot(4, 291000),
-  ];
-
-  // 더미 데이터 - 월봉
-  final List<FlSpot> monthlyData = [
-    const FlSpot(0, 275000),
-    const FlSpot(1, 285000),
-    const FlSpot(2, 291000),
-  ];
-
-  // 현재 선택된 데이터 가져오기
-  List<FlSpot> get currentData {
-    switch (selectedPeriod) {
-      case '1주':
-        return weeklyData;
-      case '1월':
-        return monthlyData;
-      default:
-        return dailyData;
-    }
-  }
 
   // 최저/최고치 계산
-  double get minPrice => currentData.map((e) => e.y).reduce((a, b) => a < b ? a : b);
-  double get maxPrice => currentData.map((e) => e.y).reduce((a, b) => a > b ? a : b);
+  double get minPrice => dailyData.map((e) => e.y).reduce((a, b) => a < b ? a : b);
+  double get maxPrice => dailyData.map((e) => e.y).reduce((a, b) => a > b ? a : b);
+
+  // 최저/최고 인덱스 찾기
+  int get minPriceIndex => dailyData.indexWhere((spot) => spot.y == minPrice);
+  int get maxPriceIndex => dailyData.indexWhere((spot) => spot.y == maxPrice);
 
   @override
   Widget build(BuildContext context) {
@@ -79,46 +71,7 @@ class _StockPriceChartState extends State<StockPriceChart> {
             ),
           ),
         ),
-        const SizedBox(height: 16),
-        // 기간 선택 탭
-        _buildPeriodSelector(),
       ],
-    );
-  }
-
-  /// 기간 선택 탭 (일봉/주봉/월봉)
-  Widget _buildPeriodSelector() {
-    return Row(
-      children: ['일봉', '주봉', '월봉'].map((period) {
-        final isSelected = selectedPeriod == period;
-        return GestureDetector(
-          onTap: () {
-            setState(() {
-              selectedPeriod = period;
-            });
-          },
-          child: Container(
-            margin: const EdgeInsets.only(right: 8),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: isSelected ? Colors.black : Colors.white,
-              border: Border.all(
-                color: isSelected ? Colors.black : const Color(0xFFE0E0E0),
-              ),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              period,
-              style: TextStyle(
-                color: isSelected ? Colors.white : const Color(0xFF757575),
-                fontSize: 12,
-                fontFamily: 'Pretendard',
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        );
-      }).toList(),
     );
   }
 
@@ -171,17 +124,9 @@ class _StockPriceChartState extends State<StockPriceChart> {
   /// 차트 데이터 구성
   LineChartData _buildChartData() {
     return LineChartData(
-      // 그리드 설정
-      gridData: FlGridData(
-        show: true,
-        drawVerticalLine: false,
-        horizontalInterval: 5000,
-        getDrawingHorizontalLine: (value) {
-          return FlLine(
-            color: const Color(0xFFE0E0E0),
-            strokeWidth: 1,
-          );
-        },
+      // 그리드 설정 (보조선 제거)
+      gridData: const FlGridData(
+        show: false,
       ),
       // 터치 설정 (Trackball)
       lineTouchData: LineTouchData(
@@ -196,8 +141,14 @@ class _StockPriceChartState extends State<StockPriceChart> {
                     RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
                     (Match m) => '${m[1]},',
                   );
+
+              // 날짜 계산 (오늘부터 역산)
+              final daysAgo = spot.x.toInt();
+              final date = DateTime.now().subtract(Duration(days: 29 - daysAgo));
+              final dateString = '${date.year}.${date.month.toString().padLeft(2, '0')}.${date.day.toString().padLeft(2, '0')}';
+
               return LineTooltipItem(
-                '₩$price',
+                '$dateString\n₩$price',
                 const TextStyle(
                   color: Colors.white,
                   fontSize: 12,
@@ -234,37 +185,35 @@ class _StockPriceChartState extends State<StockPriceChart> {
       // 타이틀 설정
       titlesData: FlTitlesData(
         show: true,
-        // 왼쪽 타이틀 (가격)
-        leftTitles: AxisTitles(
-          sideTitles: SideTitles(
-            showTitles: true,
-            reservedSize: 60,
-            interval: 5000,
-            getTitlesWidget: (value, meta) {
-              return Text(
-                '${(value ~/ 1000)}K',
-                style: const TextStyle(
-                  color: Color(0xFF757575),
-                  fontSize: 10,
-                  fontFamily: 'Pretendard',
-                  fontWeight: FontWeight.w500,
-                ),
-              );
-            },
-          ),
+        // 왼쪽 타이틀 (가격 표시 제거)
+        leftTitles: const AxisTitles(
+          sideTitles: SideTitles(showTitles: false),
         ),
-        // 하단 타이틀 (날짜/인덱스)
+        // 하단 타이틀 (10일 단위만 표시: 30, 20, 10)
         bottomTitles: AxisTitles(
           sideTitles: SideTitles(
             showTitles: true,
             reservedSize: 30,
-            interval: selectedPeriod == '일봉' ? 2 : 1,
+            interval: 1,
             getTitlesWidget: (value, meta) {
-              if (value.toInt() >= 0 && value.toInt() < currentData.length) {
+              final index = value.toInt();
+
+              if (index >= 0 && index < dailyData.length) {
+                String text;
+                if (index == 0) {
+                  text = '30';
+                } else if (index == 10) {
+                  text = '20';
+                } else if (index == 20) {
+                  text = '10';
+                } else {
+                  text = '-';
+                }
+
                 return Padding(
                   padding: const EdgeInsets.only(top: 8.0),
                   child: Text(
-                    '${value.toInt()}',
+                    text,
                     style: const TextStyle(
                       color: Color(0xFF757575),
                       fontSize: 10,
@@ -292,31 +241,40 @@ class _StockPriceChartState extends State<StockPriceChart> {
       ),
       // 최소/최대 X, Y 값 설정
       minX: 0,
-      maxX: (currentData.length - 1).toDouble(),
+      maxX: (dailyData.length - 1).toDouble(),
       minY: minPrice - 2000,
       maxY: maxPrice + 2000,
       // 선 데이터
       lineBarsData: [
         LineChartBarData(
-          spots: currentData,
+          spots: dailyData,
           isCurved: true,
           curveSmoothness: 0.3,
           color: const Color(0xFF4CAF50),
           barWidth: 3,
           isStrokeCapRound: true,
           dotData: FlDotData(
-            show: false,
+            show: true,
+            checkToShowDot: (spot, barData) {
+              // 최고점과 최저점에만 dot 표시
+              final index = spot.x.toInt();
+              return index == minPriceIndex || index == maxPriceIndex;
+            },
+            getDotPainter: (spot, percent, barData, index) {
+              // 최고점은 빨간색, 최저점은 파란색
+              final isMaxPrice = spot.x.toInt() == maxPriceIndex;
+              final dotColor = isMaxPrice ? const Color(0xFFFF5252) : const Color(0xFF2196F3);
+
+              return FlDotCirclePainter(
+                radius: 5,
+                color: dotColor,
+                strokeWidth: 2,
+                strokeColor: Colors.white,
+              );
+            },
           ),
           belowBarData: BarAreaData(
-            show: true,
-            gradient: LinearGradient(
-              colors: [
-                const Color(0xFF4CAF50).withOpacity(0.3),
-                const Color(0xFF4CAF50).withOpacity(0.0),
-              ],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-            ),
+            show: false,
           ),
         ),
       ],

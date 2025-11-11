@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import '../../providers/etf_detail_provider.dart';
 import '../../widgets/company/watch_button.dart';
 import '../../widgets/company/stock_price_chart.dart';
-import '../../widgets/company/stock_prediction_chart.dart';
 import '../../widgets/common/scroll_fab_button.dart';
 import '../../widgets/common/top_navigation.dart';
 import '../chat/chat_list_screen.dart';
@@ -15,7 +14,7 @@ import '../company/company_news_detail_screen.dart';
 /// ETF 상세 페이지
 /// Provid~er를 사용하여 데이터 로직과 UI 로직 분리
 /// TopNavigation 포함 (기업분석/채팅 토글)
-/// 차트, 종목정보(투자지표만), 주가예측 탭으로 구성
+/// 차트, 종목정보(투자지표만) 탭으로 구성
 /// 하단에 ETF 뉴스 리스트 표시
 class ETFDetailScreen extends StatefulWidget {
   /// ETF 코드 또는 ID (API 호출용)
@@ -41,7 +40,7 @@ class _ETFDetailScreenState extends State<ETFDetailScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this); // 3개 탭 (차트, 종목정보, 주가예측)
+    _tabController = TabController(length: 2, vsync: this); // 2개 탭 (차트, 종목정보)
 
     _scrollController.addListener(() {
       setState(() {
@@ -145,7 +144,6 @@ class _ETFDetailScreenState extends State<ETFDetailScreen>
                   children: [
                     _buildChartTab(),
                     _buildIndicatorsTab(provider),
-                    _buildPredictionTab(provider),
                   ],
                 ),
               ),
@@ -253,7 +251,7 @@ class _ETFDetailScreenState extends State<ETFDetailScreen>
     );
   }
 
-  /// 탭바 (차트 / 종목정보 / 주가예측)
+  /// 탭바 (차트 / 종목정보)
   Widget _buildTabBar() {
     return Container(
       margin: EdgeInsets.symmetric(horizontal: AppSpacing.horizontal(context)),
@@ -275,7 +273,6 @@ class _ETFDetailScreenState extends State<ETFDetailScreen>
         tabs: const [
           Tab(text: '차트'),
           Tab(text: '종목정보'),
-          Tab(text: '주가예측'),
         ],
       ),
     );
@@ -395,25 +392,6 @@ class _ETFDetailScreenState extends State<ETFDetailScreen>
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  /// 주가예측 탭 (1주/1달 모두 표시)
-  Widget _buildPredictionTab(ETFDetailProvider provider) {
-    return Container(
-      margin: EdgeInsets.symmetric(
-        horizontal: AppSpacing.horizontal(context),
-        vertical: AppSpacing.small(context),
-      ),
-      padding: EdgeInsets.all(AppSpacing.medium(context)),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: StockPredictionChart(
-        weekPrediction: provider.weekPrediction,
-        monthPrediction: provider.monthPrediction,
       ),
     );
   }

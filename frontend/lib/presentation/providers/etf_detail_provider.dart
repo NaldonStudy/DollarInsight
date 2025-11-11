@@ -32,13 +32,6 @@ class ETFDetailProvider with ChangeNotifier {
   Map<String, String>? _etfIndicators;
   Map<String, String>? get etfIndicators => _etfIndicators;
 
-  // 주가예측 데이터 (1주, 1달)
-  Map<String, double>? _weekPrediction;
-  Map<String, double>? get weekPrediction => _weekPrediction;
-
-  Map<String, double>? _monthPrediction;
-  Map<String, double>? get monthPrediction => _monthPrediction;
-
   List<Map<String, String>> _newsList = [];
   List<Map<String, String>> get newsList => _newsList;
 
@@ -61,13 +54,10 @@ class ETFDetailProvider with ChangeNotifier {
       // 2. ETF 투자지표 API 호출
       await _fetchETFIndicators();
 
-      // 3. 주가예측 API 호출
-      await _fetchPredictions();
-
-      // 4. ETF 뉴스 API 호출 (최대 5개)
+      // 3. ETF 뉴스 API 호출 (최대 5개)
       await _fetchETFNews();
 
-      // 5. 관심종목 상태 확인
+      // 4. 관심종목 상태 확인
       await _checkWatchlistStatus();
 
       _isLoading = false;
@@ -111,35 +101,6 @@ class ETFDetailProvider with ChangeNotifier {
       '순자산가치': '15,310원',
       '괴리율': '0.07%',
       '운용보수(연)': '0.07%',
-    };
-  }
-
-  /// 주가예측 API 호출
-  Future<void> _fetchPredictions() async {
-    // TODO: API 연결
-    // final response = await etfRepository.getPredictions(etfId);
-    // _weekPrediction = {
-    //   '최저': response.weekLow.toDouble(),
-    //   '예측': response.weekExpected.toDouble(),
-    //   '최고': response.weekHigh.toDouble(),
-    // };
-    // _monthPrediction = {
-    //   '최저': response.monthLow.toDouble(),
-    //   '예측': response.monthExpected.toDouble(),
-    //   '최고': response.monthHigh.toDouble(),
-    // };
-
-    // 임시 더미 데이터 (API 연결 후 삭제)
-    await Future.delayed(const Duration(milliseconds: 300));
-    _weekPrediction = {
-      '최저': 1.5, // %
-      '예상': 2.5, // %
-      '최고': 3.5, // %
-    };
-    _monthPrediction = {
-      '최저': 2.0, // %
-      '예상': 4.0, // %
-      '최고': 5.5, // %
     };
   }
 

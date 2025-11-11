@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 
 /// 주가예측 차트 위젯
 /// 1주/1달 각각에 최저/예상/최고 퍼센트를 세로로 쌓은 막대 그래프
-class StockPredictionChart extends StatelessWidget {
+class StockPredictionChart extends StatefulWidget {
   /// 1주 예측 데이터 (최저%, 예상%, 최고%)
   final Map<String, double>? weekPrediction;
 
@@ -16,10 +16,21 @@ class StockPredictionChart extends StatelessWidget {
     this.monthPrediction,
   });
 
+  @override
+  State<StockPredictionChart> createState() => _StockPredictionChartState();
+}
+
+class _StockPredictionChartState extends State<StockPredictionChart> {
+  int touchedGroupIndex = -1;
+  int touchedRodIndex = -1;
+
   // 색상 정의
-  static const lowColor = Color(0xFFABCEEA); // 최저 - 파란색
-  static const expectedColor = Color(0xFF757575); // 예상 - 회색
-  static const highColor = Color(0xFFFF5A5A); // 최고 - 빨간색
+  static const lowColor = Color(0xFFABCEEA); // 최저 - 파란색 (기본)
+  static const lowColorTouched = Color(0xFF60A4DA); // 최저 - 파란색 (터치)
+  static const expectedColor = Color(0xFFE5E5E5); // 예상 - 회색 (기본)
+  static const expectedColorTouched = Color(0xFF757575); // 예상 - 회색 (터치)
+  static const highColor = Color(0xFFFFD0EA); // 최고 - 보라색 (기본)
+  static const highColorTouched = Color(0xFFDA60A4); // 최고 - 보라색 (터치)
   static const betweenSpace = 0.0; // 막대 사이 간격 제거
 
   // 기본 더미 데이터
@@ -36,9 +47,9 @@ class StockPredictionChart extends StatelessWidget {
       };
 
   Map<String, double> get _weekData =>
-      weekPrediction ?? _defaultWeekPrediction;
+      widget.weekPrediction ?? _defaultWeekPrediction;
   Map<String, double> get _monthData =>
-      monthPrediction ?? _defaultMonthPrediction;
+      widget.monthPrediction ?? _defaultMonthPrediction;
 
   @override
   Widget build(BuildContext context) {
@@ -156,6 +167,19 @@ class StockPredictionChart extends StatelessWidget {
             );
           },
         ),
+        touchCallback: (FlTouchEvent event, barTouchResponse) {
+          setState(() {
+            if (!event.isInterestedForInteractions ||
+                barTouchResponse == null ||
+                barTouchResponse.spot == null) {
+              touchedGroupIndex = -1;
+              touchedRodIndex = -1;
+              return;
+            }
+            touchedGroupIndex = barTouchResponse.spot!.touchedBarGroupIndex;
+            touchedRodIndex = barTouchResponse.spot!.touchedRodDataIndex;
+          });
+        },
       ),
       titlesData: FlTitlesData(
         leftTitles: const AxisTitles(
@@ -178,8 +202,8 @@ class StockPredictionChart extends StatelessWidget {
       borderData: FlBorderData(show: false),
       gridData: const FlGridData(show: false),
       barGroups: [
-        _generateGroupData(0, _weekData), // 1주
-        _generateGroupData(1, _monthData), // 1달
+        _generateGroupData(0, _weekData, isTouched: touchedGroupIndex == 0), // 1주
+        _generateGroupData(1, _monthData, isTouched: touchedGroupIndex == 1), // 1달
       ],
     );
   }
@@ -200,10 +224,15 @@ class StockPredictionChart extends StatelessWidget {
   }
 
   /// 막대 그룹 데이터 생성 (세로로 쌓기)
-  BarChartGroupData _generateGroupData(int x, Map<String, double> data) {
+  BarChartGroupData _generateGroupData(int x, Map<String, double> data, {bool isTouched = false}) {
     final low = data['최저'] ?? 0;
     final expected = data['예상'] ?? 0;
     final high = data['최고'] ?? 0;
+
+    // 터치된 rod의 인덱스 확인
+    final isLowTouched = isTouched && touchedRodIndex == 0;
+    final isExpectedTouched = isTouched && touchedRodIndex == 1;
+    final isHighTouched = isTouched && touchedRodIndex == 2;
 
     return BarChartGroupData(
       x: x,
@@ -212,21 +241,21 @@ class StockPredictionChart extends StatelessWidget {
         BarChartRodData(
           fromY: 0,
           toY: low,
-          color: lowColor,
+          color: isLowTouched ? lowColorTouched : lowColor,
           width: 40,
           borderRadius: BorderRadius.zero, // 중간은 라운드 없음
         ),
         BarChartRodData(
           fromY: low,
           toY: low + expected,
-          color: expectedColor,
+          color: isExpectedTouched ? expectedColorTouched : expectedColor,
           width: 40,
           borderRadius: BorderRadius.zero, // 중간은 라운드 없음
         ),
         BarChartRodData(
           fromY: low + expected,
           toY: low + expected + high,
-          color: highColor,
+          color: isHighTouched ? highColorTouched : highColor,
           width: 40,
           borderRadius: const BorderRadius.only(
             topLeft: Radius.circular(4),
