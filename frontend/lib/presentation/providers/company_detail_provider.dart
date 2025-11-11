@@ -162,7 +162,7 @@ class CompanyDetailProvider with ChangeNotifier {
     // 임시 더미 데이터 (API 연결 후 삭제)
     await Future.delayed(const Duration(milliseconds: 300));
     _weekPrediction = {
-      '최저': 2.5, // %
+      '최저': -2.5, // %
       '예상': 3.5, // %
       '최고': 4.0, // %
     };
