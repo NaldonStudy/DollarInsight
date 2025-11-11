@@ -34,6 +34,13 @@ class CompanyDetailProvider with ChangeNotifier {
   Map<String, double>? _stockScores;
   Map<String, double>? get stockScores => _stockScores;
 
+  // 주가예측 데이터 (1주, 1달)
+  Map<String, double>? _weekPrediction;
+  Map<String, double>? get weekPrediction => _weekPrediction;
+
+  Map<String, double>? _monthPrediction;
+  Map<String, double>? get monthPrediction => _monthPrediction;
+
   List<Map<String, String>> _newsList = [];
   List<Map<String, String>> get newsList => _newsList;
 
@@ -59,10 +66,13 @@ class CompanyDetailProvider with ChangeNotifier {
       // 3. 주식 점수 API 호출
       await _fetchStockScores();
 
-      // 4. 기업 뉴스 API 호출 (최대 5개)
+      // 4. 주가예측 API 호출
+      await _fetchPredictions();
+
+      // 5. 기업 뉴스 API 호출 (최대 5개)
       await _fetchCompanyNews();
 
-      // 5. 관심종목 상태 확인
+      // 6. 관심종목 상태 확인
       await _checkWatchlistStatus();
 
       _isLoading = false;
@@ -131,6 +141,35 @@ class CompanyDetailProvider with ChangeNotifier {
       '성장': 75.0,
       '수급': 90.0,
       '위험': 75.0,
+    };
+  }
+
+  /// 주가예측 API 호출
+  Future<void> _fetchPredictions() async {
+    // TODO: API 연결
+    // final response = await companyRepository.getPredictions(companyId);
+    // _weekPrediction = {
+    //   '최저': response.weekLow.toDouble(),
+    //   '예측': response.weekExpected.toDouble(),
+    //   '최고': response.weekHigh.toDouble(),
+    // };
+    // _monthPrediction = {
+    //   '최저': response.monthLow.toDouble(),
+    //   '예측': response.monthExpected.toDouble(),
+    //   '최고': response.monthHigh.toDouble(),
+    // };
+
+    // 임시 더미 데이터 (API 연결 후 삭제)
+    await Future.delayed(const Duration(milliseconds: 300));
+    _weekPrediction = {
+      '최저': -2.5, // %
+      '예상': 3.5, // %
+      '최고': 4.0, // %
+    };
+    _monthPrediction = {
+      '최저': 3.0, // %
+      '예상': 5.0, // %
+      '최고': 6.0, // %
     };
   }
 

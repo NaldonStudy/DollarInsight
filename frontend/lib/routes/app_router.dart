@@ -18,6 +18,7 @@ import '../presentation/screens/company/company_detail_screen.dart';
 import '../presentation/screens/company/company_chart_screen.dart';
 import '../presentation/screens/company/company_news_list_screen.dart';
 import '../presentation/screens/company/company_news_detail_screen.dart';
+import '../presentation/screens/etf/etf_detail_screen.dart';
 import '../presentation/screens/news/all_news_list_screen.dart';
 import '../presentation/screens/news/all_news_detail_screen.dart';
 import '../presentation/screens/chat/chat_list_screen.dart';
@@ -225,6 +226,19 @@ class AppRouter {
             companyId: companyId,
             newsId: newsId,
           );
+        },
+        redirect: (context, state) => RouteGuards.requireAuth(context, state),
+      ),
+
+      // ==================== ETF ====================
+
+      /// ETF 상세 정보 (차트/종목정보/주가예측 포함)
+      GoRoute(
+        path: '/etf/:etfId',
+        name: 'etf-detail',
+        builder: (context, state) {
+          final etfId = state.pathParameters['etfId']!;
+          return ETFDetailScreen(etfId: etfId);
         },
         redirect: (context, state) => RouteGuards.requireAuth(context, state),
       ),
