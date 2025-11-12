@@ -19,7 +19,10 @@ if utils_dir not in sys.path:
 # 프로젝트 루트 경로
 project_root = airflow_dir  # /opt/airflow
 
-from vectorize_reddit_stocks import vectorize_reddit_stocks
+# 모듈 레벨 import 제거 (파싱 시 CPU 과부하 방지)
+# 무거운 라이브러리(FlagEmbedding, kss, chromadb) 로딩을 방지하기 위해
+# 함수 내부에서 import하도록 변경
+# from vectorize_reddit_stocks import vectorize_reddit_stocks
 
 # 기본 인자 설정
 default_args = {
@@ -49,32 +52,38 @@ def vectorize_reddit_task(**context):
     """Reddit Stocks 데이터 벡터화 실행"""
     import os
     from datetime import datetime
-    
+
+    # 무거운 라이브러리 import를 함수 내부로 이동 (파싱 시 CPU 과부하 방지)
+    from vectorize_reddit_stocks import vectorize_reddit_stocks
+
     # 데이터 파일 경로 설정
     data_dir = os.path.join(project_root, "data")
     json_file = os.path.join(data_dir, "reddit_stocks.json")
-    
-    print(f"🔄 Reddit Stocks 벡터화 시작: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+
+    print(
+        f"🔄 Reddit Stocks 벡터화 시작: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+    )
     print(f"📁 데이터 파일: {json_file}")
-    
+
     try:
         # 벡터화 실행
         stats = vectorize_reddit_stocks(json_file=json_file)
-        
+
         # Airflow XCom에 결과 저장
         context["ti"].xcom_push(key="saved_chunks", value=stats.get("saved_chunks", 0))
         context["ti"].xcom_push(key="skipped", value=stats.get("skipped", 0))
         context["ti"].xcom_push(key="status", value=stats.get("status", "unknown"))
-        
+
         return {
             "status": stats.get("status", "unknown"),
             "saved_chunks": stats.get("saved_chunks", 0),
             "skipped": stats.get("skipped", 0),
         }
-        
+
     except Exception as e:
         print(f"❌ Reddit Stocks 벡터화 중 오류 발생: {str(e)}")
         import traceback
+
         traceback.print_exc()
         raise
 

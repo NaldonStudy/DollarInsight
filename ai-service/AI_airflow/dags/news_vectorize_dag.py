@@ -17,7 +17,10 @@ utils_dir = os.path.join(airflow_dir, "utils")
 if utils_dir not in sys.path:
     sys.path.insert(0, utils_dir)
 
-from vectorize_news import vectorize_news
+# 모듈 레벨 import 제거 (파싱 시 CPU 과부하 방지)
+# 무거운 라이브러리(FlagEmbedding, kss, chromadb) 로딩을 방지하기 위해
+# 함수 내부에서 import하도록 변경
+# from vectorize_news import vectorize_news
 
 # 기본 인자 설정
 # 한국 시간(KST, UTC+9) 기준으로 설정
@@ -48,6 +51,9 @@ dag = DAG(
 def vectorize_news_task(**context):
     """뉴스 벡터화 실행"""
     from datetime import datetime
+    
+    # 무거운 라이브러리 import를 함수 내부로 이동 (파싱 시 CPU 과부하 방지)
+    from vectorize_news import vectorize_news
     
     print(f"🔄 뉴스 벡터화 시작: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     
