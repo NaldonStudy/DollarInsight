@@ -44,8 +44,10 @@ x-airflow-common:
     MONGODB_COMPANY_COLLECTION: ${MONGODB_COMPANY_COLLECTION:-company_analysis}
     # MongoDB 인증 정보 (env_file 또는 환경 변수에서 읽어옴)
     # ⚠️ 민감 정보: .env 파일에서 설정하세요
-    MONGODB_USER: ${MONGODB_USER:-admin}
-    MONGODB_PASSWORD: ${MONGODB_PASSWORD:-}
+    # docker-compose.yml의 MONGO_USER, MONGO_PASSWORD와 동일한 값 사용
+    # .env 파일에 MONGO_USER와 MONGO_PASSWORD가 설정되어 있으면 자동으로 사용됨
+    MONGODB_USER: ${MONGODB_USER:-${MONGO_USER}}
+    MONGODB_PASSWORD: ${MONGODB_PASSWORD:-${MONGO_PASSWORD}}
     MONGODB_AUTH_SOURCE: ${MONGODB_AUTH_SOURCE:-admin}
     # ChromaDB 설정
     CHROMADB_URL: ${CHROMADB_URL:-[REDACTED]}
