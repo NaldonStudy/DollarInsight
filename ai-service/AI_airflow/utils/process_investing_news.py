@@ -228,6 +228,73 @@ COMPANY_NAME_MAPPING = {
     "sne": "소니",
 }
 
+# 기업명 -> 티커 매핑
+COMPANY_TICKER_MAPPING = {
+    # 기술 기업
+    "애플": "AAPL",
+    "마이크로소프트": "MSFT",
+    "구글(알파벳)": "GOOGL",
+    "아마존": "AMZN",
+    "메타": "META",
+    "엔비디아": "NVDA",
+    "AMD": "AMD",
+    "인텔": "INTC",
+    "TSMC": "TSM",
+    "ASML": "ASML",
+    "어도비": "ADBE",
+    "오라클": "ORCL",
+    # 커머스
+    "쿠팡": "CPNG",
+    "알리바바": "BABA",
+    # 자동차
+    "테슬라": "TSLA",
+    # 항공
+    "보잉": "BA",
+    "델타항공": "DAL",
+    # 모빌리티
+    "우버": "UBER",
+    # 산업/물류
+    "페덱스": "FDX",
+    # 리테일
+    "월마트": "WMT",
+    "코스트코": "COST",
+    # 금융
+    "JP모건": "JPM",
+    "BOA": "BAC",
+    "골드만삭스": "GS",
+    # 결제
+    "비자": "V",
+    "마스터카드": "MA",
+    "페이팔": "PYPL",
+    # 보험
+    "AIG": "AIG",
+    # 소비재
+    "코카콜라": "KO",
+    "펩시": "PEP",
+    "맥도날드": "MCD",
+    "스타벅스": "SBUX",
+    "나이키": "NKE",
+    # 미디어/엔터
+    "넷플릭스": "NFLX",
+    "디즈니": "DIS",
+    "소니": "SONY",
+    # ETF (이미 티커가 이름)
+    "VOO": "VOO",
+    "SPY": "SPY",
+    "VTI": "VTI",
+    "QQQ": "QQQ",
+    "QQQM": "QQQM",
+    "TQQQ": "TQQQ",
+    "SCHD": "SCHD",
+    "SOXX": "SOXX",
+    "SMH": "SMH",
+    "ITA": "ITA",
+    "XLF": "XLF",
+    "XLY": "XLY",
+    "XLP": "XLP",
+    "ICLN": "ICLN",
+}
+
 
 # ============================================================================
 # MongoDB 연결
@@ -464,6 +531,13 @@ def process_news_article(article: Dict) -> tuple:
     else:
         print(f"  ✓ 관련 기업 없음")
 
+    # 관련 기업의 티커 리스트 생성 (빈 문자열 제외)
+    related_tickers = [
+        COMPANY_TICKER_MAPPING.get(company)
+        for company in related_companies
+        if COMPANY_TICKER_MAPPING.get(company)
+    ]
+
     # 1. 뉴스 기본 정보 (컬렉션 1)
     news_data = {
         "title": title,
@@ -472,6 +546,7 @@ def process_news_article(article: Dict) -> tuple:
         "date": date,
         "summary": summary,  # 요약 추가
         "related_companies": related_companies,  # 관련 기업/ETF 목록 추가
+        "ticker": related_tickers,  # 관련 기업/ETF 티커 리스트 추가
         "crawled_at": crawled_at,
         "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         # persona_analysis_id는 저장 후 업데이트됨
