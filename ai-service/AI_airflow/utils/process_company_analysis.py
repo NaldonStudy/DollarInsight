@@ -63,7 +63,74 @@ PERSONA_FIELD_MAP = {
     "덕수": "deoksu",
     "지율": "jiyul",
     "테오": "teo",
-    "민지": "minji"
+    "민지": "minji",
+}
+
+# 기업명 -> 티커 매핑
+COMPANY_TICKER_MAPPING = {
+    # 기술 기업
+    "애플": "AAPL",
+    "마이크로소프트": "MSFT",
+    "구글(알파벳)": "GOOGL",
+    "아마존": "AMZN",
+    "메타": "META",
+    "엔비디아": "NVDA",
+    "AMD": "AMD",
+    "인텔": "INTC",
+    "TSMC": "TSM",
+    "ASML": "ASML",
+    "어도비": "ADBE",
+    "오라클": "ORCL",
+    # 커머스
+    "쿠팡": "CPNG",
+    "알리바바": "BABA",
+    # 자동차
+    "테슬라": "TSLA",
+    # 항공
+    "보잉": "BA",
+    "델타항공": "DAL",
+    # 모빌리티
+    "우버": "UBER",
+    # 산업/물류
+    "페덱스": "FDX",
+    # 리테일
+    "월마트": "WMT",
+    "코스트코": "COST",
+    # 금융
+    "JP모건": "JPM",
+    "BOA": "BAC",
+    "골드만삭스": "GS",
+    # 결제
+    "비자": "V",
+    "마스터카드": "MA",
+    "페이팔": "PYPL",
+    # 보험
+    "AIG": "AIG",
+    # 소비재
+    "코카콜라": "KO",
+    "펩시": "PEP",
+    "맥도날드": "MCD",
+    "스타벅스": "SBUX",
+    "나이키": "NKE",
+    # 미디어/엔터
+    "넷플릭스": "NFLX",
+    "디즈니": "DIS",
+    "소니": "SONY",
+    # ETF (이미 티커가 이름)
+    "VOO": "VOO",
+    "SPY": "SPY",
+    "VTI": "VTI",
+    "QQQ": "QQQ",
+    "QQQM": "QQQM",
+    "TQQQ": "TQQQ",
+    "SCHD": "SCHD",
+    "SOXX": "SOXX",
+    "SMH": "SMH",
+    "ITA": "ITA",
+    "XLF": "XLF",
+    "XLY": "XLY",
+    "XLP": "XLP",
+    "ICLN": "ICLN",
 }
 
 
@@ -77,6 +144,7 @@ def get_mongodb_client() -> MongoClient:
     if MONGODB_USERNAME and MONGODB_PASSWORD:
         # 인증 정보가 있으면 인증 포함 (URL 인코딩 적용)
         from urllib.parse import quote_plus
+
         username = quote_plus(str(MONGODB_USERNAME))
         password = quote_plus(str(MONGODB_PASSWORD))
         connection_string = f"mongodb://{username}:{password}@{MONGODB_HOST}:{MONGODB_PORT}/{MONGODB_DB}?authSource={MONGODB_AUTH_SOURCE}"
@@ -92,19 +160,25 @@ def get_mongodb_collection(client: MongoClient = None):
         client = get_mongodb_client()
     db = client[MONGODB_DB]
     collection = db[MONGODB_COLLECTION]
-    
+
     # company_name + analyzed_date를 기준으로 unique 인덱스 생성 (업데이트 시 기준으로 사용)
     # 인증 오류가 발생해도 컬렉션은 반환하도록 try-except 처리
     try:
-        collection.create_index([("company_name", 1), ("analyzed_date", 1)], unique=True)
+        collection.create_index(
+            [("company_name", 1), ("analyzed_date", 1)], unique=True
+        )
     except Exception as e:
         # 인증 오류나 권한 오류가 발생해도 컬렉션은 반환 (인덱스는 나중에 수동으로 생성 가능)
         error_msg = str(e).lower()
-        if "authentication" in error_msg or "unauthorized" in error_msg or "requires authentication" in error_msg:
+        if (
+            "authentication" in error_msg
+            or "unauthorized" in error_msg
+            or "requires authentication" in error_msg
+        ):
             print(f"⚠️  인덱스 생성 중 인증 오류 발생 (무시하고 진행): {e}")
         else:
             print(f"⚠️  인덱스 생성 중 오류 발생 (무시하고 진행): {e}")
-    
+
     return collection
 
 
@@ -116,7 +190,7 @@ def get_mongodb_collection(client: MongoClient = None):
 def analyze_company_via_api(company_name: str, company_info: str = "") -> Dict:
     """
     FastAPI 서버를 통해 기업 분석
-    
+
     Returns:
         {
             "company_name": str,
@@ -131,20 +205,17 @@ def analyze_company_via_api(company_name: str, company_info: str = "") -> Dict:
     try:
         response = requests.post(
             f"{FASTAPI_URL}/analyze-company",
-            json={
-                "company_name": company_name,
-                "company_info": company_info
-            },
-            timeout=60  # 60초 타임아웃
+            json={"company_name": company_name, "company_info": company_info},
+            timeout=60,  # 60초 타임아웃
         )
-        
+
         if response.status_code == 200:
             return response.json()
         else:
             print(f"⚠️ FastAPI 오류 (HTTP {response.status_code}): {response.text}")
             result = {
                 "company_name": company_name,
-                "analyzed_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                "analyzed_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             }
             # FastAPI 응답 형식에 맞춰 Heeyule, Ducksu 등으로 반환 (process_company에서 persona_ 형식으로 변환됨)
             fastapi_field_mapping = {
@@ -152,7 +223,7 @@ def analyze_company_via_api(company_name: str, company_info: str = "") -> Dict:
                 "Ducksu": "덕수",
                 "Jiyule": "지율",
                 "Taeo": "테오",
-                "Minji": "민지"
+                "Minji": "민지",
             }
             for eng_name, kor_name in fastapi_field_mapping.items():
                 result[eng_name] = f"{kor_name} 분석 실패"
@@ -162,14 +233,14 @@ def analyze_company_via_api(company_name: str, company_info: str = "") -> Dict:
         print("   FastAPI 서버가 실행 중인지 확인하세요.")
         result = {
             "company_name": company_name,
-            "analyzed_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            "analyzed_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         }
         persona_english_mapping = {
             "희열": "Heeyule",
             "덕수": "Ducksu",
             "지율": "Jiyule",
             "테오": "Taeo",
-            "민지": "Minji"
+            "민지": "Minji",
         }
         for korean_name, english_name in persona_english_mapping.items():
             result[english_name] = f"{korean_name} 분석 실패 (서버 연결 실패)"
@@ -178,14 +249,14 @@ def analyze_company_via_api(company_name: str, company_info: str = "") -> Dict:
         print(f"⚠️ FastAPI 호출 오류: {str(e)}")
         result = {
             "company_name": company_name,
-            "analyzed_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            "analyzed_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         }
         persona_english_mapping = {
             "희열": "Heeyule",
             "덕수": "Ducksu",
             "지율": "Jiyule",
             "테오": "Taeo",
-            "민지": "Minji"
+            "민지": "Minji",
         }
         for korean_name, english_name in persona_english_mapping.items():
             result[english_name] = f"{korean_name} 분석 실패"
@@ -200,42 +271,49 @@ def analyze_company_via_api(company_name: str, company_info: str = "") -> Dict:
 def process_company(company_name: str, company_info: str = "") -> Dict:
     """기업 분석 및 가공"""
     print(f"🏢 분석 중: {company_name}")
-    
+
     # FastAPI 서버를 통해 분석
     analysis_result = analyze_company_via_api(company_name, company_info)
-    
+
     # 분석 날짜 추출 (YYYY-MM-DD 형식)
-    analyzed_at = analysis_result.get("analyzed_at", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    analyzed_at = analysis_result.get(
+        "analyzed_at", datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    )
     analyzed_date = analyzed_at.split(" ")[0]  # 날짜만 추출
-    
+
     # 가공된 데이터 구성
     # 뉴스 분석과 동일한 형식으로 페르소나별 개별 컬럼 생성 (persona_hyeolyeol, persona_deoksu, persona_jiyul, persona_teo, persona_minji)
     processed = {
         "company_name": company_name,
         "company_info": company_info,
+        "ticker": COMPANY_TICKER_MAPPING.get(company_name, ""),  # 티커 추가
         "analyzed_at": analyzed_at,
         "analyzed_date": analyzed_date,  # 중복 체크용
-        "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
     }
-    
+
     # FastAPI 응답 필드명 -> 페르소나 이름 매핑
     fastapi_to_persona = {
         "Heeyule": "희열",
         "Ducksu": "덕수",
         "Jiyule": "지율",
         "Taeo": "테오",
-        "Minji": "민지"
+        "Minji": "민지",
     }
-    
+
     # 각 페르소나를 persona_ 접두사를 붙인 필드명으로 저장 (뉴스 분석과 동일)
     for persona_name in PERSONAS:
         persona_field = f"persona_{PERSONA_FIELD_MAP[persona_name]}"
         # FastAPI 응답에서 해당 페르소나의 분석 내용 가져오기
-        fastapi_field = [eng for eng, kor in fastapi_to_persona.items() if kor == persona_name][0]
-        processed[persona_field] = analysis_result.get(fastapi_field, f"{persona_name} 분석 생성 실패")
-    
+        fastapi_field = [
+            eng for eng, kor in fastapi_to_persona.items() if kor == persona_name
+        ][0]
+        processed[persona_field] = analysis_result.get(
+            fastapi_field, f"{persona_name} 분석 생성 실패"
+        )
+
     print(f"  ✓ 분석 완료")
-    
+
     return processed
 
 
@@ -247,42 +325,41 @@ def save_to_mongodb(companies_data: List[Dict], collection=None) -> Dict[str, in
         need_close = True
     else:
         need_close = False
-    
-    stats = {
-        "total": len(companies_data),
-        "inserted": 0,
-        "updated": 0,
-        "errors": 0
-    }
-    
+
+    stats = {"total": len(companies_data), "inserted": 0, "updated": 0, "errors": 0}
+
     for company_data in companies_data:
         try:
             # company_name + analyzed_date를 기준으로 업데이트 또는 삽입
             filter_query = {
                 "company_name": company_data["company_name"],
-                "analyzed_date": company_data["analyzed_date"]
+                "analyzed_date": company_data["analyzed_date"],
             }
-            
+
             # upsert=True: 문서가 없으면 삽입, 있으면 업데이트
             result = collection.update_one(
-                filter_query,
-                {"$set": company_data},
-                upsert=True
+                filter_query, {"$set": company_data}, upsert=True
             )
-            
+
             if result.upserted_id:
                 stats["inserted"] += 1
-                print(f"  ✅ 신규 저장: {company_data['company_name']} ({company_data.get('analyzed_date', 'N/A')})")
+                print(
+                    f"  ✅ 신규 저장: {company_data['company_name']} ({company_data.get('analyzed_date', 'N/A')})"
+                )
             else:
                 stats["updated"] += 1
-                print(f"  🔄 업데이트 완료: {company_data['company_name']} ({company_data.get('analyzed_date', 'N/A')})")
+                print(
+                    f"  🔄 업데이트 완료: {company_data['company_name']} ({company_data.get('analyzed_date', 'N/A')})"
+                )
         except Exception as e:
             stats["errors"] += 1
-            print(f"  ❌ 오류 발생: {company_data.get('company_name', 'Unknown')} - {str(e)}")
-    
+            print(
+                f"  ❌ 오류 발생: {company_data.get('company_name', 'Unknown')} - {str(e)}"
+            )
+
     if need_close:
         client.close()
-    
+
     return stats
 
 
@@ -292,61 +369,63 @@ def save_to_mongodb(companies_data: List[Dict], collection=None) -> Dict[str, in
 
 
 def process_companies(
-    company_names: List[str],
-    company_info_dict: Dict[str, str] = None,
-    collection=None
+    company_names: List[str], company_info_dict: Dict[str, str] = None, collection=None
 ) -> Dict[str, int]:
     """
     여러 기업을 분석하고 MongoDB에 저장
-    
+
     Args:
         company_names: 기업명 리스트
         company_info_dict: 기업명별 추가 정보 (선택사항)
         collection: MongoDB 컬렉션 (None이면 새로 연결)
-    
+
     Returns:
         통계 정보
     """
     print("=" * 70)
     print("🏢 기업 분석 MongoDB 저장 프로세스 시작")
     print("=" * 70)
-    
+
     # MongoDB 연결
     if collection is None:
-        print(f"\n1️⃣ MongoDB 연결 중: {MONGODB_HOST}:{MONGODB_PORT}/{MONGODB_DB}/{MONGODB_COLLECTION}")
+        print(
+            f"\n1️⃣ MongoDB 연결 중: {MONGODB_HOST}:{MONGODB_PORT}/{MONGODB_DB}/{MONGODB_COLLECTION}"
+        )
         client = get_mongodb_client()
         collection = get_mongodb_collection(client)
         need_close = True
     else:
         need_close = False
-    
+
     # 오늘 날짜
     today = datetime.now().strftime("%Y-%m-%d")
-    
+
     # 매일 모든 기업을 최신화하기 위해 중복 체크 제거
     # 모든 기업을 분석하여 업데이트 또는 삽입
     print(f"   분석 대상: {len(company_names)}개 (모두 최신화)")
-    
+
     # 각 기업 분석
     print(f"\n2️⃣ 기업 분석 중 ({len(company_names)}개)...")
     processed_companies = []
     for idx, company_name in enumerate(company_names, 1):
         print(f"\n[{idx}/{len(company_names)}]")
-        company_info = company_info_dict.get(company_name, "") if company_info_dict else ""
+        company_info = (
+            company_info_dict.get(company_name, "") if company_info_dict else ""
+        )
         try:
             processed = process_company(company_name, company_info)
             processed_companies.append(processed)
         except Exception as e:
             print(f"  ❌ 분석 실패: {str(e)}")
             continue
-    
+
     # MongoDB에 저장
     print(f"\n3️⃣ MongoDB 저장 중 ({len(processed_companies)}개)...")
     stats = save_to_mongodb(processed_companies, collection)
-    
+
     if need_close:
         client.close()
-    
+
     # 결과 출력
     print("\n" + "=" * 70)
     print("📊 처리 결과")
@@ -357,37 +436,72 @@ def process_companies(
     print(f"업데이트: {stats['updated']}개")
     print(f"오류 발생: {stats['errors']}개")
     print("=" * 70)
-    
-    return {
-        "total": len(company_names),
-        "processed": len(processed_companies),
-        **stats
-    }
+
+    return {"total": len(company_names), "processed": len(processed_companies), **stats}
 
 
 def main():
     """메인 실행 함수"""
     # 테스트용 기업 목록 (50개)
     test_companies = [
-        "삼성전자", "SK하이닉스", "LG전자", "현대자동차", "기아",
-        "네이버", "카카오", "KT", "SK텔레콤", "LG유플러스",
-        "애플", "구글", "아마존", "마이크로소프트", "테슬라",
-        "엔비디아", "페이스북", "넷플릭스", "인텔", "AMD",
-        "삼성SDI", "LG화학", "포스코", "롯데", "CJ",
-        "신한지주", "KB금융", "하나금융", "우리금융", "NH투자증권",
-        "셀트리온", "한미약품", "유한양행", "대웅제약", "일양약품",
-        "코스피200", "코스닥", "나스닥", "S&P500", "다우존스",
-        "비트코인", "이더리움", "리플", "도지코인", "솔라나",
-        "KOSPI", "KOSDAQ", "나스닥100", "S&P500지수", "다우존스30"
+        "삼성전자",
+        "SK하이닉스",
+        "LG전자",
+        "현대자동차",
+        "기아",
+        "네이버",
+        "카카오",
+        "KT",
+        "SK텔레콤",
+        "LG유플러스",
+        "애플",
+        "구글",
+        "아마존",
+        "마이크로소프트",
+        "테슬라",
+        "엔비디아",
+        "페이스북",
+        "넷플릭스",
+        "인텔",
+        "AMD",
+        "삼성SDI",
+        "LG화학",
+        "포스코",
+        "롯데",
+        "CJ",
+        "신한지주",
+        "KB금융",
+        "하나금융",
+        "우리금융",
+        "NH투자증권",
+        "셀트리온",
+        "한미약품",
+        "유한양행",
+        "대웅제약",
+        "일양약품",
+        "코스피200",
+        "코스닥",
+        "나스닥",
+        "S&P500",
+        "다우존스",
+        "비트코인",
+        "이더리움",
+        "리플",
+        "도지코인",
+        "솔라나",
+        "KOSPI",
+        "KOSDAQ",
+        "나스닥100",
+        "S&P500지수",
+        "다우존스30",
     ]
-    
+
     # 프로세스 실행
     stats = process_companies(test_companies)
-    
+
     print("\n✅ 프로세스 완료!")
     print(json.dumps(stats, indent=2, ensure_ascii=False))
 
 
 if __name__ == "__main__":
     main()
-
