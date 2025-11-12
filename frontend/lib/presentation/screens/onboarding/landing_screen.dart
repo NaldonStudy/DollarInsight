@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/services/kakao_login_service.dart';
+import '../../../core/services/google_login_service.dart';
 
 class LandingScreen extends StatefulWidget {
   const LandingScreen({super.key});
@@ -26,9 +27,7 @@ class _LandingScreenState extends State<LandingScreen>
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, 1),
       end: Offset.zero,
-    ).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
-    );
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _controller.forward();
@@ -55,9 +54,7 @@ class _LandingScreenState extends State<LandingScreen>
           width: width,
           height: height,
           clipBehavior: Clip.antiAlias,
-          decoration: const BoxDecoration(
-            color: Color(0xFFF7F8FB),
-          ),
+          decoration: const BoxDecoration(color: Color(0xFFF7F8FB)),
           child: Stack(
             children: [
               /// 🦉 배경 부엉이 (로그인 박스 뒤)
@@ -186,14 +183,17 @@ class _LandingScreenState extends State<LandingScreen>
                           top: height * 0.305,
                           child: GestureDetector(
                             onTap: () async {
-                              final success = await KakaoLoginService.loginWithKakao();
+                              final success =
+                                  await KakaoLoginService.loginWithKakao();
 
                               if (success && context.mounted) {
                                 context.go('/main'); // ✅ 로그인 성공 시 메인으로 이동
                               } else {
                                 if (context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('카카오 로그인에 실패했습니다.')),
+                                    const SnackBar(
+                                      content: Text('카카오 로그인에 실패했습니다.'),
+                                    ),
                                   );
                                 }
                               }
@@ -207,14 +207,33 @@ class _LandingScreenState extends State<LandingScreen>
                           ),
                         ),
 
+                        // 🔹 구글 로그인 버튼
                         Positioned(
                           left: width * 0.594,
-                          top: height * 0.305, // ✅ 통일
-                          child: Image.asset(
-                            'assets/images/google.webp',
-                            width: width * 0.139,
-                            height: width * 0.139,
-                            fit: BoxFit.cover,
+                          top: height * 0.305,
+                          child: GestureDetector(
+                            onTap: () async {
+                              final success =
+                                  await GoogleLoginService.loginWithGoogle();
+
+                              if (success && context.mounted) {
+                                context.go('/main');
+                              } else {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('구글 로그인에 실패했습니다.'),
+                                    ),
+                                  );
+                                }
+                              }
+                            },
+                            child: Image.asset(
+                              'assets/images/google.webp',
+                              width: width * 0.139,
+                              height: width * 0.139,
+                              fit: BoxFit.cover,
+                            ),
                           ),
                         ),
                       ],

@@ -3,10 +3,17 @@ import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart';
 import 'package:dio/dio.dart';
 import 'package:uuid/uuid.dart';
 import '../../data/datasources/local/token_storage.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class KakaoLoginService {
-  static final _dio = Dio(BaseOptions(baseUrl: 'http://k13b205.p.ssafy.io'));
-  static const _redirectUri = 'kakao4514a62e66cce4a2c8189dbf2978db9b://oauth';
+  static final _dio = Dio(
+    BaseOptions(
+      baseUrl: dotenv.env['BASE_URL'] ?? '',
+      contentType: 'application/json',
+    ),
+  );
+
+  static final _redirectUri = dotenv.env['KAKAO_REDIRECT_URI'] ?? '';
 
   /// ✅ 디바이스 ID 관리 (없으면 새로 생성)
   static Future<String> _getDeviceId() async {

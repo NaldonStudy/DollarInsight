@@ -1,14 +1,16 @@
 import 'package:dio/dio.dart';
 import '../../../core/utils/device_id_manager.dart';
 import '../local/token_storage.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class UserApi {
   static final Dio _dio = Dio(
     BaseOptions(
-      baseUrl: 'http://k13b205.p.ssafy.io',
+      baseUrl: dotenv.env['BASE_URL'] ?? '',
       contentType: 'application/json',
     ),
   );
+
 
   /// ✅ 내 정보 조회 API
   static Future<Map<String, dynamic>> fetchMe() async {

@@ -1,12 +1,21 @@
+// 📁 lib/presentation/providers/password_change_provider.dart
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../../core/utils/device_id_manager.dart';
-import '../../data/datasources/local/token_storage.dart'; // ✅ TokenStorage 사용
+import '../../data/datasources/local/token_storage.dart';
 
 class PasswordChangeProvider extends ChangeNotifier {
   final passwordController = TextEditingController();
   final passwordConfirmController = TextEditingController();
-  final _dio = Dio();
+
+  // ✅ Dio 초기화 시 .env 사용
+  final Dio _dio = Dio(
+    BaseOptions(
+      baseUrl: dotenv.env['BASE_URL'] ?? '',
+      contentType: 'application/json',
+    ),
+  );
 
   bool isLoading = false;
   String? passwordError;
@@ -58,7 +67,6 @@ class PasswordChangeProvider extends ChangeNotifier {
       isLoading = true;
       notifyListeners();
 
-      // ✅ TokenStorage에서 accessToken 불러오기
       final token = await TokenStorage.getAccessToken();
       if (token == null || token.isEmpty) {
         throw Exception('Access token이 존재하지 않습니다. 다시 로그인해주세요.');
@@ -70,9 +78,8 @@ class PasswordChangeProvider extends ChangeNotifier {
       debugPrint('🔑 access token: $bearerToken');
       debugPrint('📱 deviceId: $deviceId');
 
-      // ✅ 비밀번호 변경 요청
       final response = await _dio.patch(
-        'http://k13b205.p.ssafy.io/api/users/me/password',
+        '/api/users/me/password',
         options: Options(
           headers: {
             'Authorization': bearerToken,
