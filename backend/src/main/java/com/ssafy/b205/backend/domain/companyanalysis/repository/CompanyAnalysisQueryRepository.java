@@ -2,7 +2,6 @@ package com.ssafy.b205.backend.domain.companyanalysis.repository;
 
 import com.ssafy.b205.backend.domain.companyanalysis.dto.response.AssetSearchResponse;
 import com.ssafy.b205.backend.domain.companyanalysis.dto.response.MajorIndexResponse;
-import com.ssafy.b205.backend.domain.companyanalysis.dto.response.NewsHeadlineResponse;
 import com.ssafy.b205.backend.domain.companyanalysis.dto.response.PersonaCommentResponse;
 import com.ssafy.b205.backend.domain.companyanalysis.dto.response.PriceCandleResponse;
 import com.ssafy.b205.backend.domain.companyanalysis.model.AssetType;
@@ -400,69 +399,6 @@ public class CompanyAnalysisQueryRepository {
         ));
     }
 
-    public Optional<DailyPickCandidate> findLatestPersonaPickTarget() {
-        String sql = """
-            WITH unioned AS (
-                SELECT ticker, 'STOCK' AS asset_type, MAX(created_at) AS max_created
-                FROM stocks_persona
-                GROUP BY ticker
-                UNION ALL
-                SELECT ticker, 'ETF' AS asset_type, MAX(created_at) AS max_created
-                FROM etf_persona
-                GROUP BY ticker
-            )
-            SELECT ticker, asset_type
-            FROM unioned
-            ORDER BY max_created DESC
-            LIMIT 1
-            """;
-        List<DailyPickCandidate> rows = jdbc.query(sql, (rs, rowNum) -> new DailyPickCandidate(
-                rs.getString("ticker"),
-                AssetType.valueOf(rs.getString("asset_type"))
-        ));
-        return rows.isEmpty() ? Optional.empty() : Optional.of(rows.getFirst());
-    }
-
-    public List<NewsHeadlineResponse> fetchNews(String ticker, int limit, int offset) {
-        String sql = """
-            SELECT id, ticker, title, source, published_at
-            FROM company_news
-            WHERE (:ticker IS NULL OR ticker = :ticker)
-            ORDER BY published_at DESC
-            LIMIT :limit OFFSET :offset
-            """;
-        var params = new MapSqlParameterSource()
-                .addValue("ticker", ticker)
-                .addValue("limit", limit)
-                .addValue("offset", offset);
-        return jdbc.query(sql, params, this::mapNewsHeadline);
-    }
-
-    public long countNews(String ticker) {
-        String sql = "SELECT COUNT(*) FROM company_news WHERE (:ticker IS NULL OR ticker = :ticker)";
-        var params = new MapSqlParameterSource().addValue("ticker", ticker);
-        Long count = jdbc.queryForObject(sql, params, Long.class);
-        return count == null ? 0L : count;
-    }
-
-    public Optional<NewsDetailRow> findNewsDetail(long id) {
-        String sql = """
-            SELECT id, ticker, title, source, summary, url, published_at
-            FROM company_news
-            WHERE id = :id
-            """;
-        List<NewsDetailRow> rows = jdbc.query(sql, Map.of("id", id), (rs, rowNum) -> new NewsDetailRow(
-                rs.getLong("id"),
-                rs.getString("ticker"),
-                rs.getString("title"),
-                rs.getString("source"),
-                rs.getString("summary"),
-                rs.getString("url"),
-                toInstant(rs, "published_at")
-        ));
-        return rows.isEmpty() ? Optional.empty() : Optional.of(rows.getFirst());
-    }
-
     public List<MajorIndexResponse> fetchMajorIndices(List<String> tickers) {
         if (tickers == null || tickers.isEmpty()) {
             return List.of();
@@ -487,16 +423,6 @@ public class CompanyAnalysisQueryRepository {
                 rs.getBigDecimal("change_pct"),
                 rs.getObject("price_date", LocalDate.class)
         ));
-    }
-
-    private NewsHeadlineResponse mapNewsHeadline(ResultSet rs, int rowNum) throws SQLException {
-        return new NewsHeadlineResponse(
-                rs.getLong("id"),
-                rs.getString("ticker"),
-                rs.getString("title"),
-                rs.getString("source"),
-                toInstant(rs, "published_at")
-        );
     }
 
     private static Instant toInstant(ResultSet rs, String column) throws SQLException {
@@ -874,70 +800,4 @@ public class CompanyAnalysisQueryRepository {
         }
     }
 
-    public static class DailyPickCandidate {
-        private final String ticker;
-        private final AssetType assetType;
-
-        public DailyPickCandidate(String ticker, AssetType assetType) {
-            this.ticker = ticker;
-            this.assetType = assetType;
-        }
-
-        public String getTicker() {
-            return ticker;
-        }
-
-        public AssetType getAssetType() {
-            return assetType;
-        }
-    }
-
-    public static class NewsDetailRow {
-        private final Long id;
-        private final String ticker;
-        private final String title;
-        private final String source;
-        private final String summary;
-        private final String url;
-        private final Instant publishedAt;
-
-        public NewsDetailRow(Long id, String ticker, String title, String source,
-                             String summary, String url, Instant publishedAt) {
-            this.id = id;
-            this.ticker = ticker;
-            this.title = title;
-            this.source = source;
-            this.summary = summary;
-            this.url = url;
-            this.publishedAt = publishedAt;
-        }
-
-        public Long getId() {
-            return id;
-        }
-
-        public String getTicker() {
-            return ticker;
-        }
-
-        public String getTitle() {
-            return title;
-        }
-
-        public String getSource() {
-            return source;
-        }
-
-        public String getSummary() {
-            return summary;
-        }
-
-        public String getUrl() {
-            return url;
-        }
-
-        public Instant getPublishedAt() {
-            return publishedAt;
-        }
-    }
 }
