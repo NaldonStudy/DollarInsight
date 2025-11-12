@@ -43,8 +43,13 @@ MONGODB_PERSONA_COLLECTION = os.getenv(
 # strip()으로 개행 문자 제거
 _mongodb_user = os.getenv("MONGODB_USER", os.getenv("MONGODB_USERNAME", None))
 _mongodb_pass = os.getenv("MONGODB_PASSWORD", None)
-MONGODB_USERNAME = _mongodb_user.strip() if _mongodb_user else None
-MONGODB_PASSWORD = _mongodb_pass.strip() if _mongodb_pass else None
+# 빈 문자열도 None으로 처리 (인증 없이 연결 시도 방지)
+MONGODB_USERNAME = (
+    _mongodb_user.strip() if _mongodb_user and _mongodb_user.strip() else None
+)
+MONGODB_PASSWORD = (
+    _mongodb_pass.strip() if _mongodb_pass and _mongodb_pass.strip() else None
+)
 MONGODB_AUTH_SOURCE = os.getenv("MONGODB_AUTH_SOURCE", "admin").strip()
 
 # FastAPI 서버 설정

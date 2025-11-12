@@ -122,59 +122,56 @@ def update_company_analysis_ticker():
     print("=" * 70)
     print("🏢 company_analysis 컬렉션 ticker 필드 업데이트")
     print("=" * 70)
-    
+
     client = get_mongodb_client()
     db = client[MONGODB_DB]
     collection = db[MONGODB_COMPANY_COLLECTION]
-    
+
     # 전체 문서 수 확인
     total_count = collection.count_documents({})
     print(f"\n전체 문서 수: {total_count:,}개")
-    
+
     if total_count == 0:
         print("⚠️ 업데이트할 문서가 없습니다.")
         client.close()
         return
-    
+
     # ticker가 없는 문서만 필터링
     docs_without_ticker = collection.find({"ticker": {"$exists": False}})
     docs_to_update = list(docs_without_ticker)
-    
+
     print(f"ticker 필드가 없는 문서: {len(docs_to_update)}개")
-    
+
     if len(docs_to_update) == 0:
         print("✅ 모든 문서에 ticker 필드가 이미 존재합니다.")
         client.close()
         return
-    
+
     # 업데이트 진행
     updated_count = 0
     not_found_count = 0
-    
+
     for doc in docs_to_update:
         company_name = doc.get("company_name", "")
         if not company_name:
             print(f"  ⚠️ company_name이 없는 문서 건너뜀: {doc.get('_id', 'N/A')}")
             continue
-        
+
         ticker = COMPANY_TICKER_MAPPING.get(company_name)
-        
+
         if ticker:
-            collection.update_one(
-                {"_id": doc["_id"]},
-                {"$set": {"ticker": ticker}}
-            )
+            collection.update_one({"_id": doc["_id"]}, {"$set": {"ticker": ticker}})
             updated_count += 1
             if updated_count % 10 == 0:
                 print(f"  진행 중... {updated_count}/{len(docs_to_update)}")
         else:
             not_found_count += 1
             print(f"  ⚠️ 티커 매핑 없음: {company_name}")
-    
+
     print(f"\n✅ 업데이트 완료:")
     print(f"  - 업데이트된 문서: {updated_count}개")
     print(f"  - 티커 매핑 없음: {not_found_count}개")
-    
+
     client.close()
 
 
@@ -183,67 +180,63 @@ def update_investing_news_ticker():
     print("\n" + "=" * 70)
     print("📰 investing_news 컬렉션 ticker 필드 업데이트")
     print("=" * 70)
-    
+
     client = get_mongodb_client()
     db = client[MONGODB_DB]
     collection = db[MONGODB_NEWS_COLLECTION]
-    
+
     # 전체 문서 수 확인
     total_count = collection.count_documents({})
     print(f"\n전체 문서 수: {total_count:,}개")
-    
+
     if total_count == 0:
         print("⚠️ 업데이트할 문서가 없습니다.")
         client.close()
         return
-    
+
     # ticker가 없는 문서만 필터링
     docs_without_ticker = collection.find({"ticker": {"$exists": False}})
     docs_to_update = list(docs_without_ticker)
-    
+
     print(f"ticker 필드가 없는 문서: {len(docs_to_update)}개")
-    
+
     if len(docs_to_update) == 0:
         print("✅ 모든 문서에 ticker 필드가 이미 존재합니다.")
         client.close()
         return
-    
+
     # 업데이트 진행
     updated_count = 0
     empty_ticker_count = 0
-    
+
     for doc in docs_to_update:
         related_companies = doc.get("related_companies", [])
-        
+
         if not related_companies or not isinstance(related_companies, list):
             # related_companies가 없거나 빈 리스트인 경우 빈 리스트로 설정
-            collection.update_one(
-                {"_id": doc["_id"]},
-                {"$set": {"ticker": []}}
-            )
+            collection.update_one({"_id": doc["_id"]}, {"$set": {"ticker": []}})
             empty_ticker_count += 1
             continue
-        
+
         # related_companies에서 티커 리스트 생성
         related_tickers = [
             COMPANY_TICKER_MAPPING.get(company)
             for company in related_companies
             if COMPANY_TICKER_MAPPING.get(company)
         ]
-        
+
         collection.update_one(
-            {"_id": doc["_id"]},
-            {"$set": {"ticker": related_tickers}}
+            {"_id": doc["_id"]}, {"$set": {"ticker": related_tickers}}
         )
         updated_count += 1
-        
+
         if updated_count % 10 == 0:
             print(f"  진행 중... {updated_count}/{len(docs_to_update)}")
-    
+
     print(f"\n✅ 업데이트 완료:")
     print(f"  - 업데이트된 문서: {updated_count}개")
     print(f"  - 티커 없는 문서 (빈 리스트): {empty_ticker_count}개")
-    
+
     client.close()
 
 
@@ -252,25 +245,25 @@ def main():
     print("\n" + "=" * 70)
     print("🔄 MongoDB 컬렉션 ticker 필드 업데이트 시작")
     print("=" * 70)
-    
+
     try:
         # company_analysis 컬렉션 업데이트
         update_company_analysis_ticker()
-        
+
         # investing_news 컬렉션 업데이트
         update_investing_news_ticker()
-        
+
         print("\n" + "=" * 70)
         print("✅ 모든 업데이트 완료!")
         print("=" * 70)
-        
+
     except Exception as e:
         print(f"\n❌ 오류 발생: {str(e)}")
         import traceback
+
         traceback.print_exc()
         raise
 
 
 if __name__ == "__main__":
     main()
-
