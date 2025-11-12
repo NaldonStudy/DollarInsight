@@ -5,6 +5,7 @@ import '../../../core/constants/app_spacing.dart';
 import '../../widgets/common/top_navigation.dart';
 import '../chat/chat_list_screen.dart';
 import '../../widgets/main/live_chat_card.dart';
+import '../../widgets/main/stock_list_banner.dart';
 import '../../widgets/main/index_section.dart';
 import '../../widgets/main/news_section.dart';
 import '../../widgets/main/stock_section.dart';
@@ -142,6 +143,11 @@ class _MainScreenState extends State<MainScreen> {
 
           /// ✅ 실시간 채팅 박스
           LiveChatCard(w: w, h: h),
+
+          SizedBox(height: AppSpacing.small(context)),
+
+          /// ✅ 기업 알아보기 배너
+          StockListBanner(w: w, h: h),
 
           SizedBox(height: AppSpacing.section(context)),
 
