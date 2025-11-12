@@ -10,6 +10,7 @@ import '../../../core/constants/app_spacing.dart';
 import 'package:go_router/go_router.dart';
 import '../company/company_news_list_screen.dart';
 import '../company/company_news_detail_screen.dart';
+import 'etf_info_screen.dart';
 
 /// ETF 상세 페이지
 /// Provid~er를 사용하여 데이터 로직과 UI 로직 분리
@@ -230,6 +231,23 @@ class _ETFDetailScreenState extends State<ETFDetailScreen>
               ],
             ),
           ),
+          // + 버튼 (ETF 설명)
+          IconButton(
+            icon: Image.asset(
+              'assets/images/plusicon.webp',
+              width: 24,
+              height: 24,
+            ),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ETFInfoScreen(etfId: widget.etfId),
+                ),
+              );
+            },
+          ),
+          const SizedBox(width: 8),
           // 관심 버튼
           WatchButton(
             isWatching: provider.isWatching,

@@ -1,67 +1,67 @@
 import 'api_client.dart';
-import '../../models/company_model.dart';
+import '../../models/etf_model.dart';
 
-/// 기업 API 클라이언트
-class CompanyApi {
+/// ETF 정보 API 클래스
+class EtfApi {
   final ApiClient _apiClient;
 
-  CompanyApi({ApiClient? apiClient})
+  EtfApi({ApiClient? apiClient})
       : _apiClient = apiClient ?? ApiClient();
 
-  /// 기업 정보 조회
+  /// ETF 정보 조회
   ///
-  /// [companyId]: 기업 ID 또는 티커
+  /// [etfId]: ETF ID 또는 코드 (예: QQQ)
   ///
-  /// 반환: CompanyInfo 객체
+  /// 반환: EtfInfo 객체
   ///
   /// TODO: 실제 API 엔드포인트로 변경 필요
-  /// 예시: GET /api/companies/{companyId}/info
-  Future<CompanyInfo> getCompanyInfo(String companyId) async {
+  /// 예시: GET /api/etf/{etfId}/info
+  Future<EtfInfo> getEtfInfo(String etfId) async {
     try {
       // TODO: 실제 API 엔드포인트로 변경
       final response = await _apiClient.get(
-        '/api/companies/$companyId/info',
+        '/api/etf/$etfId/info',
       );
 
-      return CompanyInfo.fromJson(response);
+      return EtfInfo.fromJson(response);
     } catch (e) {
-      throw Exception('기업 정보 조회 실패: $e');
+      throw Exception('ETF 정보 조회 실패: $e');
     }
   }
 
-  /// 기업 목록 조회 (검색)
+  /// ETF 목록 조회 (검색)
   ///
   /// [query]: 검색어
-  /// [limit]: 최대 결과 수 (기본: 10)
+  /// [limit]: 결과 개수 제한 (기본값: 10)
   ///
-  /// 반환: CompanyInfo 리스트
+  /// 반환: EtfInfo 리스트
   ///
   /// TODO: 실제 API 엔드포인트로 변경 필요
-  /// 예시: GET /api/companies?query={query}&limit={limit}
-  Future<List<CompanyInfo>> searchCompanies({
+  /// 예시: GET /api/etf?query={query}&limit={limit}
+  Future<List<EtfInfo>> searchEtfs({
     required String query,
     int limit = 10,
   }) async {
     try {
       // TODO: 실제 API 엔드포인트로 변경
       final response = await _apiClient.get(
-        '/api/companies',
+        '/api/etf',
         queryParameters: {
           'query': query,
           'limit': limit.toString(),
         },
       );
 
-      // 응답 형식에 따라 처리
+      // 응답이 리스트 형태인 경우
       if (response['data'] is List) {
         return (response['data'] as List)
-            .map((json) => CompanyInfo.fromJson(json))
+            .map((json) => EtfInfo.fromJson(json))
             .toList();
       }
 
       return [];
     } catch (e) {
-      throw Exception('기업 검색 실패: $e');
+      throw Exception('ETF 검색 실패: $e');
     }
   }
 
