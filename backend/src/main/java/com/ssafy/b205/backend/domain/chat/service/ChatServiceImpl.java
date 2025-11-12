@@ -206,18 +206,37 @@ public class ChatServiceImpl implements ChatService {
         final int userId = toUserId(userUuid);
         loadOwnedSession(userId, sessionUuid);
 
-        final int pageSize = Math.max(1, Math.min(100, limit)) + 1; // limit+1 조회
-        final var pageable = PageRequest.of(0, pageSize);
+        final int limitClamped = Math.max(1, Math.min(100, limit));
+        final var pageable = PageRequest.of(0, limitClamped + 1); // limit+1 조회
 
-        final List<ChatMessageDoc> docsDesc = (cursorId == null || cursorId.isBlank())
+        ObjectId cursorObjectId = null;
+        if (cursorId != null && !cursorId.isBlank()) {
+            try {
+                cursorObjectId = new ObjectId(cursorId);
+            } catch (IllegalArgumentException e) {
+                throw new AppException(ErrorCode.BAD_REQUEST, "유효하지 않은 cursor 입니다.");
+            }
+        }
+
+        final List<ChatMessageDoc> docsDesc = (cursorObjectId == null)
                 ? msgRepo.pageFirst(sessionUuid, pageable)
-                : msgRepo.pageByCursor(sessionUuid, new ObjectId(cursorId), pageable);
+                : msgRepo.pageByCursor(sessionUuid, cursorObjectId, pageable);
+
+        final boolean hasMore = docsDesc.size() > limitClamped;
+        final List<ChatMessageDoc> sliceDesc = hasMore ? docsDesc.subList(0, limitClamped) : docsDesc;
+        final String nextCursor = (hasMore && !sliceDesc.isEmpty())
+                ? sliceDesc.get(sliceDesc.size() - 1).getId()
+                : null;
 
         // _id desc → 응답은 과거→최신
-        final var orderedAsc = new ArrayList<>(docsDesc);
+        final var orderedAsc = new ArrayList<>(sliceDesc);
         Collections.reverse(orderedAsc);
 
-        return com.ssafy.b205.backend.domain.chat.dto.response.HistoryCursorResponse.of(orderedAsc, pageSize);
+        return com.ssafy.b205.backend.domain.chat.dto.response.HistoryCursorResponse.of(
+                orderedAsc,
+                nextCursor,
+                hasMore
+        );
     }
 
 
