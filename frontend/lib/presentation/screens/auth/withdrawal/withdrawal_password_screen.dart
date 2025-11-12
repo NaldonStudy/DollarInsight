@@ -4,7 +4,6 @@ import '../../../widgets/common/custom_back_button.dart';
 import '../../../widgets/common/custom_text_field.dart';
 import '../../../widgets/common/custom_button.dart';
 import '../../../providers/password_change_provider.dart';
-import '../../../../data/models/signup_form_state.dart';
 import 'package:go_router/go_router.dart';
 
 class WithdrawalPasswordScreen extends StatelessWidget {
@@ -50,13 +49,12 @@ class WithdrawalPasswordScreen extends StatelessWidget {
 
                     SizedBox(height: h * 0.04),
 
-                    /// ✅ 입력 영역 (스크롤 가능)
+                    /// ✅ 입력 영역
                     Expanded(
                       child: SingleChildScrollView(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            /// ✅ 비밀번호 입력
                             CustomTextField(
                               hintText: '비밀번호',
                               controller: provider.passwordController,
@@ -64,8 +62,18 @@ class WithdrawalPasswordScreen extends StatelessWidget {
                               showPasswordToggle: true,
                               onChanged: provider.validatePassword,
                             ),
-                            _validation(provider.state.password),
-
+                            if (provider.passwordError != null)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 8, left: 2),
+                                child: Text(
+                                  provider.passwordError!,
+                                  style: const TextStyle(
+                                    color: Colors.red,
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
                             SizedBox(height: 24),
                           ],
                         ),
@@ -76,10 +84,10 @@ class WithdrawalPasswordScreen extends StatelessWidget {
                     CustomButton(
                       text: "확인",
                       onPressed: () {
-                        if (provider.state.password.isValid) {
-                          /// ✅ 실제 탈퇴 API 넣을 자리
-                          /// TODO: provider.withdrawal(password)
-
+                        if (provider.passwordError == null &&
+                            provider.passwordController.text.isNotEmpty) {
+                          // ✅ 실제 탈퇴 API 자리
+                          // TODO: provider.withdrawal(password)
                           context.push('/withdrawal/complete');
                         } else {
                           ScaffoldMessenger.of(context).showSnackBar(
@@ -99,35 +107,6 @@ class WithdrawalPasswordScreen extends StatelessWidget {
             ),
           );
         },
-      ),
-    );
-  }
-
-  /// ✅ Validation UI 복사
-  Widget _validation(FieldValidationState state) {
-    if (!state.hasBeenTouched) return const SizedBox.shrink();
-
-    if (state.isValid) {
-      return const Padding(
-        padding: EdgeInsets.only(top: 8, left: 2),
-        child: Row(
-          children: [
-            Icon(Icons.check_circle, color: Color(0xFF31C275), size: 16),
-          ],
-        ),
-      );
-    }
-
-    return Padding(
-      padding: const EdgeInsets.only(top: 8, left: 2),
-      child: Text(
-        state.errorMessage ?? '',
-        style: const TextStyle(
-          color: Color(0xFFFF0000),
-          fontSize: 15,
-          fontWeight: FontWeight.w600,
-          letterSpacing: 0.45,
-        ),
       ),
     );
   }
