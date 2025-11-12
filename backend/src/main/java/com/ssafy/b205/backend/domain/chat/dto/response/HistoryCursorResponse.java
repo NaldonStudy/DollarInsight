@@ -22,13 +22,10 @@ public final class HistoryCursorResponse {
     public String getNextCursor() { return nextCursor; }
     public boolean isHasMore() { return hasMore; }
 
-    public static HistoryCursorResponse of(List<ChatMessageDoc> orderedAsc, int pageSizePlusOne) {
-        boolean hasMore = orderedAsc.size() > pageSizePlusOne - 1;
-        List<ChatMessageDoc> slice = hasMore ? orderedAsc.subList(0, pageSizePlusOne - 1) : orderedAsc;
-        String next = slice.isEmpty() ? null : slice.get(slice.size() - 1).getId();
+    public static HistoryCursorResponse of(List<ChatMessageDoc> orderedAsc, String nextCursor, boolean hasMore) {
         return new HistoryCursorResponse(
-                slice.stream().map(Item::from).collect(Collectors.toList()),
-                next,
+                orderedAsc.stream().map(Item::from).collect(Collectors.toList()),
+                nextCursor,
                 hasMore
         );
     }
