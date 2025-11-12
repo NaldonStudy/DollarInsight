@@ -7,11 +7,17 @@ import 'package:provider/provider.dart';
 import 'presentation/providers/auth_provider.dart';
 import 'presentation/providers/user_provider.dart';
 
+import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // ✅ 한국어 날짜/시간 포맷 초기화 (필수)
   await initializeDateFormatting('ko_KR', null);
+
+  KakaoSdk.init(
+    nativeAppKey: '4514a62e66cce4a2c8189dbf2978db9b',
+  );
 
   usePathUrlStrategy();
   runApp(

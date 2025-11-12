@@ -6,6 +6,20 @@
         <meta-data
                 android:name="io.flutter.embedding.android.EnableImpeller"
                 android:value="false" />
+        <meta-data
+                android:name="com.kakao.sdk.AppKey"
+                android:value="4514a62e66cce4a2c8189dbf2978db9b" />
+        <activity
+                android:name="com.kakao.sdk.flutter.AuthCodeCustomTabsActivity"
+                android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="kakao4514a62e66cce4a2c8189dbf2978db9b"
+                      android:host="oauth" />
+            </intent-filter>
+        </activity>
         <activity
                 android:name=".MainActivity"
                 android:exported="true"

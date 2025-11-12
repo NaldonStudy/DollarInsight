@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/services/kakao_login_service.dart';
 
 class LandingScreen extends StatefulWidget {
   const LandingScreen({super.key});
@@ -179,16 +180,33 @@ class _LandingScreenState extends State<LandingScreen>
                         ),
 
                         /// 🔹 소셜 로그인 아이콘들
+                        /// 🔹 카카오 로그인 버튼
                         Positioned(
                           left: width * 0.266,
-                          top: height * 0.305, // ✅ 비율 기반
-                          child: Image.asset(
-                            'assets/images/kakao.webp',
-                            width: width * 0.136,
-                            height: width * 0.136,
-                            fit: BoxFit.cover,
+                          top: height * 0.305,
+                          child: GestureDetector(
+                            onTap: () async {
+                              final success = await KakaoLoginService.loginWithKakao();
+
+                              if (success && context.mounted) {
+                                context.go('/main'); // ✅ 로그인 성공 시 메인으로 이동
+                              } else {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('카카오 로그인에 실패했습니다.')),
+                                  );
+                                }
+                              }
+                            },
+                            child: Image.asset(
+                              'assets/images/kakao.webp',
+                              width: width * 0.136,
+                              height: width * 0.136,
+                              fit: BoxFit.cover,
+                            ),
                           ),
                         ),
+
                         Positioned(
                           left: width * 0.594,
                           top: height * 0.305, // ✅ 통일

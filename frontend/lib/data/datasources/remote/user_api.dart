@@ -15,14 +15,24 @@ class UserApi {
     final deviceId = await DeviceIdManager.getDeviceId();
     final access = await TokenStorage.getAccessToken();
 
+    // ✅ 디버깅용 로그 추가
+    print('-----------------------------');
+    print('🧩 [DEBUG] accessToken: $access');
+    print('🧩 [DEBUG] deviceId: $deviceId');
+    print('-----------------------------');
+
     try {
       final resp = await _dio.get(
         '/api/users/me',
         options: Options(
-          headers: {'Authorization': 'Bearer $access', 'X-Device-Id': deviceId},
+          headers: {
+            'Authorization': 'Bearer $access',
+            'X-Device-Id': deviceId,
+          },
         ),
       );
 
+      print('✅ [fetchMe] response: ${resp.data}');
       return resp.data['data'];
     } catch (e) {
       print("❌ [fetchMe] error: $e");
@@ -37,6 +47,13 @@ class UserApi {
       final access = await TokenStorage.getAccessToken();
       final refresh = await TokenStorage.getRefreshToken();
 
+      // ✅ 디버깅용 로그 추가
+      print('-----------------------------');
+      print('🧩 [DEBUG] accessToken: $access');
+      print('🧩 [DEBUG] refreshToken: $refresh');
+      print('🧩 [DEBUG] deviceId: $deviceId');
+      print('-----------------------------');
+
       final response = await _dio.post(
         '/api/auth/logout',
         options: Options(
@@ -49,9 +66,13 @@ class UserApi {
         ),
       );
 
-      // ✅ 204 OK (성공)
+      // ✅ 응답 코드 출력
+      print('✅ [logout] statusCode: ${response.statusCode}');
+      print('✅ [logout] response: ${response.data}');
+
+      // ✅ 204 OK (성공 시 토큰 제거)
       if (response.statusCode == 204) {
-        await TokenStorage.clearTokens(); // 저장된 토큰 제거
+        await TokenStorage.clearTokens();
       }
 
       return response.statusCode ?? 500;
