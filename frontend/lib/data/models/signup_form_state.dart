@@ -1,4 +1,5 @@
 /// 각 필드의 유효성 검증 상태를 나타내는 모델
+///
 class FieldValidationState {
   final String? errorMessage;
   final bool isValid;

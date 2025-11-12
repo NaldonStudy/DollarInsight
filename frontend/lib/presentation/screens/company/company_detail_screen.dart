@@ -13,6 +13,7 @@ import 'package:go_router/go_router.dart';
 import 'company_chart_screen.dart';
 import 'company_news_list_screen.dart';
 import 'company_news_detail_screen.dart';
+import 'company_info_screen.dart';
 
 /// 기업 상세 페이지
 /// Provider를 사용하여 데이터 로직과 UI 로직 분리
@@ -247,6 +248,23 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
               ],
             ),
           ),
+          // + 버튼 (기업 설명)
+          IconButton(
+            icon: Image.asset(
+              'assets/images/plusicon.webp',
+              width: 24,
+              height: 24,
+            ),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => CompanyInfoScreen(companyId: widget.companyId),
+                ),
+              );
+            },
+          ),
+          const SizedBox(width: 8),
           // 관심 버튼
           WatchButton(
             isWatching: provider.isWatching,
