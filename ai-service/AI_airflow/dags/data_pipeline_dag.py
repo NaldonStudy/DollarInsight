@@ -41,7 +41,7 @@ dag = DAG(
     "data_pipeline",
     default_args=default_args,
     description="Data pipeline: Raw data collection → Metrics & Scores calculation",
-    schedule="10 21 * * *",  # 매일 UTC 기준 21시 10분 실행
+    schedule="10 6 * * *",  # 매일 한국시간 기준 오전 6시 10분 실행
     catchup=False,
     max_active_runs=1,
     max_active_tasks=2,  # 두 작업이 순차적으로 실행되므로 2로 설정
