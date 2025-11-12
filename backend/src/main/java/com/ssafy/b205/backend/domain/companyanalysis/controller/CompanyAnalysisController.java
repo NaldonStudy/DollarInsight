@@ -80,7 +80,13 @@ public class CompanyAnalysisController {
 
     @Operation(
             summary = "기업/ETF 상세",
-            description = "기본정보와 가격 히스토리, 예측, 투자지표, 뉴스 묶음을 내려줍니다.",
+            description = """
+                    기본정보·가격 히스토리·예측·투자지표·뉴스를 한 번에 내려줍니다.
+                    
+                    * 주식(STOCK)은 `predictions`, `stockIndicators`, `stockScores`가 채워지고 `etfIndicators`는 null입니다.
+                    * ETF는 `etfIndicators`만 채워지고 `predictions`, `stockIndicators`, `stockScores`는 null입니다.
+                    프런트는 자산 타입 또는 null 여부를 보고 필요한 카드만 렌더링하면 됩니다.
+                    """,
             responses = {
                     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "OK",
                             content = @Content(schema = @Schema(implementation = CompanyDetailResponse.class))),
@@ -131,7 +137,7 @@ public class CompanyAnalysisController {
     )
     @Parameter(name = "X-Device-Id", in = ParameterIn.HEADER, required = true, description = "디바이스 식별자")
     @GetMapping("/news/{newsId}")
-    public ApiResponse<NewsDetailResponse> getNewsDetail(@PathVariable long newsId) {
+    public ApiResponse<NewsDetailResponse> getNewsDetail(@PathVariable String newsId) {
         return ApiResponse.ok(service.getNewsDetail(newsId));
     }
 }
