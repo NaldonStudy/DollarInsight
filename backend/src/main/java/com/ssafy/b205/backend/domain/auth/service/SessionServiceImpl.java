@@ -157,19 +157,25 @@ public class SessionServiceImpl implements SessionService {
         final User user = userRepository.findByUuidAndDeletedAtIsNull(UUID.fromString(userUuid))
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
 
-        final UserDevice device = userDeviceRepository.findByUserAndDeviceId(user, did)
-                .orElseThrow(() -> new IllegalArgumentException("디바이스를 찾을 수 없습니다."));
-
         if (refreshTokenOrNull != null && !refreshTokenOrNull.isBlank()) {
             final String hash = RefreshTokenUtil.sha256Base64(refreshTokenOrNull, refreshPepper);
             userSessionRepository.findByRefreshTokenHash(hash)
                     .ifPresent(s -> { if (s.isActive()) s.revoke("user logout"); });
             log.info("[SessionSvc-22] 특정 refresh 리보크 완료");
-        } else {
-            userSessionRepository.findByUserAndUserDevice(user, device)
-                    .forEach(s -> { if (s.isActive()) s.revoke("logout all by device"); });
-            log.info("[SessionSvc-23] 디바이스 전체 세션 리보크 완료");
+            return;
         }
+
+        final UserDevice device = userDeviceRepository.findByUserAndDeviceId(user, did)
+                .orElse(null);
+
+        if (device == null) {
+            log.warn("[SessionSvc-W21] userUuid={}, deviceId={} 에 해당하는 기기 레코드가 없어 멱등 처리합니다.", userUuid, did);
+            return;
+        }
+
+        userSessionRepository.findByUserAndUserDevice(user, device)
+                .forEach(s -> { if (s.isActive()) s.revoke("logout all by device"); });
+        log.info("[SessionSvc-23] 디바이스 전체 세션 리보크 완료");
     }
 
     /** UUID 형태의 deviceId를 부분 마스킹 (원형 노출 방지) */
