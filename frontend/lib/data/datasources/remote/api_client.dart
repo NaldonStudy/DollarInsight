@@ -103,7 +103,7 @@ class ApiClient {
   }
 
   /// GET 요청
-  Future<Map<String, dynamic>> get(
+  Future<dynamic> get(
     String endpoint, {
     Map<String, String>? headers,
     Map<String, dynamic>? queryParameters,
@@ -122,7 +122,7 @@ class ApiClient {
   }
 
   /// POST 요청
-  Future<Map<String, dynamic>> post(
+  Future<dynamic> post(
     String endpoint, {
     Map<String, String>? headers,
     Map<String, dynamic>? body,
@@ -141,7 +141,7 @@ class ApiClient {
   }
 
   /// PUT 요청
-  Future<Map<String, dynamic>> put(
+  Future<dynamic> put(
     String endpoint, {
     Map<String, String>? headers,
     Map<String, dynamic>? body,
@@ -160,7 +160,7 @@ class ApiClient {
   }
 
   /// DELETE 요청
-  Future<Map<String, dynamic>> delete(
+  Future<dynamic> delete(
     String endpoint, {
     Map<String, String>? headers,
   }) async {
@@ -176,16 +176,13 @@ class ApiClient {
     }
   }
 
-  /// HTTP 응답 처리
-  Map<String, dynamic> _handleResponse(Response response) {
+  /// HTTP 응답 처리 - List 응답도 지원하도록 수정
+  dynamic _handleResponse(Response response) {
     if (response.statusCode != null &&
         response.statusCode! >= 200 &&
         response.statusCode! < 300) {
       // Dio는 자동으로 JSON을 파싱해줌
-      if (response.data is Map<String, dynamic>) {
-        return response.data as Map<String, dynamic>;
-      }
-      return {};
+      return response.data; // 직접 반환 (List든 Map이든 상관없이)
     } else if (response.statusCode == 404) {
       throw Exception('리소스를 찾을 수 없습니다 (404)');
     } else if (response.statusCode == 401) {
