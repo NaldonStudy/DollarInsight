@@ -1,13 +1,10 @@
 package com.ssafy.b205.backend.domain.user.service;
 
-import com.ssafy.b205.backend.domain.persona.entity.Persona;
-import com.ssafy.b205.backend.domain.persona.entity.UserPersona;
-import com.ssafy.b205.backend.domain.persona.repository.PersonaRepository;
-import com.ssafy.b205.backend.domain.persona.repository.UserPersonaRepository;
 import com.ssafy.b205.backend.domain.user.entity.User;
 import com.ssafy.b205.backend.domain.user.entity.UserCredential;
 import com.ssafy.b205.backend.domain.user.repository.UserCredentialRepository;
 import com.ssafy.b205.backend.domain.user.repository.UserRepository;
+import com.ssafy.b205.backend.domain.persona.service.UserPersonaService;
 import com.ssafy.b205.backend.infra.security.TokenProvider;
 import com.ssafy.b205.backend.support.error.AppException;
 import com.ssafy.b205.backend.support.error.ErrorCode;
@@ -28,8 +25,7 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final UserCredentialRepository credentialRepository;
-    private final PersonaRepository personaRepository;
-    private final UserPersonaRepository userPersonaRepository;
+    private final UserPersonaService userPersonaService;
     private final PasswordEncoder passwordEncoder;
     private final TokenProvider tokenProvider;
 
@@ -63,7 +59,7 @@ public class UserServiceImpl implements UserService {
                 .build());
         log.info("[UserSvc-03] 자격증명 저장 완료 userId={}", u.getId());
 
-        initializeUserPersonas(u);
+        userPersonaService.initializeForUser(u.getId());
 
         return u;
     }
@@ -170,20 +166,5 @@ public class UserServiceImpl implements UserService {
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "[UserSvc-E05] UUID로 사용자 없음: " + userUuid));
         user.markWithdrawn();
         log.info("[UserSvc-71] 소프트 삭제 완료 userId={}", user.getId());
-    }
-
-    private void initializeUserPersonas(User user) {
-        final var personas = personaRepository.findAll();
-        if (personas.isEmpty()) {
-            log.warn("[UserSvc-04] 등록된 페르소나 없음 → 초기화 스킵 userId={}", user.getId());
-            return;
-        }
-
-        final var links = personas.stream()
-                .map(Persona::getId)
-                .map(pid -> UserPersona.of(user.getId(), pid, true))
-                .toList();
-        userPersonaRepository.saveAll(links);
-        log.info("[UserSvc-05] 사용자 페르소나 초기화 완료 userId={}, personaCount={}", user.getId(), links.size());
     }
 }
