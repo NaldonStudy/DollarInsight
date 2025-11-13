@@ -21,6 +21,15 @@ class ApiClient {
     _dio = dio ?? _createDio();
   }
 
+  /// 인증이 필요없는 엔드포인트들 (화이트리스트)
+  static bool _isAuthFree(String path) {
+    return path.contains('/api/auth/signup') ||
+           path.contains('/api/auth/login') ||
+           path.contains('/api/auth/refresh') ||
+           path.contains('/api/auth/oauth/') ||
+           path.contains('/api/public/');
+  }
+
   /// Dio 인스턴스 생성 (AuthApi와 동일한 패턴)
   static Dio _createDio() {
     return Dio(
@@ -34,13 +43,15 @@ class ApiClient {
     )..interceptors.add(
         InterceptorsWrapper(
           onRequest: (options, handler) async {
-            // 1. Authorization 헤더 추가 (JWT 토큰)
-            final accessToken = await TokenStorage.getAccessToken();
-            if (accessToken != null) {
-              options.headers['Authorization'] = 'Bearer $accessToken';
+            // 1. Authorization 헤더 추가 (화이트리스트가 아닌 경우만)
+            if (!_isAuthFree(options.path)) {
+              final accessToken = await TokenStorage.getAccessToken();
+              if (accessToken != null) {
+                options.headers['Authorization'] = 'Bearer $accessToken';
+              }
             }
 
-            // 2. X-Device-Id 헤더 추가 (각 기기마다 고유)
+            // 2. X-Device-Id 헤더 추가 (모든 요청에 추가)
             final deviceId = await DeviceIdManager.getDeviceId();
             options.headers['X-Device-Id'] = deviceId;
 
