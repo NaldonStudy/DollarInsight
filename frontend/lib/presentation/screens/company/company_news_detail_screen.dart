@@ -209,9 +209,9 @@ class _CompanyNewsDetailScreenState extends State<CompanyNewsDetailScreen> {
 
                       SizedBox(height: AppSpacing.medium(context)),
 
-                      /// ✅ 본문 텍스트
+                      /// ✅ 요약 텍스트 (summary)
                       Text(
-                        provider.content ?? '',
+                        provider.summary ?? '',
                         style: TextStyle(
                           fontSize: w * 0.040,
                           height: 1.5,
