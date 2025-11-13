@@ -1,5 +1,6 @@
 package com.ssafy.b205.backend.domain.companyanalysis.controller;
 
+import com.ssafy.b205.backend.domain.companyanalysis.dto.response.AssetMasterResponse;
 import com.ssafy.b205.backend.domain.companyanalysis.dto.response.AssetSearchResponse;
 import com.ssafy.b205.backend.domain.companyanalysis.dto.response.CompanyDetailResponse;
 import com.ssafy.b205.backend.domain.companyanalysis.dto.response.DashboardResponse;
@@ -87,6 +88,30 @@ public class CompanyAnalysisController {
             @RequestParam(value = "size", defaultValue = "10") @Min(1) @Max(30) int size
     ) {
         return ApiResponse.ok(service.searchAssets(keyword, size));
+    }
+
+    @Operation(
+            summary = "자산 마스터 전체 목록",
+            description = """
+                    `assets_master` 테이블에서 STOCK/ETF 티커 전체를 내려줍니다.
+                    
+                    * `type` 쿼리 파라미터를 여러 번 넘기면 해당 타입만 필터링합니다. (예: `?type=stock&type=etf`)
+                    * 생략하면 기본으로 STOCK, ETF 두 가지 타입을 모두 내려줍니다.
+                    """,
+            responses = {
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "OK",
+                            content = @Content(schema = @Schema(implementation = AssetMasterResponse.class))),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", ref = DocRefs.UNAUTHORIZED),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", ref = DocRefs.FORBIDDEN),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", ref = DocRefs.INTERNAL)
+            }
+    )
+    @Parameter(name = "X-Device-Id", in = ParameterIn.HEADER, required = true, description = "디바이스 식별자")
+    @GetMapping("/assets")
+    public ApiResponse<List<AssetMasterResponse>> listAssets(
+            @RequestParam(value = "type", required = false) List<String> typeFilters
+    ) {
+        return ApiResponse.ok(service.listAssets(typeFilters));
     }
 
     @Operation(
