@@ -4,6 +4,7 @@ import com.ssafy.b205.backend.domain.user.entity.User;
 import com.ssafy.b205.backend.domain.user.entity.UserCredential;
 import com.ssafy.b205.backend.domain.user.repository.UserCredentialRepository;
 import com.ssafy.b205.backend.domain.user.repository.UserRepository;
+import com.ssafy.b205.backend.domain.persona.service.UserPersonaService;
 import com.ssafy.b205.backend.infra.security.TokenProvider;
 import com.ssafy.b205.backend.support.error.AppException;
 import com.ssafy.b205.backend.support.error.ErrorCode;
@@ -24,6 +25,7 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final UserCredentialRepository credentialRepository;
+    private final UserPersonaService userPersonaService;
     private final PasswordEncoder passwordEncoder;
     private final TokenProvider tokenProvider;
 
@@ -56,6 +58,8 @@ public class UserServiceImpl implements UserService {
                 .passwordHash(passwordEncoder.encode(rawPassword))
                 .build());
         log.info("[UserSvc-03] 자격증명 저장 완료 userId={}", u.getId());
+
+        userPersonaService.initializeForUser(u.getId());
 
         return u;
     }
