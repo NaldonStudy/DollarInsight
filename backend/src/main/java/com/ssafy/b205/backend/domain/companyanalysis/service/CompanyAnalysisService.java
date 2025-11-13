@@ -46,6 +46,7 @@ import java.security.SecureRandom;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Random;
@@ -235,25 +236,39 @@ public class CompanyAnalysisService {
         if (docs.isEmpty()) {
             return List.of();
         }
+        List<PersonaMeta> personaOrder = new ArrayList<>(PERSONAS);
+        Collections.shuffle(personaOrder, random);
+
         List<DailyPickResponse> picks = new ArrayList<>();
-        for (CompanyAnalysisDoc doc : docs) {
+        for (PersonaMeta persona : personaOrder) {
+            DailyPickResponse pick = pickPersonaDailyComment(docs, persona);
+            if (pick != null) {
+                picks.add(pick);
+            }
+        }
+        return picks;
+    }
+
+    private DailyPickResponse pickPersonaDailyComment(List<CompanyAnalysisDoc> docs, PersonaMeta persona) {
+        List<CompanyAnalysisDoc> shuffledDocs = new ArrayList<>(docs);
+        Collections.shuffle(shuffledDocs, random);
+        for (CompanyAnalysisDoc doc : shuffledDocs) {
             if (!hasText(doc.getTicker())) {
                 continue;
             }
-            List<PersonaCommentResponse> comments = buildPersonaComments(doc);
-            if (comments.isEmpty()) {
+            PersonaCommentResponse comment = toPersonaComment(doc, persona);
+            if (comment == null) {
                 continue;
             }
-            PersonaCommentResponse persona = comments.get(random.nextInt(comments.size()));
-            picks.add(new DailyPickResponse(
+            return new DailyPickResponse(
                     doc.getTicker(),
                     doc.getCompanyName(),
                     doc.getCompanyInfo(),
                     doc.getAnalyzedDate(),
-                    persona
-            ));
+                    comment
+            );
         }
-        return picks;
+        return null;
     }
 
     private PriceSeriesResponse buildPriceSeries(String ticker, boolean isStock) {
@@ -371,12 +386,23 @@ public class CompanyAnalysisService {
         }
         List<PersonaCommentResponse> comments = new ArrayList<>();
         for (PersonaMeta persona : PERSONAS) {
-            String text = persona.extractor().apply(source);
-            if (StringUtils.hasText(text)) {
-                comments.add(new PersonaCommentResponse(persona.code(), persona.displayName(), text));
+            PersonaCommentResponse comment = toPersonaComment(source, persona);
+            if (comment != null) {
+                comments.add(comment);
             }
         }
         return comments;
+    }
+
+    private PersonaCommentResponse toPersonaComment(PersonaCommentSource source, PersonaMeta persona) {
+        if (source == null || persona == null) {
+            return null;
+        }
+        String text = persona.extractor().apply(source);
+        if (!StringUtils.hasText(text)) {
+            return null;
+        }
+        return new PersonaCommentResponse(persona.code(), persona.displayName(), text);
     }
 
     private List<NewsHeadlineResponse> fetchTickerNews(String ticker, int size) {
