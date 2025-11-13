@@ -313,11 +313,11 @@ JSON만 응답하세요:"""
 
     # 각 페르소나를 영문 필드명으로 추가
     persona_mapping = {
-        "희열": "Heeyule",
-        "덕수": "Ducksu",
-        "지율": "Jiyule",
-        "테오": "Taeo",
-        "민지": "Minji",
+        "희열": "heuyeol",
+        "덕수": "deoksu",
+        "지율": "jiyul",
+        "테오": "teo",
+        "민지": "minji",
     }
 
     for korean_name, english_name in persona_mapping.items():

@@ -21,16 +21,32 @@ import pymongo
 from pymongo import MongoClient
 from pymongo.errors import DuplicateKeyError
 from dotenv import load_dotenv
+from pathlib import Path
 import requests
 import openai
 
-load_dotenv()
+# .env 파일 경로 명시적으로 지정 (Airflow 컨테이너 내부 경로 사용)
+# docker-compose에서 /opt/airflow/.env로 마운트됨
+# override=True: 기존 환경 변수를 .env 파일의 값으로 덮어씀
+env_path = Path("/opt/airflow/.env")
+if env_path.exists():
+    load_dotenv(dotenv_path=env_path, override=True)
+else:
+    # 절대 경로에서도 시도
+    env_path_abs = Path("/opt/S13P31B205/ai-service/.env")
+    if env_path_abs.exists():
+        load_dotenv(dotenv_path=env_path_abs, override=True)
+    else:
+        # 기본 경로에서도 시도
+        load_dotenv(override=True)
 
 # ============================================================================
 # 환경 변수
 # ============================================================================
 
-MONGODB_HOST = os.getenv("MONGODB_HOST", "localhost")
+# MONGODB_HOST는 docker-compose에서 설정되지만, 기본값이 mongodb일 수 있음
+# 실제 컨테이너 이름은 dollar-insight-mongodb이므로 .env 파일에서 읽도록 함
+MONGODB_HOST = os.getenv("MONGODB_HOST", "dollar-insight-mongodb")
 MONGODB_PORT = int(os.getenv("MONGODB_PORT", "27017"))
 MONGODB_DB = os.getenv("MONGODB_DB", "dollar_insight")
 # 컬렉션 2개: 뉴스 기본 정보, 페르소나 분석
@@ -39,10 +55,11 @@ MONGODB_PERSONA_COLLECTION = os.getenv(
     "MONGODB_PERSONA_COLLECTION", "news_persona_analysis"
 )
 # MongoDB 인증 정보 (선택사항)
-# .env 파일의 MONGODB_USER, MONGODB_PASSWORD 사용
+# .env 파일의 MONGODB_USER, MONGODB_PASSWORD 또는 MONGO_USER, MONGO_PASSWORD 사용
+# docker-compose-airflow.yml에서 MONGO_USER, MONGO_PASSWORD로 설정되므로 둘 다 확인
 # strip()으로 개행 문자 제거
-_mongodb_user = os.getenv("MONGODB_USER", os.getenv("MONGODB_USERNAME", None))
-_mongodb_pass = os.getenv("MONGODB_PASSWORD", None)
+_mongodb_user = os.getenv("MONGODB_USER") or os.getenv("MONGODB_USERNAME") or os.getenv("MONGO_USER")
+_mongodb_pass = os.getenv("MONGODB_PASSWORD") or os.getenv("MONGO_PASSWORD")
 # 빈 문자열도 None으로 처리 (인증 없이 연결 시도 방지)
 MONGODB_USERNAME = (
     _mongodb_user.strip() if _mongodb_user and _mongodb_user.strip() else None
@@ -60,7 +77,7 @@ PERSONAS = ["희열", "덕수", "지율", "테오", "민지"]
 
 # 페르소나 이름을 영문 필드명으로 매핑
 PERSONA_FIELD_MAP = {
-    "희열": "hyeolyeol",
+    "희열": "heuyeol",
     "덕수": "deoksu",
     "지율": "jiyul",
     "테오": "teo",
@@ -69,11 +86,11 @@ PERSONA_FIELD_MAP = {
 
 # FastAPI에서 반환하는 영문 키를 한글로 매핑
 PERSONA_ENGLISH_TO_KOREAN = {
-    "Heeyule": "희열",
-    "Ducksu": "덕수",
-    "Jiyule": "지율",
-    "Taeo": "테오",
-    "Minji": "민지",
+    "heuyeol": "희열",
+    "deoksu": "덕수",
+    "jiyul": "지율",
+    "teo": "테오",
+    "minji": "민지",
 }
 
 # 추적 대상 기업/ETF 목록 (36개 기업 + 14개 ETF)

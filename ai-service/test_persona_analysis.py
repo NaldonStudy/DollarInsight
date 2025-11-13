@@ -36,7 +36,7 @@ def test_company_analysis():
         print(f"분석 시간: {result.get('analyzed_at')}")
         print("\n페르소나별 분석:")
         print("-" * 80)
-        for persona in ["Heeyule", "Ducksu", "Jiyule", "Taeo", "Minji"]:
+        for persona in ["heuyeol", "deoksu", "jiyul", "teo", "minji"]:
             analysis = result.get(persona, "분석 없음")
             print(f"\n[{persona}]")
             print(f"  {analysis}")
@@ -78,11 +78,11 @@ def test_news_analysis():
         print("-" * 80)
         persona_analyses = result.get('persona_analyses', {})
         persona_mapping = {
-            "Heeyule": "희열",
-            "Ducksu": "덕수",
-            "Jiyule": "지율",
-            "Taeo": "테오",
-            "Minji": "민지"
+            "heuyeol": "희열",
+            "deoksu": "덕수",
+            "jiyul": "지율",
+            "teo": "테오",
+            "minji": "민지"
         }
         for english_name, korean_name in persona_mapping.items():
             analysis = persona_analyses.get(english_name, "분석 없음")

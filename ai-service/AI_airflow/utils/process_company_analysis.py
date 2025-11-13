@@ -22,31 +22,39 @@ import requests
 
 # .env 파일 경로 명시적으로 지정 (Airflow 컨테이너 내부 경로 사용)
 # docker-compose에서 /opt/airflow/.env로 마운트됨
+# override=True: 기존 환경 변수를 .env 파일의 값으로 덮어씀
 env_path = Path("/opt/airflow/.env")
 if env_path.exists():
-    load_dotenv(dotenv_path=env_path)
+    load_dotenv(dotenv_path=env_path, override=True)
 else:
     # 절대 경로에서도 시도
     env_path_abs = Path("/opt/S13P31B205/ai-service/.env")
     if env_path_abs.exists():
-        load_dotenv(dotenv_path=env_path_abs)
+        load_dotenv(dotenv_path=env_path_abs, override=True)
     else:
         # 기본 경로에서도 시도
-        load_dotenv()
+        load_dotenv(override=True)
 
 # ============================================================================
 # 환경 변수
 # ============================================================================
 
-MONGODB_HOST = os.getenv("MONGODB_HOST", "localhost")
+# MONGODB_HOST는 docker-compose에서 설정되지만, 기본값이 mongodb일 수 있음
+# 실제 컨테이너 이름은 dollar-insight-mongodb이므로 .env 파일에서 읽도록 함
+MONGODB_HOST = os.getenv("MONGODB_HOST", "dollar-insight-mongodb")
 MONGODB_PORT = int(os.getenv("MONGODB_PORT", "27017"))
 MONGODB_DB = os.getenv("MONGODB_DB", "dollar_insight")
 MONGODB_COLLECTION = os.getenv("MONGODB_COMPANY_COLLECTION", "company_analysis")
 # MongoDB 인증 정보 (선택사항)
-# .env 파일의 MONGODB_USER, MONGODB_PASSWORD 사용
+# .env 파일의 MONGODB_USER, MONGODB_PASSWORD 또는 MONGO_USER, MONGO_PASSWORD 사용
+# docker-compose-airflow.yml에서 MONGO_USER, MONGO_PASSWORD로 설정되므로 둘 다 확인
 # strip()으로 개행 문자 제거
-_mongodb_user = os.getenv("MONGODB_USER", os.getenv("MONGODB_USERNAME", None))
-_mongodb_pass = os.getenv("MONGODB_PASSWORD", None)
+_mongodb_user = (
+    os.getenv("MONGODB_USER")
+    or os.getenv("MONGODB_USERNAME")
+    or os.getenv("MONGO_USER")
+)
+_mongodb_pass = os.getenv("MONGODB_PASSWORD") or os.getenv("MONGO_PASSWORD")
 MONGODB_USERNAME = _mongodb_user.strip() if _mongodb_user else None
 MONGODB_PASSWORD = _mongodb_pass.strip() if _mongodb_pass else None
 MONGODB_AUTH_SOURCE = os.getenv("MONGODB_AUTH_SOURCE", "admin").strip()
@@ -59,7 +67,7 @@ PERSONAS = ["희열", "덕수", "지율", "테오", "민지"]
 
 # 페르소나 이름을 영문 필드명으로 매핑 (뉴스 분석과 동일한 형식)
 PERSONA_FIELD_MAP = {
-    "희열": "hyeolyeol",
+    "희열": "heuyeol",
     "덕수": "deoksu",
     "지율": "jiyul",
     "테오": "teo",
@@ -190,77 +198,116 @@ def get_mongodb_collection(client: MongoClient = None):
 def analyze_company_via_api(company_name: str, company_info: str = "") -> Dict:
     """
     FastAPI 서버를 통해 기업 분석
+    재시도 로직 포함 (최대 3회, 타임아웃 180초)
 
     Returns:
         {
             "company_name": str,
-            "Heeyule": str,  # FastAPI 응답 형식 (process_company에서 persona_hyeolyeol로 변환됨)
-            "Ducksu": str,   # FastAPI 응답 형식 (process_company에서 persona_deoksu로 변환됨)
-            "Jiyule": str,   # FastAPI 응답 형식 (process_company에서 persona_jiyul로 변환됨)
-            "Taeo": str,     # FastAPI 응답 형식 (process_company에서 persona_teo로 변환됨)
-            "Minji": str,    # FastAPI 응답 형식 (process_company에서 persona_minji로 변환됨)
+            "heuyeol": str,  # FastAPI 응답 형식 (process_company에서 persona_heuyeol로 변환됨)
+            "deoksu": str,   # FastAPI 응답 형식 (process_company에서 persona_deoksu로 변환됨)
+            "jiyul": str,   # FastAPI 응답 형식 (process_company에서 persona_jiyul로 변환됨)
+            "teo": str,     # FastAPI 응답 형식 (process_company에서 persona_teo로 변환됨)
+            "minji": str,    # FastAPI 응답 형식 (process_company에서 persona_minji로 변환됨)
             "analyzed_at": str
         }
     """
-    try:
-        response = requests.post(
-            f"{FASTAPI_URL}/analyze-company",
-            json={"company_name": company_name, "company_info": company_info},
-            timeout=60,  # 60초 타임아웃
-        )
+    import time
 
-        if response.status_code == 200:
-            return response.json()
-        else:
-            print(f"⚠️ FastAPI 오류 (HTTP {response.status_code}): {response.text}")
-            result = {
-                "company_name": company_name,
-                "analyzed_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            }
-            # FastAPI 응답 형식에 맞춰 Heeyule, Ducksu 등으로 반환 (process_company에서 persona_ 형식으로 변환됨)
-            fastapi_field_mapping = {
-                "Heeyule": "희열",
-                "Ducksu": "덕수",
-                "Jiyule": "지율",
-                "Taeo": "테오",
-                "Minji": "민지",
-            }
-            for eng_name, kor_name in fastapi_field_mapping.items():
-                result[eng_name] = f"{kor_name} 분석 실패"
-            return result
-    except requests.exceptions.ConnectionError:
-        print(f"⚠️ FastAPI 서버에 연결할 수 없습니다: {FASTAPI_URL}")
-        print("   FastAPI 서버가 실행 중인지 확인하세요.")
-        result = {
-            "company_name": company_name,
-            "analyzed_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        }
-        persona_english_mapping = {
-            "희열": "Heeyule",
-            "덕수": "Ducksu",
-            "지율": "Jiyule",
-            "테오": "Taeo",
-            "민지": "Minji",
-        }
-        for korean_name, english_name in persona_english_mapping.items():
-            result[english_name] = f"{korean_name} 분석 실패 (서버 연결 실패)"
-        return result
-    except Exception as e:
-        print(f"⚠️ FastAPI 호출 오류: {str(e)}")
-        result = {
-            "company_name": company_name,
-            "analyzed_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        }
-        persona_english_mapping = {
-            "희열": "Heeyule",
-            "덕수": "Ducksu",
-            "지율": "Jiyule",
-            "테오": "Taeo",
-            "민지": "Minji",
-        }
-        for korean_name, english_name in persona_english_mapping.items():
-            result[english_name] = f"{korean_name} 분석 실패"
-        return result
+    max_retries = 3
+    timeout_seconds = 180  # 180초 타임아웃 (LLM 분석 시간 고려)
+    retry_delay = 5  # 재시도 전 대기 시간 (초)
+
+    fastapi_field_mapping = {
+        "heuyeol": "희열",
+        "deoksu": "덕수",
+        "jiyul": "지율",
+        "teo": "테오",
+        "minji": "민지",
+    }
+    persona_english_mapping = {
+        "희열": "heuyeol",
+        "덕수": "deoksu",
+        "지율": "jiyul",
+        "테오": "teo",
+        "민지": "minji",
+    }
+
+    for attempt in range(max_retries):
+        try:
+            response = requests.post(
+                f"{FASTAPI_URL}/analyze-company",
+                json={"company_name": company_name, "company_info": company_info},
+                timeout=timeout_seconds,
+            )
+
+            if response.status_code == 200:
+                return response.json()
+            else:
+                print(f"⚠️ FastAPI 오류 (HTTP {response.status_code}): {response.text}")
+                if attempt < max_retries - 1:
+                    print(f"   재시도 중... ({attempt + 1}/{max_retries})")
+                    time.sleep(retry_delay)
+                    continue
+                result = {
+                    "company_name": company_name,
+                    "analyzed_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                }
+                for eng_name, kor_name in fastapi_field_mapping.items():
+                    result[eng_name] = f"{kor_name} 분석 실패"
+                return result
+        except requests.exceptions.Timeout:
+            print(f"⚠️ FastAPI 타임아웃 (읽기 타임아웃: {timeout_seconds}초)")
+            if attempt < max_retries - 1:
+                print(f"   재시도 중... ({attempt + 1}/{max_retries})")
+                time.sleep(retry_delay)
+                continue
+            else:
+                print("   최대 재시도 횟수 초과")
+                result = {
+                    "company_name": company_name,
+                    "analyzed_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                }
+                for korean_name, english_name in persona_english_mapping.items():
+                    result[english_name] = f"{korean_name} 분석 실패 (타임아웃)"
+                return result
+        except requests.exceptions.ConnectionError:
+            print(f"⚠️ FastAPI 서버에 연결할 수 없습니다: {FASTAPI_URL}")
+            if attempt < max_retries - 1:
+                print(f"   재시도 중... ({attempt + 1}/{max_retries})")
+                time.sleep(retry_delay)
+                continue
+            else:
+                print("   FastAPI 서버가 실행 중인지 확인하세요.")
+                result = {
+                    "company_name": company_name,
+                    "analyzed_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                }
+                for korean_name, english_name in persona_english_mapping.items():
+                    result[english_name] = f"{korean_name} 분석 실패 (서버 연결 실패)"
+                return result
+        except Exception as e:
+            print(f"⚠️ FastAPI 호출 오류: {str(e)}")
+            if attempt < max_retries - 1:
+                print(f"   재시도 중... ({attempt + 1}/{max_retries})")
+                time.sleep(retry_delay)
+                continue
+            else:
+                result = {
+                    "company_name": company_name,
+                    "analyzed_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                }
+                for korean_name, english_name in persona_english_mapping.items():
+                    result[english_name] = f"{korean_name} 분석 실패"
+                return result
+
+    # 모든 재시도 실패 시
+    result = {
+        "company_name": company_name,
+        "analyzed_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+    }
+    for korean_name, english_name in persona_english_mapping.items():
+        result[english_name] = f"{korean_name} 분석 실패 (최대 재시도 횟수 초과)"
+    return result
 
 
 # ============================================================================
@@ -294,11 +341,11 @@ def process_company(company_name: str, company_info: str = "") -> Dict:
 
     # FastAPI 응답 필드명 -> 페르소나 이름 매핑
     fastapi_to_persona = {
-        "Heeyule": "희열",
-        "Ducksu": "덕수",
-        "Jiyule": "지율",
-        "Taeo": "테오",
-        "Minji": "민지",
+        "heuyeol": "희열",
+        "deoksu": "덕수",
+        "jiyul": "지율",
+        "teo": "테오",
+        "minji": "민지",
     }
 
     # 각 페르소나를 persona_ 접두사를 붙인 필드명으로 저장 (뉴스 분석과 동일)

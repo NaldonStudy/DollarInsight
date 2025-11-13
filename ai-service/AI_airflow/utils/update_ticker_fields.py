@@ -16,24 +16,28 @@ from urllib.parse import quote_plus
 # .env 파일 경로 명시적으로 지정
 env_path = Path("/opt/airflow/.env")
 if env_path.exists():
-    load_dotenv(dotenv_path=env_path)
+    load_dotenv(dotenv_path=env_path, override=True)
 else:
     env_path_abs = Path("/opt/S13P31B205/ai-service/.env")
     if env_path_abs.exists():
-        load_dotenv(dotenv_path=env_path_abs)
+        load_dotenv(dotenv_path=env_path_abs, override=True)
     else:
-        load_dotenv()
+        load_dotenv(override=True)
 
 # 환경 변수
-MONGODB_HOST = os.getenv("MONGODB_HOST", "localhost")
+# MONGODB_HOST는 docker-compose에서 설정되지만, 기본값이 mongodb일 수 있음
+# 실제 컨테이너 이름은 dollar-insight-mongodb이므로 .env 파일에서 읽도록 함
+MONGODB_HOST = os.getenv("MONGODB_HOST", "dollar-insight-mongodb")
 MONGODB_PORT = int(os.getenv("MONGODB_PORT", "27017"))
 MONGODB_DB = os.getenv("MONGODB_DB", "dollar_insight")
 MONGODB_NEWS_COLLECTION = os.getenv("MONGODB_NEWS_COLLECTION", "investing_news")
 MONGODB_COMPANY_COLLECTION = os.getenv("MONGODB_COMPANY_COLLECTION", "company_analysis")
 
 # MongoDB 인증 정보
-_mongodb_user = os.getenv("MONGODB_USER", os.getenv("MONGODB_USERNAME", None))
-_mongodb_pass = os.getenv("MONGODB_PASSWORD", None)
+# .env 파일의 MONGODB_USER, MONGODB_PASSWORD 또는 MONGO_USER, MONGO_PASSWORD 사용
+# docker-compose-airflow.yml에서 MONGO_USER, MONGO_PASSWORD로 설정되므로 둘 다 확인
+_mongodb_user = os.getenv("MONGODB_USER") or os.getenv("MONGODB_USERNAME") or os.getenv("MONGO_USER")
+_mongodb_pass = os.getenv("MONGODB_PASSWORD") or os.getenv("MONGO_PASSWORD")
 MONGODB_USERNAME = _mongodb_user.strip() if _mongodb_user else None
 MONGODB_PASSWORD = _mongodb_pass.strip() if _mongodb_pass else None
 MONGODB_AUTH_SOURCE = os.getenv("MONGODB_AUTH_SOURCE", "admin").strip()
