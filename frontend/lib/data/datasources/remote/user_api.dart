@@ -68,9 +68,14 @@ class UserApi {
         ),
       );
 
-      // ✅ 응답 코드 출력
-      print('✅ [logout] statusCode: ${response.statusCode}');
-      print('✅ [logout] response: ${response.data}');
+      print('-----------------------------');
+      print('📡 [LOGOUT DEBUG] Request Headers: ${response.requestOptions.headers}');
+      print('📡 [LOGOUT DEBUG] Request URL: ${response.requestOptions.uri}');
+      print('📡 [LOGOUT DEBUG] Request Method: ${response.requestOptions.method}');
+      print('📡 [LOGOUT DEBUG] Response status: ${response.statusCode}');
+      print('📦 [LOGOUT DEBUG] Response data: ${response.data}');
+      print('-----------------------------');
+
 
       // ✅ 204 OK (성공 시 토큰 제거)
       if (response.statusCode == 204) {
