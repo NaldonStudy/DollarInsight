@@ -1,8 +1,8 @@
 package com.ssafy.b205.backend.domain.companyanalysis.service;
 
 import com.ssafy.b205.backend.domain.companyanalysis.dto.response.AssetBasicInfoResponse;
-import com.ssafy.b205.backend.domain.companyanalysis.dto.response.CompanyDetailResponse;
 import com.ssafy.b205.backend.domain.companyanalysis.dto.response.AssetSearchResponse;
+import com.ssafy.b205.backend.domain.companyanalysis.dto.response.CompanyDetailResponse;
 import com.ssafy.b205.backend.domain.companyanalysis.dto.response.DailyPickResponse;
 import com.ssafy.b205.backend.domain.companyanalysis.dto.response.DashboardResponse;
 import com.ssafy.b205.backend.domain.companyanalysis.dto.response.EtfInvestmentIndicatorResponse;
@@ -19,31 +19,36 @@ import com.ssafy.b205.backend.domain.companyanalysis.dto.response.PriceSeriesRes
 import com.ssafy.b205.backend.domain.companyanalysis.dto.response.StockInvestmentIndicatorResponse;
 import com.ssafy.b205.backend.domain.companyanalysis.dto.response.StockScoreResponse;
 import com.ssafy.b205.backend.domain.companyanalysis.model.AssetType;
+import com.ssafy.b205.backend.domain.companyanalysis.model.PersonaCommentSource;
 import com.ssafy.b205.backend.domain.companyanalysis.repository.CompanyAnalysisQueryRepository;
 import com.ssafy.b205.backend.domain.companyanalysis.repository.CompanyAnalysisQueryRepository.AssetMetadata;
-import com.ssafy.b205.backend.domain.companyanalysis.repository.CompanyAnalysisQueryRepository.DailyPickCandidate;
 import com.ssafy.b205.backend.domain.companyanalysis.repository.CompanyAnalysisQueryRepository.EtfMasterRow;
 import com.ssafy.b205.backend.domain.companyanalysis.repository.CompanyAnalysisQueryRepository.EtfMetricsRow;
 import com.ssafy.b205.backend.domain.companyanalysis.repository.CompanyAnalysisQueryRepository.LatestPriceRow;
-import com.ssafy.b205.backend.domain.companyanalysis.repository.CompanyAnalysisQueryRepository.NewsDetailRow;
 import com.ssafy.b205.backend.domain.companyanalysis.repository.CompanyAnalysisQueryRepository.StockMasterRow;
 import com.ssafy.b205.backend.domain.companyanalysis.repository.CompanyAnalysisQueryRepository.StockPredictionRow;
 import com.ssafy.b205.backend.domain.companyanalysis.repository.CompanyAnalysisQueryRepository.StockScoreRow;
+import com.ssafy.b205.backend.infra.mongo.companyanalysis.CompanyAnalysisMongoDao;
+import com.ssafy.b205.backend.infra.mongo.companyanalysis.doc.CompanyAnalysisDoc;
+import com.ssafy.b205.backend.infra.mongo.companyanalysis.doc.InvestingNewsDoc;
 import com.ssafy.b205.backend.support.error.AppException;
 import com.ssafy.b205.backend.support.error.ErrorCode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.security.SecureRandom;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
-import java.util.Collections;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.Optional;
+import java.util.Random;
+import java.util.function.Function;
 
 @Slf4j
 @Service
@@ -55,24 +60,37 @@ public class CompanyAnalysisService {
     private static final int WEEKLY_RANGE_DAYS = 90;
     private static final int MONTHLY_RANGE_DAYS = 365;
     private static final int MAX_SEARCH_SIZE = 30;
+    private static final int DASHBOARD_NEWS_SAMPLE = 3;
+    private static final int DAILY_PICK_SAMPLE = 5;
 
     private final CompanyAnalysisQueryRepository repository;
+    private final CompanyAnalysisMongoDao mongoDao;
+    private final Random random = new SecureRandom();
+    private static final List<PersonaMeta> PERSONAS = List.of(
+            new PersonaMeta("DEOKSU", "덕수", PersonaCommentSource::getPersonaDeoksu),
+            new PersonaMeta("HYEOLYEOL", "혈열", PersonaCommentSource::getPersonaHyeolyeol),
+            new PersonaMeta("JIYUL", "지율", PersonaCommentSource::getPersonaJiyul),
+            new PersonaMeta("MINJI", "민지", PersonaCommentSource::getPersonaMinji),
+            new PersonaMeta("TEO", "테오", PersonaCommentSource::getPersonaTeo)
+    );
 
     @Value("${app.market.fx.usd-krw:1350.0}")
     private BigDecimal usdKrwRate;
 
-    public CompanyAnalysisService(CompanyAnalysisQueryRepository repository) {
+    public CompanyAnalysisService(CompanyAnalysisQueryRepository repository,
+                                  CompanyAnalysisMongoDao mongoDao) {
         this.repository = repository;
+        this.mongoDao = mongoDao;
     }
 
     public DashboardResponse getDashboard() {
         log.info("[CompanySvc-01] 기업분석 대시보드 조회");
         List<MajorIndexResponse> indices = repository.fetchMajorIndices(MAJOR_INDEX_TICKERS);
-        List<NewsHeadlineResponse> recommended = repository.fetchNews(null, 5, 0);
-        DailyPickResponse pick = repository.findLatestPersonaPickTarget()
-                .flatMap(this::buildDailyPick)
-                .orElse(null);
-        return new DashboardResponse(indices, recommended, pick);
+        List<NewsHeadlineResponse> recommended = mongoDao.sampleInvestingNews(DASHBOARD_NEWS_SAMPLE).stream()
+                .map(this::toNewsHeadline)
+                .toList();
+        List<DailyPickResponse> dailyPicks = buildDailyPickCards();
+        return new DashboardResponse(indices, recommended, dailyPicks);
     }
 
     public List<AssetSearchResponse> searchAssets(String keyword, int size) {
@@ -97,28 +115,35 @@ public class CompanyAnalysisService {
     }
 
     public PagedNewsResponse getNewsFeed(String ticker, int page, int size) {
-        String normalized = ticker == null ? null : normalizeTicker(ticker);
-        log.info("[CompanySvc-03] 뉴스 피드 조회 ticker={}, page={}, size={}", normalized, page, size);
-        int offset = Math.max(page, 0) * size;
-        List<NewsHeadlineResponse> items = repository.fetchNews(normalized, size, offset);
-        long total = repository.countNews(normalized);
-        return new PagedNewsResponse(items, total, page, size);
+        String normalized = hasText(ticker) ? normalizeTicker(ticker) : null;
+        int safePage = Math.max(page, 0);
+        int safeSize = Math.min(Math.max(size, 1), 100);
+        log.info("[CompanySvc-03] 뉴스 피드 조회 ticker={}, page={}, size={}", normalized, safePage, safeSize);
+
+        List<NewsHeadlineResponse> items = mongoDao.findInvestingNews(normalized, safePage, safeSize).stream()
+                .map(this::toNewsHeadline)
+                .toList();
+        long total = mongoDao.countInvestingNews(normalized);
+        return new PagedNewsResponse(items, total, safePage, safeSize);
     }
 
-    public NewsDetailResponse getNewsDetail(long newsId) {
+    public NewsDetailResponse getNewsDetail(String newsId) {
         log.info("[CompanySvc-04] 뉴스 상세 조회 newsId={}", newsId);
-        NewsDetailRow row = repository.findNewsDetail(newsId)
+        InvestingNewsDoc doc = mongoDao.findInvestingNewsById(newsId)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "[CompanySvc-E03] 뉴스 기사를 찾을 수 없습니다: " + newsId));
 
-        List<PersonaCommentResponse> personaComments = loadPersonaComments(row.getTicker());
+        List<PersonaCommentResponse> personaComments = mongoDao.findNewsPersonaByNewsId(newsId)
+                .map(this::buildPersonaComments)
+                .orElse(List.of());
+
         return new NewsDetailResponse(
-                row.getId(),
-                row.getTicker(),
-                row.getTitle(),
-                row.getSource(),
-                row.getSummary(),
-                row.getUrl(),
-                row.getPublishedAt(),
+                doc.getId(),
+                doc.getTicker(),
+                doc.getTitle(),
+                doc.getSummary(),
+                doc.getContent(),
+                doc.getUrl(),
+                doc.getPublishedAt(),
                 personaComments
         );
     }
@@ -151,7 +176,7 @@ public class CompanyAnalysisService {
                 .orElse(null);
 
         List<PersonaCommentResponse> personaComments = repository.fetchPersonaComments(ticker, AssetType.STOCK);
-        List<NewsHeadlineResponse> latestNews = repository.fetchNews(ticker, 5, 0);
+        List<NewsHeadlineResponse> latestNews = fetchTickerNews(ticker, 5);
 
         return new CompanyDetailResponse(
                 toStockBasicInfo(master),
@@ -182,7 +207,7 @@ public class CompanyAnalysisService {
                 ));
 
         List<PersonaCommentResponse> personaComments = repository.fetchPersonaComments(ticker, AssetType.ETF);
-        List<NewsHeadlineResponse> latestNews = repository.fetchNews(ticker, 5, 0);
+        List<NewsHeadlineResponse> latestNews = fetchTickerNews(ticker, 5);
 
         return new CompanyDetailResponse(
                 toEtfBasicInfo(master),
@@ -197,43 +222,30 @@ public class CompanyAnalysisService {
         );
     }
 
-    private Optional<DailyPickResponse> buildDailyPick(DailyPickCandidate candidate) {
-        List<PersonaCommentResponse> comments = repository.fetchPersonaComments(candidate.getTicker(), candidate.getAssetType());
-        if (comments.isEmpty()) {
-            return Optional.empty();
+    private List<DailyPickResponse> buildDailyPickCards() {
+        List<CompanyAnalysisDoc> docs = mongoDao.sampleCompanyAnalyses(DAILY_PICK_SAMPLE);
+        if (docs.isEmpty()) {
+            return List.of();
         }
-
-        String name;
-        LatestPriceRow priceRow;
-        if (candidate.getAssetType() == AssetType.STOCK) {
-            StockMasterRow master = repository.findStockMaster(candidate.getTicker())
-                    .orElse(null);
-            if (master == null) return Optional.empty();
-            name = master.getName();
-            priceRow = repository.findLatestStockPrice(candidate.getTicker()).orElse(null);
-        } else if (candidate.getAssetType() == AssetType.ETF) {
-            EtfMasterRow master = repository.findEtfMaster(candidate.getTicker())
-                    .orElse(null);
-            if (master == null) return Optional.empty();
-            name = master.getName();
-            priceRow = repository.findLatestEtfPrice(candidate.getTicker()).orElse(null);
-        } else {
-            return Optional.empty();
+        List<DailyPickResponse> picks = new ArrayList<>();
+        for (CompanyAnalysisDoc doc : docs) {
+            if (!hasText(doc.getTicker())) {
+                continue;
+            }
+            List<PersonaCommentResponse> comments = buildPersonaComments(doc);
+            if (comments.isEmpty()) {
+                continue;
+            }
+            PersonaCommentResponse persona = comments.get(random.nextInt(comments.size()));
+            picks.add(new DailyPickResponse(
+                    doc.getTicker(),
+                    doc.getCompanyName(),
+                    doc.getCompanyInfo(),
+                    doc.getAnalyzedDate(),
+                    persona
+            ));
         }
-
-        if (priceRow == null) {
-            return Optional.empty();
-        }
-
-        return Optional.of(new DailyPickResponse(
-                candidate.getTicker(),
-                candidate.getAssetType(),
-                name,
-                priceRow.getClose(),
-                convertUsdToKrw(priceRow.getClose()),
-                priceRow.getPriceDate(),
-                comments
-        ));
+        return picks;
     }
 
     private PriceSeriesResponse buildPriceSeries(String ticker, boolean isStock) {
@@ -345,11 +357,39 @@ public class CompanyAnalysisService {
         );
     }
 
-    private List<PersonaCommentResponse> loadPersonaComments(String ticker) {
-        if (ticker == null) return Collections.emptyList();
-        return repository.findAssetMetadata(ticker)
-                .map(meta -> repository.fetchPersonaComments(ticker, meta.getType()))
-                .orElse(Collections.emptyList());
+    private List<PersonaCommentResponse> buildPersonaComments(PersonaCommentSource source) {
+        if (source == null) {
+            return List.of();
+        }
+        List<PersonaCommentResponse> comments = new ArrayList<>();
+        for (PersonaMeta persona : PERSONAS) {
+            String text = persona.extractor().apply(source);
+            if (StringUtils.hasText(text)) {
+                comments.add(new PersonaCommentResponse(persona.code(), persona.displayName(), text));
+            }
+        }
+        return comments;
+    }
+
+    private List<NewsHeadlineResponse> fetchTickerNews(String ticker, int size) {
+        if (!hasText(ticker)) {
+            return List.of();
+        }
+        String normalized = normalizeTicker(ticker);
+        return mongoDao.findInvestingNewsByTicker(normalized, size).stream()
+                .map(this::toNewsHeadline)
+                .toList();
+    }
+
+    private NewsHeadlineResponse toNewsHeadline(InvestingNewsDoc doc) {
+        return new NewsHeadlineResponse(
+                doc.getId(),
+                doc.getTicker(),
+                doc.getTitle(),
+                doc.getSummary(),
+                doc.getUrl(),
+                doc.getPublishedAt()
+        );
     }
 
     private BigDecimal convertUsdToKrw(BigDecimal usd) {
@@ -387,5 +427,13 @@ public class CompanyAnalysisService {
             throw new AppException(ErrorCode.BAD_REQUEST, "[CompanySvc-E09] 검색어는 필수입니다.");
         }
         return trimmed;
+    }
+
+    private static boolean hasText(String value) {
+        return value != null && !value.trim().isEmpty();
+    }
+
+    private record PersonaMeta(String code, String displayName,
+                               Function<PersonaCommentSource, String> extractor) {
     }
 }

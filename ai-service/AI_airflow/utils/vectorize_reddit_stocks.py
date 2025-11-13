@@ -279,7 +279,6 @@ def save_to_chromadb(chunks: List[Dict], collection, embedder):
             continue
         
         new_chunks.append(chunk)
-        new_chunk_indices.append(chunk_idx)
     
     if stats["skipped"] > 0:
         print(f"   ⚠️ 중복 건너뜀: {stats['skipped']}개 청크 (벡터화 전 필터링)")

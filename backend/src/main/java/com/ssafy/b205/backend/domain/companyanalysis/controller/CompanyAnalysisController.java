@@ -43,7 +43,13 @@ public class CompanyAnalysisController {
 
     @Operation(
             summary = "기업분석 대시보드",
-            description = "주요 지수와 추천 뉴스, 페르소나 데일리 픽을 반환합니다.",
+            description = """
+                    주요 지수·추천 뉴스·페르소나 데일리 픽을 한 번에 내려줍니다.
+                    
+                    * `majorIndices`: S&P 500, 나스닥 등 6개 지수의 최신 종가/등락률
+                    * `recommendedNews`: MongoDB `investing_news`에서 샘플링한 3건
+                    * `dailyPick`: MongoDB `company_analysis`에서 뽑은 5개 종목 + 페르소나 코멘트 (ticker 포함 → 상세 화면 이동에 사용)
+                    """,
             responses = {
                     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "OK",
                             content = @Content(schema = @Schema(implementation = DashboardResponse.class))),
@@ -60,7 +66,12 @@ public class CompanyAnalysisController {
 
     @Operation(
             summary = "티커 검색",
-            description = "자산명/심볼을 대상으로 주식·ETF를 검색합니다.",
+            description = """
+                    주식/ETF 통합 자동완성용 검색입니다.
+                    
+                    * `keyword`는 티커, 국문명, 영문명(주식), ETF 이름에 대해 부분 일치(ILIKE)로 매칭됩니다.
+                    * 응답에는 `ticker`, `assetType`, `name`, `nameEng`, `exchange`가 포함되어 상세 API 호출에 바로 사용 가능합니다.
+                    """,
             responses = {
                     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "OK",
                             content = @Content(schema = @Schema(implementation = AssetSearchResponse.class))),
@@ -80,7 +91,13 @@ public class CompanyAnalysisController {
 
     @Operation(
             summary = "기업/ETF 상세",
-            description = "기본정보와 가격 히스토리, 예측, 투자지표, 뉴스 묶음을 내려줍니다.",
+            description = """
+                    기본정보·가격 히스토리·예측·투자지표·뉴스를 한 번에 내려줍니다.
+                    
+                    * 주식(STOCK)은 `predictions`, `stockIndicators`, `stockScores`가 채워지고 `etfIndicators`는 null입니다.
+                    * ETF는 `etfIndicators`만 채워지고 `predictions`, `stockIndicators`, `stockScores`는 null입니다.
+                    프런트는 자산 타입 또는 null 여부를 보고 필요한 카드만 렌더링하면 됩니다.
+                    """,
             responses = {
                     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "OK",
                             content = @Content(schema = @Schema(implementation = CompanyDetailResponse.class))),
@@ -98,7 +115,12 @@ public class CompanyAnalysisController {
 
     @Operation(
             summary = "뉴스 목록",
-            description = "티커 필터가 없으면 전체 뉴스를, 있으면 해당 종목 뉴스만 페이지네이션으로 제공합니다.",
+            description = """
+                    Investing.com 기반 뉴스 피드입니다.
+                    
+                    * `ticker`를 넘기면 해당 티커(또는 연관 기업) 기사만, 생략하면 전체 기사
+                    * `page`/`size`로 Mongo 컬렉션을 페이징하며, 응답의 `items[].id`를 상세 조회에 사용합니다.
+                    """,
             responses = {
                     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "OK",
                             content = @Content(schema = @Schema(implementation = PagedNewsResponse.class))),
@@ -119,7 +141,12 @@ public class CompanyAnalysisController {
 
     @Operation(
             summary = "뉴스 상세",
-            description = "기사 제목/본문 요약/URL과 페르소나 코멘트를 내려줍니다.",
+            description = """
+                    Investing.com 원문 + 페르소나 코멘트를 내려줍니다.
+                    
+                    * `id`는 목록 응답의 Mongo `_id` 문자열입니다.
+                    * `personaComments`는 `news_persona_analysis`에서 생성된 다섯 페르소나의 의견입니다.
+                    """,
             responses = {
                     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "OK",
                             content = @Content(schema = @Schema(implementation = NewsDetailResponse.class))),
@@ -131,7 +158,7 @@ public class CompanyAnalysisController {
     )
     @Parameter(name = "X-Device-Id", in = ParameterIn.HEADER, required = true, description = "디바이스 식별자")
     @GetMapping("/news/{newsId}")
-    public ApiResponse<NewsDetailResponse> getNewsDetail(@PathVariable long newsId) {
+    public ApiResponse<NewsDetailResponse> getNewsDetail(@PathVariable String newsId) {
         return ApiResponse.ok(service.getNewsDetail(newsId));
     }
 }

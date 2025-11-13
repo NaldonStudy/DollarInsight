@@ -2,7 +2,6 @@ package com.ssafy.b205.backend.domain.companyanalysis.repository;
 
 import com.ssafy.b205.backend.domain.companyanalysis.dto.response.AssetSearchResponse;
 import com.ssafy.b205.backend.domain.companyanalysis.dto.response.MajorIndexResponse;
-import com.ssafy.b205.backend.domain.companyanalysis.dto.response.NewsHeadlineResponse;
 import com.ssafy.b205.backend.domain.companyanalysis.dto.response.PersonaCommentResponse;
 import com.ssafy.b205.backend.domain.companyanalysis.dto.response.PriceCandleResponse;
 import com.ssafy.b205.backend.domain.companyanalysis.model.AssetType;
@@ -20,6 +19,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
@@ -82,12 +82,12 @@ public class CompanyAnalysisQueryRepository {
                 rs.getObject("listed_at", LocalDate.class),
                 rs.getString("website"),
                 getLong(rs, "shares_outstanding"),
-                rs.getBigDecimal("market_cap"),
-                rs.getBigDecimal("dividend_yield_annualized"),
-                rs.getBigDecimal("pbr"),
-                rs.getBigDecimal("per"),
-                rs.getBigDecimal("roe"),
-                rs.getBigDecimal("psr")
+                getBigDecimal(rs, "market_cap"),
+                getBigDecimal(rs, "dividend_yield_annualized"),
+                getBigDecimal(rs, "pbr"),
+                getBigDecimal(rs, "per"),
+                getBigDecimal(rs, "roe"),
+                getBigDecimal(rs, "psr")
         ));
         return rows.isEmpty() ? Optional.empty() : Optional.of(rows.getFirst());
     }
@@ -120,12 +120,12 @@ public class CompanyAnalysisQueryRepository {
                     rs.getObject("listed_at", LocalDate.class),
                     rs.getString("website"),
                     getLong(rs, "shares_outstanding"),
-                    rs.getBigDecimal("market_cap"),
-                    rs.getBigDecimal("dividend_yield_annualized"),
-                    rs.getBigDecimal("pbr"),
-                    rs.getBigDecimal("per"),
-                    rs.getBigDecimal("roe"),
-                    rs.getBigDecimal("psr")
+                    getBigDecimal(rs, "market_cap"),
+                    getBigDecimal(rs, "dividend_yield_annualized"),
+                    getBigDecimal(rs, "pbr"),
+                    getBigDecimal(rs, "per"),
+                    getBigDecimal(rs, "roe"),
+                    getBigDecimal(rs, "psr")
             );
             result.put(row.getTicker(), row);
         });
@@ -146,9 +146,9 @@ public class CompanyAnalysisQueryRepository {
                 rs.getString("exchange_name"),
                 rs.getString("currency"),
                 rs.getString("currency_name"),
-                rs.getBigDecimal("expense_ratio"),
+                getBigDecimal(rs, "expense_ratio"),
                 rs.getBoolean("is_leverage"),
-                rs.getBigDecimal("leverage_factor")
+                getBigDecimal(rs, "leverage_factor")
         ));
         return rows.isEmpty() ? Optional.empty() : Optional.of(rows.getFirst());
     }
@@ -173,9 +173,9 @@ public class CompanyAnalysisQueryRepository {
                     rs.getString("exchange_name"),
                     rs.getString("currency"),
                     rs.getString("currency_name"),
-                    rs.getBigDecimal("expense_ratio"),
+                    getBigDecimal(rs, "expense_ratio"),
                     rs.getBoolean("is_leverage"),
-                    rs.getBigDecimal("leverage_factor")
+                    getBigDecimal(rs, "leverage_factor")
             );
             result.put(row.getTicker(), row);
         });
@@ -183,19 +183,19 @@ public class CompanyAnalysisQueryRepository {
     }
 
     public Optional<LatestPriceRow> findLatestStockPrice(String ticker) {
-        return findLatestPrice("stock_price_daily", ticker);
+        return findLatestPrice("stock_price_daily", ticker, true);
     }
 
     public Optional<LatestPriceRow> findLatestEtfPrice(String ticker) {
-        return findLatestPrice("etf_price_daily", ticker);
+        return findLatestPrice("etf_price_daily", ticker, false);
     }
 
     public Map<String, LatestPriceRow> findLatestStockPrices(Collection<String> tickers) {
-        return findLatestPrices("stock_price_daily", tickers);
+        return findLatestPrices("stock_price_daily", tickers, true);
     }
 
     public Map<String, LatestPriceRow> findLatestEtfPrices(Collection<String> tickers) {
-        return findLatestPrices("etf_price_daily", tickers);
+        return findLatestPrices("etf_price_daily", tickers, false);
     }
 
     public List<AssetSearchResponse> searchAssets(String keyword, int limit) {
@@ -240,28 +240,33 @@ public class CompanyAnalysisQueryRepository {
         ));
     }
 
-    private Optional<LatestPriceRow> findLatestPrice(String tableName, String ticker) {
+    private Optional<LatestPriceRow> findLatestPrice(String tableName, String ticker, boolean includeChangePct) {
+        String selectColumns = includeChangePct ? "price_date, close, change_pct" : "price_date, close";
         String sql = """
-            SELECT price_date, close, change_pct
+            SELECT %s
             FROM %s
             WHERE ticker = :ticker
             ORDER BY price_date DESC
             LIMIT 1
-            """.formatted(tableName);
+            """.formatted(selectColumns, tableName);
         List<LatestPriceRow> rows = jdbc.query(sql, Map.of("ticker", ticker), (rs, rowNum) -> new LatestPriceRow(
                 rs.getObject("price_date", LocalDate.class),
-                rs.getBigDecimal("close"),
-                rs.getBigDecimal("change_pct")
+                getBigDecimal(rs, "close"),
+                includeChangePct ? getBigDecimal(rs, "change_pct") : null
         ));
         return rows.isEmpty() ? Optional.empty() : Optional.of(rows.getFirst());
     }
 
-    private Map<String, LatestPriceRow> findLatestPrices(String tableName, Collection<String> tickers) {
+    private Map<String, LatestPriceRow> findLatestPrices(String tableName, Collection<String> tickers,
+                                                         boolean includeChangePct) {
         if (tickers == null || tickers.isEmpty()) {
             return Collections.emptyMap();
         }
+        String selectColumns = includeChangePct
+                ? "p.ticker, p.price_date, p.close, p.change_pct"
+                : "p.ticker, p.price_date, p.close";
         String sql = """
-            SELECT p.ticker, p.price_date, p.close, p.change_pct
+            SELECT %s
             FROM %s p
             INNER JOIN (
                 SELECT ticker, MAX(price_date) AS price_date
@@ -269,14 +274,14 @@ public class CompanyAnalysisQueryRepository {
                 WHERE ticker IN (:tickers)
                 GROUP BY ticker
             ) latest ON p.ticker = latest.ticker AND p.price_date = latest.price_date
-            """.formatted(tableName, tableName);
+            """.formatted(selectColumns, tableName, tableName);
         var params = new MapSqlParameterSource().addValue("tickers", tickers);
         Map<String, LatestPriceRow> result = new HashMap<>();
         jdbc.query(sql, params, (rs) -> {
             LatestPriceRow row = new LatestPriceRow(
                     rs.getObject("price_date", LocalDate.class),
-                    rs.getBigDecimal("close"),
-                    rs.getBigDecimal("change_pct")
+                    getBigDecimal(rs, "close"),
+                    includeChangePct ? getBigDecimal(rs, "change_pct") : null
             );
             result.put(rs.getString("ticker"), row);
         });
@@ -305,10 +310,10 @@ public class CompanyAnalysisQueryRepository {
                 .addValue("end", end);
         return jdbc.query(sql, params, (rs, rowNum) -> new PriceCandleResponse(
                 rs.getObject("price_date", LocalDate.class),
-                rs.getBigDecimal("open"),
-                rs.getBigDecimal("high"),
-                rs.getBigDecimal("low"),
-                rs.getBigDecimal("close")
+                getBigDecimal(rs, "open"),
+                getBigDecimal(rs, "high"),
+                getBigDecimal(rs, "low"),
+                getBigDecimal(rs, "close")
         ));
     }
 
@@ -327,10 +332,10 @@ public class CompanyAnalysisQueryRepository {
         List<StockPredictionRow> rows = jdbc.query(sql, params, (rs, rowNum) -> new StockPredictionRow(
                 rs.getObject("prediction_date", LocalDate.class),
                 rs.getInt("horizon_days"),
-                rs.getBigDecimal("point_estimate"),
-                rs.getBigDecimal("lower_bound"),
-                rs.getBigDecimal("upper_bound"),
-                rs.getBigDecimal("prob_up")
+                getBigDecimal(rs, "point_estimate"),
+                getBigDecimal(rs, "lower_bound"),
+                getBigDecimal(rs, "upper_bound"),
+                getBigDecimal(rs, "prob_up")
         ));
         return rows.isEmpty() ? Optional.empty() : Optional.of(rows.getFirst());
     }
@@ -346,12 +351,12 @@ public class CompanyAnalysisQueryRepository {
             """;
         List<StockScoreRow> rows = jdbc.query(sql, Map.of("ticker", ticker), (rs, rowNum) -> new StockScoreRow(
                 rs.getObject("score_date", LocalDate.class),
-                rs.getBigDecimal("total_score"),
-                rs.getBigDecimal("score_momentum"),
-                rs.getBigDecimal("score_valuation"),
-                rs.getBigDecimal("score_growth"),
-                rs.getBigDecimal("score_flow"),
-                rs.getBigDecimal("score_risk")
+                getBigDecimal(rs, "total_score"),
+                getBigDecimal(rs, "score_momentum"),
+                getBigDecimal(rs, "score_valuation"),
+                getBigDecimal(rs, "score_growth"),
+                getBigDecimal(rs, "score_flow"),
+                getBigDecimal(rs, "score_risk")
         ));
         return rows.isEmpty() ? Optional.empty() : Optional.of(rows.getFirst());
     }
@@ -367,12 +372,12 @@ public class CompanyAnalysisQueryRepository {
             """;
         List<EtfMetricsRow> rows = jdbc.query(sql, Map.of("ticker", ticker), (rs, rowNum) -> new EtfMetricsRow(
                 rs.getObject("as_of_date", LocalDate.class),
-                rs.getBigDecimal("market_cap"),
-                rs.getBigDecimal("dividend_yield"),
-                rs.getBigDecimal("total_assets"),
-                rs.getBigDecimal("nav"),
-                rs.getBigDecimal("premium_discount"),
-                rs.getBigDecimal("expense_ratio")
+                getBigDecimal(rs, "market_cap"),
+                getBigDecimal(rs, "dividend_yield"),
+                getBigDecimal(rs, "total_assets"),
+                getBigDecimal(rs, "nav"),
+                getBigDecimal(rs, "premium_discount"),
+                getBigDecimal(rs, "expense_ratio")
         ));
         return rows.isEmpty() ? Optional.empty() : Optional.of(rows.getFirst());
     }
@@ -400,69 +405,6 @@ public class CompanyAnalysisQueryRepository {
         ));
     }
 
-    public Optional<DailyPickCandidate> findLatestPersonaPickTarget() {
-        String sql = """
-            WITH unioned AS (
-                SELECT ticker, 'STOCK' AS asset_type, MAX(created_at) AS max_created
-                FROM stocks_persona
-                GROUP BY ticker
-                UNION ALL
-                SELECT ticker, 'ETF' AS asset_type, MAX(created_at) AS max_created
-                FROM etf_persona
-                GROUP BY ticker
-            )
-            SELECT ticker, asset_type
-            FROM unioned
-            ORDER BY max_created DESC
-            LIMIT 1
-            """;
-        List<DailyPickCandidate> rows = jdbc.query(sql, (rs, rowNum) -> new DailyPickCandidate(
-                rs.getString("ticker"),
-                AssetType.valueOf(rs.getString("asset_type"))
-        ));
-        return rows.isEmpty() ? Optional.empty() : Optional.of(rows.getFirst());
-    }
-
-    public List<NewsHeadlineResponse> fetchNews(String ticker, int limit, int offset) {
-        String sql = """
-            SELECT id, ticker, title, source, published_at
-            FROM company_news
-            WHERE (:ticker IS NULL OR ticker = :ticker)
-            ORDER BY published_at DESC
-            LIMIT :limit OFFSET :offset
-            """;
-        var params = new MapSqlParameterSource()
-                .addValue("ticker", ticker)
-                .addValue("limit", limit)
-                .addValue("offset", offset);
-        return jdbc.query(sql, params, this::mapNewsHeadline);
-    }
-
-    public long countNews(String ticker) {
-        String sql = "SELECT COUNT(*) FROM company_news WHERE (:ticker IS NULL OR ticker = :ticker)";
-        var params = new MapSqlParameterSource().addValue("ticker", ticker);
-        Long count = jdbc.queryForObject(sql, params, Long.class);
-        return count == null ? 0L : count;
-    }
-
-    public Optional<NewsDetailRow> findNewsDetail(long id) {
-        String sql = """
-            SELECT id, ticker, title, source, summary, url, published_at
-            FROM company_news
-            WHERE id = :id
-            """;
-        List<NewsDetailRow> rows = jdbc.query(sql, Map.of("id", id), (rs, rowNum) -> new NewsDetailRow(
-                rs.getLong("id"),
-                rs.getString("ticker"),
-                rs.getString("title"),
-                rs.getString("source"),
-                rs.getString("summary"),
-                rs.getString("url"),
-                toInstant(rs, "published_at")
-        ));
-        return rows.isEmpty() ? Optional.empty() : Optional.of(rows.getFirst());
-    }
-
     public List<MajorIndexResponse> fetchMajorIndices(List<String> tickers) {
         if (tickers == null || tickers.isEmpty()) {
             return List.of();
@@ -483,25 +425,31 @@ public class CompanyAnalysisQueryRepository {
         return jdbc.query(sql, params, (rs, rowNum) -> new MajorIndexResponse(
                 rs.getString("ticker"),
                 rs.getString("name"),
-                rs.getBigDecimal("close"),
-                rs.getBigDecimal("change_pct"),
+                getBigDecimal(rs, "close"),
+                getBigDecimal(rs, "change_pct"),
                 rs.getObject("price_date", LocalDate.class)
         ));
-    }
-
-    private NewsHeadlineResponse mapNewsHeadline(ResultSet rs, int rowNum) throws SQLException {
-        return new NewsHeadlineResponse(
-                rs.getLong("id"),
-                rs.getString("ticker"),
-                rs.getString("title"),
-                rs.getString("source"),
-                toInstant(rs, "published_at")
-        );
     }
 
     private static Instant toInstant(ResultSet rs, String column) throws SQLException {
         OffsetDateTime odt = rs.getObject(column, OffsetDateTime.class);
         return odt == null ? null : odt.toInstant();
+    }
+
+    private static BigDecimal getBigDecimal(ResultSet rs, String column) throws SQLException {
+        String raw = rs.getString(column);
+        if (raw == null) {
+            return null;
+        }
+        String normalized = raw.trim();
+        if (normalized.isEmpty()) {
+            return null;
+        }
+        String lower = normalized.toLowerCase(Locale.ROOT);
+        if ("nan".equals(lower) || "infinity".equals(lower) || "+infinity".equals(lower) || "-infinity".equals(lower)) {
+            return null;
+        }
+        return new BigDecimal(normalized);
     }
 
     private static Long getLong(ResultSet rs, String column) throws SQLException {
@@ -874,70 +822,4 @@ public class CompanyAnalysisQueryRepository {
         }
     }
 
-    public static class DailyPickCandidate {
-        private final String ticker;
-        private final AssetType assetType;
-
-        public DailyPickCandidate(String ticker, AssetType assetType) {
-            this.ticker = ticker;
-            this.assetType = assetType;
-        }
-
-        public String getTicker() {
-            return ticker;
-        }
-
-        public AssetType getAssetType() {
-            return assetType;
-        }
-    }
-
-    public static class NewsDetailRow {
-        private final Long id;
-        private final String ticker;
-        private final String title;
-        private final String source;
-        private final String summary;
-        private final String url;
-        private final Instant publishedAt;
-
-        public NewsDetailRow(Long id, String ticker, String title, String source,
-                             String summary, String url, Instant publishedAt) {
-            this.id = id;
-            this.ticker = ticker;
-            this.title = title;
-            this.source = source;
-            this.summary = summary;
-            this.url = url;
-            this.publishedAt = publishedAt;
-        }
-
-        public Long getId() {
-            return id;
-        }
-
-        public String getTicker() {
-            return ticker;
-        }
-
-        public String getTitle() {
-            return title;
-        }
-
-        public String getSource() {
-            return source;
-        }
-
-        public String getSummary() {
-            return summary;
-        }
-
-        public String getUrl() {
-            return url;
-        }
-
-        public Instant getPublishedAt() {
-            return publishedAt;
-        }
-    }
 }

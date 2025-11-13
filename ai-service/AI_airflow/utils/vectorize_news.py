@@ -59,8 +59,8 @@ MONGODB_NEWS_COLLECTION = os.getenv("MONGODB_NEWS_COLLECTION", "investing_news")
 # strip()으로 개행 문자 제거
 _mongodb_user = os.getenv("MONGODB_USER", os.getenv("MONGODB_USERNAME", None))
 _mongodb_pass = os.getenv("MONGODB_PASSWORD", None)
-MONGODB_USERNAME = _mongodb_user.strip() if _mongodb_user else None
-MONGODB_PASSWORD = _mongodb_pass.strip() if _mongodb_pass else None
+MONGODB_USERNAME = _mongodb_user.strip() if _mongodb_user and _mongodb_user.strip() else None
+MONGODB_PASSWORD = _mongodb_pass.strip() if _mongodb_pass and _mongodb_pass.strip() else None
 MONGODB_AUTH_SOURCE = os.getenv("MONGODB_AUTH_SOURCE", "admin").strip()
 
 # ChromaDB 설정

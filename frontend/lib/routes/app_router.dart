@@ -18,6 +18,7 @@ import '../presentation/screens/company/company_detail_screen.dart';
 import '../presentation/screens/company/company_chart_screen.dart';
 import '../presentation/screens/company/company_news_list_screen.dart';
 import '../presentation/screens/company/company_news_detail_screen.dart';
+import '../presentation/screens/company/all_stocks_list_screen.dart';
 import '../presentation/screens/etf/etf_detail_screen.dart';
 import '../presentation/screens/news/all_news_list_screen.dart';
 import '../presentation/screens/news/all_news_detail_screen.dart';
@@ -177,6 +178,14 @@ class AppRouter {
         redirect: (context, state) => RouteGuards.requireAuth(context, state),
       ),
       // ==================== COMPANY ====================
+
+      /// 전체 종목 보기 (미국 주식 + ETF)
+      GoRoute(
+        path: '/stocks/all',
+        name: 'all-stocks-list',
+        builder: (context, state) => const AllStocksListScreen(),
+        redirect: (context, state) => RouteGuards.requireAuth(context, state),
+      ),
 
       /// 기업 상세 정보 (차트/종목지표/주가예측 포함)
       GoRoute(
