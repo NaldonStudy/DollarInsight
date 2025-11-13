@@ -17,7 +17,7 @@ class CompanyNewsListScreen extends StatefulWidget {
 
   const CompanyNewsListScreen({
     super.key,
-    this.companyId = 'NVDA', // 기본값 (실제로는 파라미터로 받아야 함)
+    required this.companyId, // ticker를 필수로 받음
   });
 
   @override
@@ -240,6 +240,30 @@ class _CompanyNewsListScreenState extends State<CompanyNewsListScreen> {
         color: const Color(0xFFE0E0E0),
       );
 
+  /// ISO 8601 날짜 포맷팅
+  String _formatDate(String isoDate) {
+    try {
+      final dateTime = DateTime.parse(isoDate);
+      final now = DateTime.now();
+      final difference = now.difference(dateTime);
+
+      if (difference.inDays == 0) {
+        if (difference.inHours == 0) {
+          return '${difference.inMinutes}분 전';
+        }
+        return '${difference.inHours}시간 전';
+      } else if (difference.inDays == 1) {
+        return '어제';
+      } else if (difference.inDays < 7) {
+        return '${difference.inDays}일 전';
+      } else {
+        return '${dateTime.year}-${dateTime.month.toString().padLeft(2, '0')}-${dateTime.day.toString().padLeft(2, '0')}';
+      }
+    } catch (e) {
+      return isoDate;
+    }
+  }
+
   Widget _expandableNewsItem({
     required int index,
     required double w,
@@ -267,12 +291,12 @@ class _CompanyNewsListScreenState extends State<CompanyNewsListScreen> {
               ),
             ),
 
-            // 날짜 및 출처
-            if (news['publishedAt'] != null || news['source'] != null)
+            // 날짜
+            if (news['publishedAt'] != null && news['publishedAt']!.isNotEmpty)
               Padding(
                 padding: EdgeInsets.only(top: h * 0.005),
                 child: Text(
-                  '${news['publishedAt'] ?? ''} · ${news['source'] ?? ''}',
+                  _formatDate(news['publishedAt']!),
                   style: TextStyle(
                     fontSize: w * 0.03,
                     color: const Color(0xFF757575),

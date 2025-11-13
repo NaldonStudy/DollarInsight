@@ -49,16 +49,11 @@ class _MainScreenState extends State<MainScreen> {
   Future<void> _loadDashboardData() async {
     try {
       final response = await _companyApi.getDashboard();
-      print('✅ Dashboard 응답 받음: $response');
 
       // ✅ API 응답이 {ok: true, data: {...}} 구조이므로 data 필드 추출
       final data = response['data'] as Map<String, dynamic>;
-      print('✅ data 추출: $data');
 
       final dashboardResponse = DashboardResponse.fromJson(data);
-      print('✅ majorIndices 개수: ${dashboardResponse.majorIndices.length}');
-      print('✅ recommendedNews 개수: ${dashboardResponse.recommendedNews.length}');
-      print('✅ dailyPick 개수: ${dashboardResponse.dailyPick.length}');
 
       setState(() {
         _dashboardData = dashboardResponse;
@@ -69,7 +64,6 @@ class _MainScreenState extends State<MainScreen> {
         _errorMessage = e.toString();
         _isLoading = false;
       });
-      print('❌ Dashboard 로드 실패: $e');
     }
   }
 
