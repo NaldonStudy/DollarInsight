@@ -52,11 +52,11 @@ async def metrics():
 
 # ===== 에이전트 이름 매핑 (한글 ↔ 영문) =====
 AGENT_NAME_MAPPING = {
-    "희열": "Heeyule",
-    "덕수": "Ducksu",
-    "지율": "Jiyule",
-    "테오": "Taeo",
-    "민지": "Minji",
+    "희열": "heuyeol",
+    "덕수": "deoksu",
+    "지율": "jiyul",
+    "테오": "teo",
+    "민지": "minji",
 }
 
 AGENT_NAME_REVERSE = {v: k for k, v in AGENT_NAME_MAPPING.items()}
@@ -628,11 +628,11 @@ class CompanyAnalysisRequest(BaseModel):
 class CompanyAnalysisResponse(BaseModel):
     """기업 분석 응답 모델"""
     company_name: str
-    Heeyule: str
-    Ducksu: str
-    Jiyule: str
-    Taeo: str
-    Minji: str
+    heuyeol: str
+    deoksu: str
+    jiyul: str
+    teo: str
+    minji: str
     analyzed_at: str
 
 
@@ -641,7 +641,7 @@ async def analyze_news_endpoint(request: NewsAnalysisRequest):
     """
     뉴스 기사를 5명의 페르소나 관점에서 분석
     - 뉴스 요약
-    - 페르소나 5명 분석 (Heeyule, Ducksu, Jiyule, Taeo, Minji)
+    - 페르소나 5명 분석 (heuyeol, deoksu, jiyul, teo, minji)
     - 영향 미칠 기업 목록
     """
     try:
@@ -665,17 +665,17 @@ async def analyze_news_endpoint(request: NewsAnalysisRequest):
 async def analyze_company_endpoint(request: CompanyAnalysisRequest):
     """
     기업을 5명의 페르소나 관점에서 분석
-    - 페르소나별로 한마디씩 투자 의견 생성 (Heeyule, Ducksu, Jiyule, Taeo, Minji)
+    - 페르소나별로 한마디씩 투자 의견 생성 (heuyeol, deoksu, jiyul, teo, minji)
     """
     try:
         result = analyze_company(request.company_name, request.company_info or "")
         return CompanyAnalysisResponse(
             company_name=result["company_name"],
-            Heeyule=result.get("Heeyule", "Heeyule 분석 생성 실패"),
-            Ducksu=result.get("Ducksu", "Ducksu 분석 생성 실패"),
-            Jiyule=result.get("Jiyule", "Jiyule 분석 생성 실패"),
-            Taeo=result.get("Taeo", "Taeo 분석 생성 실패"),
-            Minji=result.get("Minji", "Minji 분석 생성 실패"),
+            heuyeol=result.get("heuyeol", "heuyeol 분석 생성 실패"),
+            deoksu=result.get("deoksu", "deoksu 분석 생성 실패"),
+            jiyul=result.get("jiyul", "jiyul 분석 생성 실패"),
+            teo=result.get("teo", "teo 분석 생성 실패"),
+            minji=result.get("minji", "minji 분석 생성 실패"),
             analyzed_at=result["analyzed_at"]
         )
     except ValueError as e:

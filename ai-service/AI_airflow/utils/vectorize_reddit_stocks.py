@@ -39,7 +39,20 @@ from dotenv import load_dotenv
 import kss
 from FlagEmbedding import FlagModel
 
-load_dotenv()
+# .env 파일 경로 명시적으로 지정 (Airflow 컨테이너 내부 경로 사용)
+# docker-compose에서 /opt/airflow/.env로 마운트됨
+# override=True: 기존 환경 변수를 .env 파일의 값으로 덮어씀
+env_path = Path("/opt/airflow/.env")
+if env_path.exists():
+    load_dotenv(dotenv_path=env_path, override=True)
+else:
+    # 절대 경로에서도 시도
+    env_path_abs = Path("/opt/S13P31B205/ai-service/.env")
+    if env_path_abs.exists():
+        load_dotenv(dotenv_path=env_path_abs, override=True)
+    else:
+        # 기본 경로에서도 시도
+        load_dotenv(override=True)
 
 # ============================================================================
 # 환경 변수
