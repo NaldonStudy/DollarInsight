@@ -1,3 +1,46 @@
+/// 뉴스 목록 아이템 모델
+class NewsListItem {
+  final String id;
+  final String ticker;
+  final String title;
+  final String summary;
+  final String url;
+  final String publishedAt;
+
+  NewsListItem({
+    required this.id,
+    required this.ticker,
+    required this.title,
+    required this.summary,
+    required this.url,
+    required this.publishedAt,
+  });
+
+  /// JSON에서 NewsListItem 객체 생성
+  factory NewsListItem.fromJson(Map<String, dynamic> json) {
+    return NewsListItem(
+      id: json['id']?.toString() ?? '',
+      ticker: json['ticker']?.toString() ?? '',
+      title: json['title']?.toString() ?? '',
+      summary: json['summary']?.toString() ?? '',
+      url: json['url']?.toString() ?? '',
+      publishedAt: json['publishedAt']?.toString() ?? '',
+    );
+  }
+
+  /// NewsListItem 객체를 JSON으로 변환
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'ticker': ticker,
+      'title': title,
+      'summary': summary,
+      'url': url,
+      'publishedAt': publishedAt,
+    };
+  }
+}
+
 /// 뉴스 상세 정보 모델
 class NewsDetail {
   final String id;
