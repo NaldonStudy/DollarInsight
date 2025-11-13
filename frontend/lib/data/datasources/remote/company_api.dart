@@ -1,6 +1,7 @@
 import 'api_client.dart';
 import '../../models/company_model.dart';
 import '../../models/company_detail_model.dart';
+import '../../models/dashboard_model.dart';
 
 /// 기업 API 클라이언트
 class CompanyApi {
@@ -90,6 +91,31 @@ class CompanyApi {
       return [];
     } catch (e) {
       throw Exception('기업 검색 실패: $e');
+    }
+  }
+
+  /// 대시보드 정보 조회
+  ///
+  /// 반환: DashboardResponse 객체 (주요 지수, 추천 뉴스, 오늘의 픽)
+  ///
+  /// API: GET /api/company-analysis/dashboard
+  /// Header: X-Device-Id
+  /// 응답 구조: {ok: true, data: {...}}
+  Future<DashboardResponse> getDashboard() async {
+    try {
+      final response = await _apiClient.get(
+        '/api/company-analysis/dashboard',
+      );
+
+      // API 응답이 {ok: true, data: {...}} 구조이므로 data 부분만 파싱
+      final data = response['data'] as Map<String, dynamic>?;
+      if (data == null) {
+        throw Exception('API 응답에 data 필드가 없습니다.');
+      }
+
+      return DashboardResponse.fromJson(data);
+    } catch (e) {
+      throw Exception('대시보드 정보 조회 실패: $e');
     }
   }
 

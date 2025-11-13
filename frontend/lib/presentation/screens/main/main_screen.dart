@@ -10,6 +10,8 @@ import '../../widgets/main/index_section.dart';
 import '../../widgets/main/news_section.dart';
 import '../../widgets/main/stock_section.dart';
 import '../../widgets/common/scroll_fab_button.dart';
+import '../../../data/datasources/remote/company_api.dart';
+import '../../../data/models/dashboard_model.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -23,6 +25,12 @@ class _MainScreenState extends State<MainScreen> {
   final ScrollController _scrollController = ScrollController();
   bool showFab = false;
 
+  // ✅ Dashboard 데이터
+  final CompanyApi _companyApi = CompanyApi();
+  DashboardResponse? _dashboardData;
+  bool _isLoading = true;
+  String? _errorMessage;
+
   @override
   void initState() {
     super.initState();
@@ -32,11 +40,32 @@ class _MainScreenState extends State<MainScreen> {
         showFab = _scrollController.offset > 40;
       });
     });
+
+    // ✅ Dashboard 데이터 로드
+    _loadDashboardData();
+  }
+
+  /// ✅ Dashboard 데이터 로드
+  Future<void> _loadDashboardData() async {
+    try {
+      final data = await _companyApi.getDashboard();
+      setState(() {
+        _dashboardData = data;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage = e.toString();
+        _isLoading = false;
+      });
+      print('❌ Dashboard 로드 실패: $e');
+    }
   }
 
   @override
   void dispose() {
     _scrollController.dispose();
+    _companyApi.dispose();
     super.dispose();
   }
 
@@ -95,6 +124,47 @@ class _MainScreenState extends State<MainScreen> {
 
   /// ✅ 기업분석 탭 화면 구성
   Widget _buildCompanyBody(BuildContext context, double w, double h) {
+    // ✅ 로딩 중
+    if (_isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
+    }
+
+    // ✅ 에러 발생
+    if (_errorMessage != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline, size: 48, color: Colors.red),
+            const SizedBox(height: 16),
+            Text(
+              '데이터를 불러올 수 없습니다',
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _errorMessage!,
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  _isLoading = true;
+                  _errorMessage = null;
+                });
+                _loadDashboardData();
+              },
+              child: const Text('다시 시도'),
+            ),
+          ],
+        ),
+      );
+    }
+
     return SingleChildScrollView(
       controller: _scrollController,
       padding: EdgeInsets.symmetric(
@@ -152,17 +222,29 @@ class _MainScreenState extends State<MainScreen> {
           SizedBox(height: AppSpacing.section(context)),
 
           /// ✅ 주요 지수
-          IndexSection(w: w, h: h),
+          IndexSection(
+            w: w,
+            h: h,
+            majorIndices: _dashboardData?.majorIndices ?? [],
+          ),
 
           SizedBox(height: AppSpacing.section(context)),
 
           /// ✅ 뉴스 섹션
-          NewsSection(w: w, h: h),
+          NewsSection(
+            w: w,
+            h: h,
+            recommendedNews: _dashboardData?.recommendedNews ?? [],
+          ),
 
           SizedBox(height: AppSpacing.section(context)),
 
-          /// ✅ 관심종목 섹션
-          StockSection(w: w, h: h),
+          /// ✅ 데일리 픽 섹션
+          StockSection(
+            w: w,
+            h: h,
+            dailyPicks: _dashboardData?.dailyPick ?? [],
+          ),
 
           SizedBox(height: AppSpacing.bottomLarge(context)),
         ],
