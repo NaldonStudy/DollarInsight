@@ -443,7 +443,9 @@ class _ETFDetailScreenState extends State<ETFDetailScreen>
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const CompanyNewsListScreen(),
+                      builder: (context) => CompanyNewsListScreen(
+                        companyId: widget.etfId,
+                      ),
                     ),
                   );
                 },

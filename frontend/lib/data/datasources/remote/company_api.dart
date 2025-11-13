@@ -23,15 +23,16 @@ class CompanyApi {
   /// 포함 데이터: 기본정보, 가격정보, 예측, 투자지표, 페르소나 코멘트, 뉴스
   ///
   /// API: GET /api/company-analysis/{ticker}
-  /// 응답: CompanyDetailResponse (직접 객체, wrapper 없음)
+  /// 응답: {ok: true, data: CompanyDetailResponse}
   Future<CompanyDetailResponse> getCompanyDetail(String ticker) async {
     try {
       final response = await _apiClient.get(
         '/api/company-analysis/$ticker',
       );
 
-      // ✅ API 문서: 직접 CompanyDetailResponse 객체 반환 (data wrapper 없음)
-      return CompanyDetailResponse.fromJson(response as Map<String, dynamic>);
+      // ✅ API 응답이 {ok: true, data: {...}} 구조이므로 data 필드 추출
+      final data = response['data'] as Map<String, dynamic>;
+      return CompanyDetailResponse.fromJson(data);
     } catch (e) {
       if (e.toString().contains('404')) {
         throw Exception('해당 티커($ticker)를 찾을 수 없습니다');
@@ -53,13 +54,13 @@ class CompanyApi {
   /// 반환: 검색된 자산 목록 (ticker, assetType, name, nameEng, exchange 포함)
   ///
   /// API: GET /api/company-analysis/search
-  /// 응답: AssetSearchResponse (단일 객체 또는 배열, API 문서 불분명)
+  /// 응답: {ok: true, data: [...]}
   Future<List<Map<String, dynamic>>> searchAssets({
     required String keyword,
     int size = 10,
   }) async {
     try {
-      final dynamic response = await _apiClient.get(
+      final response = await _apiClient.get(
         '/api/company-analysis/search',
         queryParameters: {
           'keyword': keyword,
@@ -67,14 +68,14 @@ class CompanyApi {
         },
       );
 
-      // ❗ API 문서에서 AssetSearchResponse가 단일 객체로 정의되어 있지만,
-      // 검색 결과는 여러 개이므로 배열일 가능성이 높음
-      if (response is List) {
-        // 예상: 다중 검색 결과 배열
-        return List<Map<String, dynamic>>.from(response);
-      } else if (response is Map<String, dynamic>) {
+      // ✅ API 응답이 {ok: true, data: [...]} 구조이므로 data 필드 추출
+      final data = response['data'];
+
+      if (data is List) {
+        return List<Map<String, dynamic>>.from(data);
+      } else if (data is Map<String, dynamic>) {
         // 만약 단일 객체로 오는 경우, 리스트로 감싸서 반환
-        return [response];
+        return [data];
       }
 
       return [];
@@ -97,7 +98,7 @@ class CompanyApi {
   /// 반환: 페이지네이션된 뉴스 목록 (items, totalElements, page, size)
   ///
   /// API: GET /api/company-analysis/news
-  /// 응답: PagedNewsResponse (직접 객체)
+  /// 응답: {ok: true, data: PagedNewsResponse}
   Future<Map<String, dynamic>> getNewsList({
     String? ticker,
     int page = 0,
@@ -118,8 +119,9 @@ class CompanyApi {
         queryParameters: queryParams,
       );
 
-      // ✅ API 문서: 직접 PagedNewsResponse 객체 반환
-      return response as Map<String, dynamic>;
+      // ✅ API 응답이 {ok: true, data: {...}} 구조이므로 data 필드 추출
+      final data = response['data'] as Map<String, dynamic>;
+      return data;
     } catch (e) {
       throw Exception('뉴스 목록 조회 실패: $e');
     }
@@ -138,15 +140,16 @@ class CompanyApi {
   /// 포함 데이터: id, ticker, title, summary, content, url, publishedAt, personaComments
   ///
   /// API: GET /api/company-analysis/news/{newsId}
-  /// 응답: NewsDetailResponse (직접 객체)
+  /// 응답: {ok: true, data: NewsDetailResponse}
   Future<Map<String, dynamic>> getNewsDetail(String newsId) async {
     try {
       final response = await _apiClient.get(
         '/api/company-analysis/news/$newsId',
       );
 
-      // ✅ API 문서: 직접 NewsDetailResponse 객체 반환
-      return response as Map<String, dynamic>;
+      // ✅ API 응답이 {ok: true, data: {...}} 구조이므로 data 필드 추출
+      final data = response['data'] as Map<String, dynamic>;
+      return data;
     } catch (e) {
       if (e.toString().contains('404')) {
         throw Exception('해당 뉴스를 찾을 수 없습니다');

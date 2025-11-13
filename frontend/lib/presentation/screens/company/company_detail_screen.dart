@@ -527,7 +527,9 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const CompanyNewsListScreen(),
+                      builder: (context) => CompanyNewsListScreen(
+                        companyId: widget.companyId,
+                      ),
                     ),
                   );
                 },
