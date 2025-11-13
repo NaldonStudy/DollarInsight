@@ -183,19 +183,19 @@ public class CompanyAnalysisQueryRepository {
     }
 
     public Optional<LatestPriceRow> findLatestStockPrice(String ticker) {
-        return findLatestPrice("stock_price_daily", ticker);
+        return findLatestPrice("stock_price_daily", ticker, true);
     }
 
     public Optional<LatestPriceRow> findLatestEtfPrice(String ticker) {
-        return findLatestPrice("etf_price_daily", ticker);
+        return findLatestPrice("etf_price_daily", ticker, false);
     }
 
     public Map<String, LatestPriceRow> findLatestStockPrices(Collection<String> tickers) {
-        return findLatestPrices("stock_price_daily", tickers);
+        return findLatestPrices("stock_price_daily", tickers, true);
     }
 
     public Map<String, LatestPriceRow> findLatestEtfPrices(Collection<String> tickers) {
-        return findLatestPrices("etf_price_daily", tickers);
+        return findLatestPrices("etf_price_daily", tickers, false);
     }
 
     public List<AssetSearchResponse> searchAssets(String keyword, int limit) {
@@ -240,28 +240,33 @@ public class CompanyAnalysisQueryRepository {
         ));
     }
 
-    private Optional<LatestPriceRow> findLatestPrice(String tableName, String ticker) {
+    private Optional<LatestPriceRow> findLatestPrice(String tableName, String ticker, boolean includeChangePct) {
+        String selectColumns = includeChangePct ? "price_date, close, change_pct" : "price_date, close";
         String sql = """
-            SELECT price_date, close, change_pct
+            SELECT %s
             FROM %s
             WHERE ticker = :ticker
             ORDER BY price_date DESC
             LIMIT 1
-            """.formatted(tableName);
+            """.formatted(selectColumns, tableName);
         List<LatestPriceRow> rows = jdbc.query(sql, Map.of("ticker", ticker), (rs, rowNum) -> new LatestPriceRow(
                 rs.getObject("price_date", LocalDate.class),
                 getBigDecimal(rs, "close"),
-                getBigDecimal(rs, "change_pct")
+                includeChangePct ? getBigDecimal(rs, "change_pct") : null
         ));
         return rows.isEmpty() ? Optional.empty() : Optional.of(rows.getFirst());
     }
 
-    private Map<String, LatestPriceRow> findLatestPrices(String tableName, Collection<String> tickers) {
+    private Map<String, LatestPriceRow> findLatestPrices(String tableName, Collection<String> tickers,
+                                                         boolean includeChangePct) {
         if (tickers == null || tickers.isEmpty()) {
             return Collections.emptyMap();
         }
+        String selectColumns = includeChangePct
+                ? "p.ticker, p.price_date, p.close, p.change_pct"
+                : "p.ticker, p.price_date, p.close";
         String sql = """
-            SELECT p.ticker, p.price_date, p.close, p.change_pct
+            SELECT %s
             FROM %s p
             INNER JOIN (
                 SELECT ticker, MAX(price_date) AS price_date
@@ -269,14 +274,14 @@ public class CompanyAnalysisQueryRepository {
                 WHERE ticker IN (:tickers)
                 GROUP BY ticker
             ) latest ON p.ticker = latest.ticker AND p.price_date = latest.price_date
-            """.formatted(tableName, tableName);
+            """.formatted(selectColumns, tableName, tableName);
         var params = new MapSqlParameterSource().addValue("tickers", tickers);
         Map<String, LatestPriceRow> result = new HashMap<>();
         jdbc.query(sql, params, (rs) -> {
             LatestPriceRow row = new LatestPriceRow(
                     rs.getObject("price_date", LocalDate.class),
                     getBigDecimal(rs, "close"),
-                    getBigDecimal(rs, "change_pct")
+                    includeChangePct ? getBigDecimal(rs, "change_pct") : null
             );
             result.put(rs.getString("ticker"), row);
         });
