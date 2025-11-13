@@ -143,7 +143,7 @@ class _ETFDetailScreenState extends State<ETFDetailScreen>
                 child: TabBarView(
                   controller: _tabController,
                   children: [
-                    _buildChartTab(),
+                    _buildChartTab(provider),
                     _buildIndicatorsTab(provider),
                   ],
                 ),
@@ -297,7 +297,7 @@ class _ETFDetailScreenState extends State<ETFDetailScreen>
   }
 
   /// 차트 탭 (주가그래프만 표시)
-  Widget _buildChartTab() {
+  Widget _buildChartTab(ETFDetailProvider provider) {
     return Container(
       margin: EdgeInsets.symmetric(
         horizontal: AppSpacing.horizontal(context),
@@ -308,7 +308,9 @@ class _ETFDetailScreenState extends State<ETFDetailScreen>
         color: Colors.white,
         borderRadius: BorderRadius.circular(8),
       ),
-      child: const StockPriceChart(),
+      child: StockPriceChart(
+        dailyData: provider.dailyPriceData,
+      ),
     );
   }
 

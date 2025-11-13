@@ -1,5 +1,6 @@
 import '../datasources/remote/company_api.dart';
 import '../models/company_model.dart';
+import '../models/company_detail_model.dart';
 
 /// 기업 Repository
 /// API 호출을 담당하는 레포지토리
@@ -13,6 +14,16 @@ class CompanyRepository {
   Future<CompanyInfo> getCompanyInfo(String companyId) async {
     try {
       return await _companyApi.getCompanyInfo(companyId);
+    } catch (e) {
+      // 에러 처리는 상위에서 처리
+      rethrow;
+    }
+  }
+
+  /// 기업 상세 정보 조회
+  Future<CompanyDetailResponse> getCompanyDetail(String ticker) async {
+    try {
+      return await _companyApi.getCompanyDetail(ticker);
     } catch (e) {
       // 에러 처리는 상위에서 처리
       rethrow;

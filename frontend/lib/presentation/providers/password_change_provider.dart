@@ -1,18 +1,25 @@
-// 📁 lib/presentation/providers/password_change_provider.dart
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../../core/utils/device_id_manager.dart';
-import '../../data/datasources/local/token_storage.dart';
+import '../../data/datasources/local/token_storage.dart'; // ✅ TokenStorage 사용
 
 class PasswordChangeProvider extends ChangeNotifier {
   final passwordController = TextEditingController();
   final passwordConfirmController = TextEditingController();
 
-  // ✅ Dio 초기화 시 .env 사용
-  final Dio _dio = Dio(
+  /// ✅ BASE_URL 환경변수에서 읽기
+  String get baseUrl {
+    final url = dotenv.env['BASE_URL'];
+    if (url == null || url.isEmpty) {
+      throw Exception('BASE_URL이 .env 파일에 설정되지 않았습니다.');
+    }
+    return url;
+  }
+
+  late final Dio _dio = Dio(
     BaseOptions(
-      baseUrl: dotenv.env['BASE_URL'] ?? '',
+      baseUrl: baseUrl,
       contentType: 'application/json',
     ),
   );
@@ -67,6 +74,7 @@ class PasswordChangeProvider extends ChangeNotifier {
       isLoading = true;
       notifyListeners();
 
+      // ✅ TokenStorage에서 accessToken 불러오기
       final token = await TokenStorage.getAccessToken();
       if (token == null || token.isEmpty) {
         throw Exception('Access token이 존재하지 않습니다. 다시 로그인해주세요.');
@@ -78,6 +86,7 @@ class PasswordChangeProvider extends ChangeNotifier {
       debugPrint('🔑 access token: $bearerToken');
       debugPrint('📱 deviceId: $deviceId');
 
+      // ✅ 비밀번호 변경 요청
       final response = await _dio.patch(
         '/api/users/me/password',
         options: Options(

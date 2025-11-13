@@ -14,6 +14,9 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env"); // ✅ 반드시 추가
 
+  // ✅ 환경변수 로드
+  await dotenv.load(fileName: ".env");
+
   // ✅ 한국어 날짜/시간 포맷 초기화 (필수)
   await initializeDateFormatting('ko_KR', null);
 
