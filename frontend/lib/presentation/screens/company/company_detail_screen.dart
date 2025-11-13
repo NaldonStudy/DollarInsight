@@ -159,7 +159,7 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
                 child: TabBarView(
                   controller: _tabController,
                   children: [
-                    _buildChartTab(),
+                    _buildChartTab(provider),
                     _buildScoreTabWithPages(w, h, provider),
                     _buildPredictionTab(provider),
                   ],
@@ -316,12 +316,12 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
   }
 
   /// 차트 탭 (주가그래프만 표시)
-  Widget _buildChartTab() {
-    return _buildStockChartPage();
+  Widget _buildChartTab(CompanyDetailProvider provider) {
+    return _buildStockChartPage(provider);
   }
 
-  /// 주가 그래프 페이지 (일봉/주봉/월봉)
-  Widget _buildStockChartPage() {
+  /// 주가 그래프 페이지 (일봉)
+  Widget _buildStockChartPage(CompanyDetailProvider provider) {
     return Container(
       margin: EdgeInsets.symmetric(
         horizontal: AppSpacing.horizontal(context),
@@ -332,7 +332,9 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
         color: Colors.white,
         borderRadius: BorderRadius.circular(8),
       ),
-      child: const StockPriceChart(),
+      child: StockPriceChart(
+        dailyData: provider.dailyPriceData,
+      ),
     );
   }
 

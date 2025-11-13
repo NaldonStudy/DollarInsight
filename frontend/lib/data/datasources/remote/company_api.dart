@@ -1,5 +1,6 @@
 import 'api_client.dart';
 import '../../models/company_model.dart';
+import '../../models/company_detail_model.dart';
 
 /// 기업 API 클라이언트
 class CompanyApi {
@@ -26,6 +27,33 @@ class CompanyApi {
       return CompanyInfo.fromJson(response);
     } catch (e) {
       throw Exception('기업 정보 조회 실패: $e');
+    }
+  }
+
+  /// 기업 상세 정보 조회
+  ///
+  /// [ticker]: 종목 티커 (예: NVDA)
+  ///
+  /// 반환: CompanyDetailResponse 객체
+  ///
+  /// API: GET /api/company-analysis/{ticker}
+  /// Header: X-Device-Id
+  /// 응답 구조: {ok: true, data: {...}}
+  Future<CompanyDetailResponse> getCompanyDetail(String ticker) async {
+    try {
+      final response = await _apiClient.get(
+        '/api/company-analysis/$ticker',
+      );
+
+      // API 응답이 {ok: true, data: {...}} 구조이므로 data 부분만 파싱
+      final data = response['data'] as Map<String, dynamic>?;
+      if (data == null) {
+        throw Exception('API 응답에 data 필드가 없습니다.');
+      }
+
+      return CompanyDetailResponse.fromJson(data);
+    } catch (e) {
+      throw Exception('기업 상세 정보 조회 실패: $e');
     }
   }
 

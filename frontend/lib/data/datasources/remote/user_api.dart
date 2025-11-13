@@ -1,11 +1,21 @@
 import 'package:dio/dio.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../../../core/utils/device_id_manager.dart';
 import '../local/token_storage.dart';
 
 class UserApi {
+  /// ✅ BASE_URL 환경변수에서 읽기
+  static String get baseUrl {
+    final url = dotenv.env['BASE_URL'];
+    if (url == null || url.isEmpty) {
+      throw Exception('BASE_URL이 .env 파일에 설정되지 않았습니다.');
+    }
+    return url;
+  }
+
   static final Dio _dio = Dio(
     BaseOptions(
-      baseUrl: 'http://k13b205.p.ssafy.io',
+      baseUrl: baseUrl,
       contentType: 'application/json',
     ),
   );

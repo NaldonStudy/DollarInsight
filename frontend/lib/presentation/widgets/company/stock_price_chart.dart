@@ -1,61 +1,58 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import '../../../data/models/company_detail_model.dart';
 
 /// 주가 차트 위젯
-/// 일/주/월봉을 선택할 수 있는 꺾은선 그래프
+/// 일봉 30일치 데이터를 표시하는 꺾은선 그래프
 /// Trackball을 통해 데이터 포인트 상세 정보 표시
 class StockPriceChart extends StatefulWidget {
-  const StockPriceChart({super.key});
+  final List<PriceDataPoint> dailyData;
+
+  const StockPriceChart({
+    super.key,
+    required this.dailyData,
+  });
 
   @override
   State<StockPriceChart> createState() => _StockPriceChartState();
 }
 
 class _StockPriceChartState extends State<StockPriceChart> {
-  // 더미 데이터 - 일봉 30일 (상승하는 추세)
-  final List<FlSpot> dailyData = [
-    const FlSpot(0, 275000),
-    const FlSpot(1, 277000),
-    const FlSpot(2, 279000),
-    const FlSpot(3, 278500),
-    const FlSpot(4, 281000),
-    const FlSpot(5, 283000),
-    const FlSpot(6, 285000),
-    const FlSpot(7, 287000),
-    const FlSpot(8, 286500),
-    const FlSpot(9, 289000),
-    const FlSpot(10, 291000),
-    const FlSpot(11, 290000),
-    const FlSpot(12, 292000),
-    const FlSpot(13, 294000),
-    const FlSpot(14, 293500),
-    const FlSpot(15, 295000),
-    const FlSpot(16, 297000),
-    const FlSpot(17, 296500),
-    const FlSpot(18, 298000),
-    const FlSpot(19, 300000),
-    const FlSpot(20, 299500),
-    const FlSpot(21, 301000),
-    const FlSpot(22, 303000),
-    const FlSpot(23, 302500),
-    const FlSpot(24, 304000),
-    const FlSpot(25, 306000),
-    const FlSpot(26, 305500),
-    const FlSpot(27, 307000),
-    const FlSpot(28, 309000),
-    const FlSpot(29, 310000),
-  ];
+  // API 데이터를 FlSpot으로 변환
+  List<FlSpot> get chartData {
+    if (widget.dailyData.isEmpty) return [];
+
+    return widget.dailyData.asMap().entries.map((entry) {
+      return FlSpot(entry.key.toDouble(), entry.value.close);
+    }).toList();
+  }
 
   // 최저/최고치 계산
-  double get minPrice => dailyData.map((e) => e.y).reduce((a, b) => a < b ? a : b);
-  double get maxPrice => dailyData.map((e) => e.y).reduce((a, b) => a > b ? a : b);
+  double get minPrice {
+    if (chartData.isEmpty) return 0;
+    return chartData.map((e) => e.y).reduce((a, b) => a < b ? a : b);
+  }
+
+  double get maxPrice {
+    if (chartData.isEmpty) return 0;
+    return chartData.map((e) => e.y).reduce((a, b) => a > b ? a : b);
+  }
 
   // 최저/최고 인덱스 찾기
-  int get minPriceIndex => dailyData.indexWhere((spot) => spot.y == minPrice);
-  int get maxPriceIndex => dailyData.indexWhere((spot) => spot.y == maxPrice);
+  int get minPriceIndex => chartData.indexWhere((spot) => spot.y == minPrice);
+  int get maxPriceIndex => chartData.indexWhere((spot) => spot.y == maxPrice);
 
   @override
   Widget build(BuildContext context) {
+    if (chartData.isEmpty) {
+      return const Center(
+        child: Text(
+          '차트 데이터가 없습니다.',
+          style: TextStyle(color: Color(0xFF757575)),
+        ),
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -142,10 +139,12 @@ class _StockPriceChartState extends State<StockPriceChart> {
                     (Match m) => '${m[1]},',
                   );
 
-              // 날짜 계산 (오늘부터 역산)
-              final daysAgo = spot.x.toInt();
-              final date = DateTime.now().subtract(Duration(days: 29 - daysAgo));
-              final dateString = '${date.year}.${date.month.toString().padLeft(2, '0')}.${date.day.toString().padLeft(2, '0')}';
+              // 날짜 표시 (API 데이터 사용)
+              final index = spot.x.toInt();
+              String dateString = '';
+              if (index >= 0 && index < widget.dailyData.length) {
+                dateString = widget.dailyData[index].priceDate;
+              }
 
               return LineTooltipItem(
                 '$dateString\n₩$price',
@@ -198,8 +197,9 @@ class _StockPriceChartState extends State<StockPriceChart> {
             getTitlesWidget: (value, meta) {
               final index = value.toInt();
 
-              if (index >= 0 && index < dailyData.length) {
+              if (index >= 0 && index < chartData.length) {
                 String text;
+                // 30일치 데이터: 0, 10, 20 위치에 표시
                 if (index == 0) {
                   text = '30';
                 } else if (index == 10) {
@@ -207,7 +207,7 @@ class _StockPriceChartState extends State<StockPriceChart> {
                 } else if (index == 20) {
                   text = '10';
                 } else {
-                  text = '-';
+                  return const Text('');
                 }
 
                 return Padding(
@@ -241,13 +241,13 @@ class _StockPriceChartState extends State<StockPriceChart> {
       ),
       // 최소/최대 X, Y 값 설정
       minX: 0,
-      maxX: (dailyData.length - 1).toDouble(),
-      minY: minPrice - 2000,
-      maxY: maxPrice + 2000,
+      maxX: chartData.isEmpty ? 0 : (chartData.length - 1).toDouble(),
+      minY: minPrice > 0 ? minPrice * 0.98 : 0,
+      maxY: maxPrice > 0 ? maxPrice * 1.02 : 100,
       // 선 데이터
       lineBarsData: [
         LineChartBarData(
-          spots: dailyData,
+          spots: chartData,
           isCurved: true,
           curveSmoothness: 0.3,
           color: const Color(0xFF4CAF50),

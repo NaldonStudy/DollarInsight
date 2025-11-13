@@ -1,8 +1,18 @@
 import 'package:dio/dio.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../../../core/utils/device_id_manager.dart';
 import '../../../data/datasources/local/token_storage.dart';
 
 class AuthApi {
+  /// ✅ BASE_URL 환경변수에서 읽기
+  static String get baseUrl {
+    final url = dotenv.env['BASE_URL'];
+    if (url == null || url.isEmpty) {
+      throw Exception('BASE_URL이 .env 파일에 설정되지 않았습니다.');
+    }
+    return url;
+  }
+
   /// ✅ 인증 없이 호출 가능한 엔드포인트
   static bool _isAuthFree(String path) {
     return path.contains('/api/auth/signup') ||
@@ -12,7 +22,7 @@ class AuthApi {
 
   static final Dio _dio = Dio(
     BaseOptions(
-      baseUrl: 'http://k13b205.p.ssafy.io',
+      baseUrl: baseUrl,
       connectTimeout: const Duration(seconds: 5),
       receiveTimeout: const Duration(seconds: 5),
       contentType: 'application/json',

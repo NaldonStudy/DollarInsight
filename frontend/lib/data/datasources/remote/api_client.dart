@@ -1,15 +1,95 @@
-import 'package:http/http.dart' as http;
-import 'dart:convert';
+import 'package:dio/dio.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import '../local/token_storage.dart';
+import '../../../core/utils/device_id_manager.dart';
 
 /// API 클라이언트
 /// 모든 HTTP 요청을 처리하는 클라이언트
+/// Dio + Interceptor로 자동 인증 및 토큰 갱신 처리
 class ApiClient {
-  // TODO: 실제 API URL로 변경
-  static const String baseUrl = 'https://api.example.com';
+  static String get baseUrl {
+    final url = dotenv.env['BASE_URL'];
+    if (url == null || url.isEmpty) {
+      throw Exception('BASE_URL이 .env 파일에 설정되지 않았습니다.');
+    }
+    return url;
+  }
 
-  final http.Client _client;
+  late final Dio _dio;
 
-  ApiClient({http.Client? client}) : _client = client ?? http.Client();
+  ApiClient({Dio? dio}) {
+    _dio = dio ?? _createDio();
+  }
+
+  /// Dio 인스턴스 생성 (AuthApi와 동일한 패턴)
+  static Dio _createDio() {
+    return Dio(
+      BaseOptions(
+        baseUrl: baseUrl,
+        connectTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 10),
+        contentType: 'application/json',
+        responseType: ResponseType.json,
+      ),
+    )..interceptors.add(
+        InterceptorsWrapper(
+          onRequest: (options, handler) async {
+            // 1. Authorization 헤더 추가 (JWT 토큰)
+            final accessToken = await TokenStorage.getAccessToken();
+            if (accessToken != null) {
+              options.headers['Authorization'] = 'Bearer $accessToken';
+            }
+
+            // 2. X-Device-Id 헤더 추가 (각 기기마다 고유)
+            final deviceId = await DeviceIdManager.getDeviceId();
+            options.headers['X-Device-Id'] = deviceId;
+
+            return handler.next(options);
+          },
+          onError: (DioException e, handler) async {
+            // 401 에러 시 토큰 갱신 시도
+            if (e.response?.statusCode == 401) {
+              try {
+                // Refresh Token으로 새 AccessToken 발급
+                final refreshToken = await TokenStorage.getRefreshToken();
+                if (refreshToken != null) {
+                  final deviceId = await DeviceIdManager.getDeviceId();
+                  final refreshDio = Dio(BaseOptions(baseUrl: baseUrl));
+
+                  final refreshResp = await refreshDio.post(
+                    '/api/auth/refresh',
+                    options: Options(headers: {
+                      'X-Device-Id': deviceId,
+                      'X-Refresh-Token': refreshToken,
+                    }),
+                  );
+
+                  final root = refreshResp.data as Map<String, dynamic>? ?? {};
+                  final data = root['data'] as Map<String, dynamic>?;
+                  final newAccessToken = data?['accessToken'] as String?;
+
+                  if (newAccessToken != null) {
+                    await TokenStorage.saveAccessToken(newAccessToken);
+
+                    // 원래 요청 재시도
+                    final RequestOptions req = e.requestOptions;
+                    req.headers['Authorization'] = 'Bearer $newAccessToken';
+
+                    final retryDio = Dio(BaseOptions(baseUrl: baseUrl));
+                    final retryResponse = await retryDio.fetch(req);
+                    return handler.resolve(retryResponse);
+                  }
+                }
+              } catch (_) {
+                // Refresh 실패 시 원래 에러 반환
+                return handler.next(e);
+              }
+            }
+            return handler.next(e);
+          },
+        ),
+      );
+  }
 
   /// GET 요청
   Future<Map<String, dynamic>> get(
@@ -18,16 +98,10 @@ class ApiClient {
     Map<String, dynamic>? queryParameters,
   }) async {
     try {
-      final uri = Uri.parse('$baseUrl$endpoint').replace(
+      final response = await _dio.get(
+        endpoint,
         queryParameters: queryParameters,
-      );
-
-      final response = await _client.get(
-        uri,
-        headers: {
-          'Content-Type': 'application/json',
-          ...?headers,
-        },
+        options: Options(headers: headers),
       );
 
       return _handleResponse(response);
@@ -43,15 +117,10 @@ class ApiClient {
     Map<String, dynamic>? body,
   }) async {
     try {
-      final uri = Uri.parse('$baseUrl$endpoint');
-
-      final response = await _client.post(
-        uri,
-        headers: {
-          'Content-Type': 'application/json',
-          ...?headers,
-        },
-        body: body != null ? json.encode(body) : null,
+      final response = await _dio.post(
+        endpoint,
+        data: body,
+        options: Options(headers: headers),
       );
 
       return _handleResponse(response);
@@ -67,15 +136,10 @@ class ApiClient {
     Map<String, dynamic>? body,
   }) async {
     try {
-      final uri = Uri.parse('$baseUrl$endpoint');
-
-      final response = await _client.put(
-        uri,
-        headers: {
-          'Content-Type': 'application/json',
-          ...?headers,
-        },
-        body: body != null ? json.encode(body) : null,
+      final response = await _dio.put(
+        endpoint,
+        data: body,
+        options: Options(headers: headers),
       );
 
       return _handleResponse(response);
@@ -90,14 +154,9 @@ class ApiClient {
     Map<String, String>? headers,
   }) async {
     try {
-      final uri = Uri.parse('$baseUrl$endpoint');
-
-      final response = await _client.delete(
-        uri,
-        headers: {
-          'Content-Type': 'application/json',
-          ...?headers,
-        },
+      final response = await _dio.delete(
+        endpoint,
+        options: Options(headers: headers),
       );
 
       return _handleResponse(response);
@@ -107,19 +166,22 @@ class ApiClient {
   }
 
   /// HTTP 응답 처리
-  Map<String, dynamic> _handleResponse(http.Response response) {
-    if (response.statusCode >= 200 && response.statusCode < 300) {
-      if (response.body.isEmpty) {
-        return {};
+  Map<String, dynamic> _handleResponse(Response response) {
+    if (response.statusCode != null &&
+        response.statusCode! >= 200 &&
+        response.statusCode! < 300) {
+      // Dio는 자동으로 JSON을 파싱해줌
+      if (response.data is Map<String, dynamic>) {
+        return response.data as Map<String, dynamic>;
       }
-      return json.decode(utf8.decode(response.bodyBytes));
+      return {};
     } else if (response.statusCode == 404) {
       throw Exception('리소스를 찾을 수 없습니다 (404)');
     } else if (response.statusCode == 401) {
       throw Exception('인증이 필요합니다 (401)');
     } else if (response.statusCode == 403) {
       throw Exception('접근이 거부되었습니다 (403)');
-    } else if (response.statusCode >= 500) {
+    } else if (response.statusCode != null && response.statusCode! >= 500) {
       throw Exception('서버 오류가 발생했습니다 (${response.statusCode})');
     } else {
       throw Exception('요청 실패: ${response.statusCode}');
@@ -128,6 +190,6 @@ class ApiClient {
 
   /// 클라이언트 종료
   void dispose() {
-    _client.close();
+    _dio.close();
   }
 }
