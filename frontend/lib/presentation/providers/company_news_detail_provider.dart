@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../data/datasources/remote/news_api.dart';
 import '../../data/models/news_model.dart';
@@ -90,22 +91,29 @@ class CompanyNewsDetailProvider with ChangeNotifier {
   }
 
   /// 페르소나 코드에서 이미지 경로 매핑
+  ///
+  /// 백엔드 API의 personaCode와 매칭되는 이미지 경로 반환
   String _getPersonaImagePath(String personaCode) {
-    // 페르소나 코드에 따라 이미지 경로 반환
-    // TODO: 실제 personaCode와 이미지 매핑 확인 필요
-    switch (personaCode.toLowerCase()) {
-      case 'heeyule':
-        return 'assets/images/Heeyule.webp';
-      case 'jiyule':
-        return 'assets/images/Jiyule.webp';
-      case 'taeo':
-        return 'assets/images/Taeo.webp';
+    // 대소문자 구분 없이 매칭
+    final code = personaCode.toLowerCase().trim();
+
+    switch (code) {
+      case 'heeyul':
+        return 'assets/images/heeyul.webp';
+      case 'jiyul':
+        return 'assets/images/jiyul.webp';
+      case 'teo':
+        return 'assets/images/teo.webp';
       case 'minji':
-        return 'assets/images/Minji.webp';
-      case 'ducksu':
-        return 'assets/images/Ducksu.webp';
+        return 'assets/images/minji.webp';
+      case 'deoksu':
+        return 'assets/images/deoksu.webp';
       default:
-        return 'assets/images/Heeyule.webp'; // 기본 이미지
+        // 매칭되지 않는 경우 디버그 로그 출력 및 기본 이미지 반환
+        if (kDebugMode) {
+          print('[CompanyNewsDetailProvider] 알 수 없는 personaCode: $personaCode');
+        }
+        return 'assets/images/heeyul.webp'; // 기본 이미지
     }
   }
 

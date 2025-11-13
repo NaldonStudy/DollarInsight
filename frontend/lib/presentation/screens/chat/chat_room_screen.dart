@@ -70,7 +70,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
         messages.add({
           "type": "ai",
           "name": "희열",
-          "profile": "assets/images/Heeyule.webp",
+          "profile": "assets/images/heeyul.webp",
           "text": "음... 나는 아직 좀 기다릴래!",
           "time": _formatTime(DateTime.now()),
         });
@@ -133,7 +133,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                       name: "희열",
                       text: "입력중 ...",
                       time: "",
-                      profile: "assets/images/Heeyule.webp",
+                      profile: "assets/images/heeyul.webp",
                     ),
                 ],
               ),
