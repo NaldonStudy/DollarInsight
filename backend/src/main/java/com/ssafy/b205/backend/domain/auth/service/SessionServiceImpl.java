@@ -65,7 +65,7 @@ public class SessionServiceImpl implements SessionService {
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
 
         // 3) 기기 업서트(자동 등록/갱신) — 기본 pushEnabled=false
-        UserDevice device = userDeviceRepository.findByDeviceId(did)
+        UserDevice device = userDeviceRepository.findByUserAndDeviceId(user, did)
                 .orElseGet(() -> userDeviceRepository.save(
                         UserDevice.builder()
                                 .user(user)

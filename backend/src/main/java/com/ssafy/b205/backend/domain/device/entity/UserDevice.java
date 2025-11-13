@@ -13,7 +13,16 @@ import java.util.UUID;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @Builder
-@Entity @Table(name = "user_device")
+@Entity
+@Table(
+        name = "user_device",
+        uniqueConstraints = {
+                @UniqueConstraint(
+                        name = "uq_user_device_user_and_device",
+                        columnNames = {"user_id", "device_id"}
+                )
+        }
+)
 public class UserDevice {
 
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -26,7 +35,7 @@ public class UserDevice {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @Column(name = "device_id", nullable = false, unique = true, length = 128)
+    @Column(name = "device_id", nullable = false, length = 128)
     private String deviceId;
 
     @Enumerated(EnumType.STRING)
