@@ -19,22 +19,22 @@ class StockSection extends StatelessWidget {
   Widget build(BuildContext context) {
     // ✅ 페르소나 코드에 따른 이미지 매핑 (백엔드 기준)
     String _getPersonaImage(String personaCode) {
-      final code = personaCode.toUpperCase();
+      final code = personaCode.toLowerCase();
 
       switch (code) {
-        case 'HEEYUL':
-          return 'assets/images/Heeyule.webp';
-        case 'JIYUL':
-          return 'assets/images/Jiyule.webp';
-        case 'TEO':
-          return 'assets/images/Taeo.webp';
-        case 'MINJI':
-          return 'assets/images/Minji.webp';
-        case 'DEOKSU':
-          return 'assets/images/Ducksu.webp';
+        case 'heeyul':
+          return 'assets/images/heeyul.webp';
+        case 'jiyul':
+          return 'assets/images/jiyul.webp';
+        case 'teo':
+          return 'assets/images/teo.webp';
+        case 'minji':
+          return 'assets/images/minji.webp';
+        case 'deoksu':
+          return 'assets/images/deoksu.webp';
         default:
           // 알 수 없는 페르소나 코드는 기본 이미지 사용
-          return 'assets/images/Heeyule.webp';
+          return 'assets/images/heeyul.webp';
       }
     }
 
