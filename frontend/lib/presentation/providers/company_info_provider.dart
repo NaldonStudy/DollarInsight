@@ -34,9 +34,12 @@ class CompanyInfoProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      // ============= API 연결 지점 =============
+      // ============= API 연결 지점 (TODO: 기업 설명 API 연동 필요) =============
       // Repository를 통해 기업 정보 조회
-      _companyInfo = await _repository.getCompanyInfo(companyId);
+      // _companyInfo = await _repository.getCompanyInfo(companyId);
+
+      // 임시로 더미 데이터 사용
+      _useDummyData();
 
       _isLoading = false;
       notifyListeners();

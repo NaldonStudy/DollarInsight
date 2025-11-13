@@ -186,51 +186,49 @@ class CompanyApi {
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // 🗑️ 기존 메서드 (하위 호환성을 위해 유지, 내부적으로 새 메서드 사용)
-  // ---------------------------------------------------------------------------
-
-  /// 기업 정보 조회 (기존 메서드, 하위 호환성용)
+  /// 전체 자산(주식 + ETF) 목록 조회
   ///
-  /// [companyId]: 기업 ID 또는 티커
+  /// 반환: Asset 리스트 (주식 + ETF)
   ///
-  /// **Deprecated**: getCompanyDetail(String ticker) 사용 권장
-  @Deprecated('Use getCompanyDetail() instead')
-  Future<CompanyInfo> getCompanyInfo(String companyId) async {
+  /// API 엔드포인트: GET /api/company-analysis/assets
+  Future<List<Map<String, dynamic>>> getAssets() async {
     try {
-      // 새 API 엔드포인트 사용
-      final response = await getCompanyDetail(companyId);
+      final response = await _apiClient.get(
+        '/api/company-analysis/assets',
+      );
 
-      // CompanyDetailResponse에서 기본 정보만 추출하여 CompanyInfo로 변환
-      // TODO: 실제 변환 로직 필요 (모델 구조에 따라)
-      throw UnimplementedError('CompanyDetailResponse to CompanyInfo 변환 로직 필요');
+      // API 응답이 { ok, data, timestamp } 구조로 래핑되어 있음
+      final data = response['data'] as List<dynamic>;
+      return data.map((item) => item as Map<String, dynamic>).toList();
     } catch (e) {
-      throw Exception('기업 정보 조회 실패: $e');
+      throw Exception('자산 목록 조회 실패: $e');
     }
   }
 
-  /// 기업 검색 (기존 메서드, 하위 호환성용)
+  /// 기업/ETF 검색 (자동완성용)
   ///
-  /// [query]: 검색어
-  /// [limit]: 최대 결과 수
+  /// [keyword]: 검색어 (티커, 한글명, 영문명)
   ///
-  /// **Deprecated**: searchAssets() 사용 권장
-  @Deprecated('Use searchAssets() instead')
-  Future<List<CompanyInfo>> searchCompanies({
-    required String query,
-    int limit = 10,
-  }) async {
+  /// 반환: SearchResult 리스트
+  ///
+  /// API 엔드포인트: GET /api/company-analysis/search?keyword={keyword}
+  Future<List<Map<String, dynamic>>> searchCompanies(String keyword) async {
     try {
-      // 새 API 사용
-      final results = await searchAssets(keyword: query, size: limit);
+      final response = await _apiClient.get(
+        '/api/company-analysis/search',
+        queryParameters: {
+          'keyword': keyword,
+        },
+      );
 
-      // Map<String, dynamic> 리스트를 CompanyInfo 리스트로 변환
-      // TODO: 실제 변환 로직 필요 (모델 구조에 따라)
-      return results.map((json) => CompanyInfo.fromJson(json)).toList();
+      // API 응답이 { ok, data, timestamp } 구조로 래핑되어 있음
+      final data = response['data'] as List<dynamic>;
+      return data.map((item) => item as Map<String, dynamic>).toList();
     } catch (e) {
       throw Exception('기업 검색 실패: $e');
     }
   }
+
 
   /// API 클라이언트 종료
   void dispose() {
