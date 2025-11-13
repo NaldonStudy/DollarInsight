@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../../../core/utils/device_id_manager.dart';
 import '../../../data/datasources/local/token_storage.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class AuthApi {
   /// ✅ BASE_URL 환경변수에서 읽기
@@ -16,7 +16,7 @@ class AuthApi {
   /// ✅ 인증 없이 호출 가능한 엔드포인트
   static bool _isAuthFree(String path) {
     return path.contains('/api/auth/signup') ||
-        path.contains('/api/auth/login')  ||
+        path.contains('/api/auth/login') ||
         path.contains('/api/auth/refresh');
   }
 
@@ -41,31 +41,31 @@ class AuthApi {
         return handler.next(options);
       },
 
-      onError: (DioException e, handler) async {
-        // ✅ auth-free 요청은 refresh 시도 금지
-        if (_isAuthFree(e.requestOptions.path)) {
-          return handler.next(e);
-        }
+            onError: (DioException e, handler) async {
+              // ✅ auth-free 요청은 refresh 시도 금지
+              if (_isAuthFree(e.requestOptions.path)) {
+                return handler.next(e);
+              }
 
-        // ✅ 401 발생 시 refresh 진행
-        if (e.response?.statusCode == 401) {
-          try {
-            final newToken = await AuthApi.refreshAccessToken();
+              // ✅ 401 발생 시 refresh 진행
+              if (e.response?.statusCode == 401) {
+                try {
+                  final newToken = await AuthApi.refreshAccessToken();
 
-            final RequestOptions req = e.requestOptions;
-            req.headers['Authorization'] = 'Bearer $newToken';
+                  final RequestOptions req = e.requestOptions;
+                  req.headers['Authorization'] = 'Bearer $newToken';
 
-            final retryResponse = await _dio.fetch(req);
-            return handler.resolve(retryResponse);
-          } catch (_) {
-            return handler.next(e);
-          }
-        }
+                  final retryResponse = await _dio.fetch(req);
+                  return handler.resolve(retryResponse);
+                } catch (_) {
+                  return handler.next(e);
+                }
+              }
 
-        return handler.next(e);
-      },
-    ),
-  );
+              return handler.next(e);
+            },
+          ),
+        );
 
   /// ✅ X-Device-Id 헤더 생성
   static Future<Map<String, String>> _headers() async {
@@ -107,10 +107,7 @@ class AuthApi {
         throw Exception('토큰 응답 형식이 올바르지 않습니다.');
       }
 
-      return {
-        'accessToken': access,
-        'refreshToken': refresh,
-      };
+      return {'accessToken': access, 'refreshToken': refresh};
     } on DioException catch (e) {
       final msg = e.response?.data?.toString() ?? '회원가입 실패';
       throw Exception(msg);
@@ -144,10 +141,7 @@ class AuthApi {
         throw Exception('토큰 응답 형식이 올바르지 않습니다.');
       }
 
-      return {
-        'accessToken': access,
-        'refreshToken': refresh,
-      };
+      return {'accessToken': access, 'refreshToken': refresh};
     } on DioException catch (e) {
       final msg = e.response?.data?.toString() ?? '로그인 실패';
       throw Exception(msg);
@@ -168,10 +162,9 @@ class AuthApi {
 
       final resp = await _dio.post(
         '/api/auth/refresh',
-        options: Options(headers: {
-          'X-Device-Id': deviceId,
-          'X-Refresh-Token': refreshToken,
-        }),
+        options: Options(
+          headers: {'X-Device-Id': deviceId, 'X-Refresh-Token': refreshToken},
+        ),
       );
 
       final root = resp.data as Map<String, dynamic>? ?? {};
@@ -190,6 +183,30 @@ class AuthApi {
     } on DioException catch (e) {
       final msg = e.response?.data?.toString() ?? '토큰 갱신 실패';
       throw Exception(msg);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // ✅ 회원 탈퇴 (DELETE /api/users/me)
+  // ---------------------------------------------------------------------------
+  static Future<bool> deleteMe() async {
+    try {
+      final deviceId = await DeviceIdManager.getDeviceId();
+
+      final resp = await _dio.delete(
+        '/api/users/me',
+        options: Options(
+          headers: {
+            'X-Device-Id': deviceId,
+            // Authorization은 interceptor가 자동 삽입
+          },
+        ),
+      );
+
+      return resp.statusCode == 204;
+    } catch (e) {
+      print("❌ 회원탈퇴 실패: $e");
+      return false;
     }
   }
 }
