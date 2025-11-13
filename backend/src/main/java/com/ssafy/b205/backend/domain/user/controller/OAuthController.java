@@ -82,6 +82,11 @@ public class OAuthController {
             @Valid @RequestBody GoogleLoginRequest req,
             @RequestHeader("X-Device-Id") String deviceId
     ) {
-        return ApiResponse.ok(oAuthLoginService.loginWithGoogle(req.getCode(), req.getRedirectUri(), deviceId));
+        return ApiResponse.ok(oAuthLoginService.loginWithGoogle(
+                req.getCode(),
+                req.getRedirectUri(),
+                req.getCodeVerifier(),
+                deviceId
+        ));
     }
 }

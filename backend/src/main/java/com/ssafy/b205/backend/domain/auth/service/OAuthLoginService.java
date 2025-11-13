@@ -25,6 +25,7 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 import java.security.SecureRandom;
 import java.util.Optional;
@@ -128,11 +129,12 @@ public class OAuthLoginService {
     }
 
     @Transactional
-    public TokenPairResponse loginWithGoogle(String code, String redirectUri, String deviceId) {
+    public TokenPairResponse loginWithGoogle(String code, String redirectUri, String codeVerifier, String deviceId) {
         MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
         form.add("grant_type", "authorization_code");
         form.add("client_id", require(googleProps.getClientId(), "[AuthSvc-G01] 구글 client_id 미설정"));
         form.add("code", require(code, "[AuthSvc-G02] 인가코드 누락"));
+        form.add("code_verifier", require(codeVerifier, "[AuthSvc-G04] code_verifier 누락"));
 
         if (redirectUri != null && !redirectUri.isBlank()) {
             form.add("redirect_uri", redirectUri);
@@ -147,24 +149,36 @@ public class OAuthLoginService {
             form.add("client_secret", googleProps.getClientSecret());
         }
 
-        GoogleTokenResponse token = googleWebClient.post()
-                .uri(googleProps.getTokenUri())
-                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-                .body(BodyInserters.fromFormData(form))
-                .retrieve()
-                .bodyToMono(GoogleTokenResponse.class)
-                .block();
+        GoogleTokenResponse token;
+        try {
+            token = googleWebClient.post()
+                    .uri(googleProps.getTokenUri())
+                    .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                    .body(BodyInserters.fromFormData(form))
+                    .retrieve()
+                    .bodyToMono(GoogleTokenResponse.class)
+                    .block();
+        } catch (WebClientResponseException ex) {
+            log.warn("[AuthSvc-GE1] 구글 토큰 교환 실패 status={}, body={}", ex.getStatusCode().value(), ex.getResponseBodyAsString());
+            throw new AppException(ErrorCode.BAD_REQUEST, "[AuthSvc-G12] 구글 토큰 교환 중 오류");
+        }
 
         if (token == null || token.getAccessToken() == null) {
             throw new AppException(ErrorCode.UNAUTHORIZED, "[AuthSvc-G10] 구글 토큰 교환 실패");
         }
 
-        GoogleUserInfoResponse me = googleWebClient.get()
-                .uri(googleProps.getUserInfoUri())
-                .headers(h -> h.setBearerAuth(token.getAccessToken()))
-                .retrieve()
-                .bodyToMono(GoogleUserInfoResponse.class)
-                .block();
+        GoogleUserInfoResponse me;
+        try {
+            me = googleWebClient.get()
+                    .uri(googleProps.getUserInfoUri())
+                    .headers(h -> h.setBearerAuth(token.getAccessToken()))
+                    .retrieve()
+                    .bodyToMono(GoogleUserInfoResponse.class)
+                    .block();
+        } catch (WebClientResponseException ex) {
+            log.warn("[AuthSvc-GE2] 구글 사용자 조회 실패 status={}, body={}", ex.getStatusCode().value(), ex.getResponseBodyAsString());
+            throw new AppException(ErrorCode.BAD_REQUEST, "[AuthSvc-G13] 구글 사용자 조회 중 오류");
+        }
 
         if (me == null || me.getSub() == null) {
             throw new AppException(ErrorCode.UNAUTHORIZED, "[AuthSvc-G11] 구글 사용자 조회 실패");
