@@ -1,30 +1,52 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../widgets/chat/chat_bubble.dart';
+import '../../../data/models/dashboard_model.dart';
 
 class StockSection extends StatelessWidget {
   final double w;
   final double h;
+  final List<DailyPick> dailyPicks;
 
-  const StockSection({super.key, required this.w, required this.h});
+  const StockSection({
+    super.key,
+    required this.w,
+    required this.h,
+    required this.dailyPicks,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final messages = [
-      "젠슨황 오늘 또 무대 오른다!\n엔비디아 주주들 지금 심장 쿵쾅거리는 거 들리냐ㅋㅋ",
-      "오늘 Meta 발표가 있어요.\nAI 투자와 광고 매출 회복이 관전 포인트 입니다",
-      "테슬라는 전기차를 넘어 AI·로봇·에너지까지 확장 중이에요",
-      "애플 AI 아이폰 루머에 커뮤니티 난리🔥 이번엔 혁신 각이죠ㅋㅋ",
-      "아마존, 위기 때마다 더 강해지는 기업이지.\n클라우드·AI로 또 한 번 판을 키우고 있어.",
-    ];
+    print('🟡 StockSection - dailyPicks 개수: ${dailyPicks.length}');
+    if (dailyPicks.isNotEmpty) {
+      print('🟡 첫 번째 픽: ${dailyPicks[0].companyName}, ${dailyPicks[0].ticker}');
+    }
 
-    final images = [
-      "assets/images/Heeyule.webp",
-      "assets/images/Jiyule.webp",
-      "assets/images/Taeo.webp",
-      "assets/images/Minji.webp",
-      "assets/images/Ducksu.webp",
-    ];
+    // ✅ 페르소나 코드에 따른 이미지 매핑
+    String _getPersonaImage(String personaCode) {
+      final code = personaCode.toUpperCase();
+      print('🎭 personaCode: $code');
+
+      switch (code) {
+        case 'HEEYUL':
+        case 'HEEYULE':
+          return 'assets/images/Heeyule.webp';
+        case 'JIYUL':
+        case 'JIYULE':
+          return 'assets/images/Jiyule.webp';
+        case 'TEO':
+        case 'TAEO':
+          return 'assets/images/Taeo.webp';
+        case 'MINJI':
+          return 'assets/images/Minji.webp';
+        case 'DEOKSU':
+        case 'DUCKSU':
+          return 'assets/images/Ducksu.webp';
+        default:
+          print('⚠️ 알 수 없는 페르소나 코드: $code');
+          return 'assets/images/Heeyule.webp'; // 기본 이미지
+      }
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -99,20 +121,38 @@ class StockSection extends StatelessWidget {
               ),
             ],
           ),
-
-          child: Column(
-            children: [
-              for (int i = 0; i < messages.length; i++) ...[
-                ChatBubble(
-                  text: messages[i],
-                  imagePath: images[i],
-                  w: w,
-                  h: h,
+          child: dailyPicks.isEmpty
+              ? const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(20.0),
+                    child: Text(
+                      "데일리 픽이 없습니다",
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  ),
+                )
+              : Column(
+                  children: [
+                    for (int i = 0; i < dailyPicks.length; i++) ...[
+                      GestureDetector(
+                        onTap: () {
+                          // ✅ 티커를 사용해 기업 상세 페이지로 이동
+                          context.push('/company/${dailyPicks[i].ticker}');
+                        },
+                        child: ChatBubble(
+                          text: dailyPicks[i].personaComment.comment,
+                          imagePath: _getPersonaImage(
+                            dailyPicks[i].personaComment.personaCode,
+                          ),
+                          w: w,
+                          h: h,
+                        ),
+                      ),
+                      if (i < dailyPicks.length - 1)
+                        SizedBox(height: h * 0.016),
+                    ]
+                  ],
                 ),
-                SizedBox(height: h * 0.016),
-              ]
-            ],
-          ),
         ),
       ],
     );
