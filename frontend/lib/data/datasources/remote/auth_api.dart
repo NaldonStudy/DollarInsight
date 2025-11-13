@@ -1,8 +1,18 @@
 import 'package:dio/dio.dart';
 import '../../../core/utils/device_id_manager.dart';
 import '../../../data/datasources/local/token_storage.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class AuthApi {
+  /// ✅ BASE_URL 환경변수에서 읽기
+  static String get baseUrl {
+    final url = dotenv.env['BASE_URL'];
+    if (url == null || url.isEmpty) {
+      throw Exception('BASE_URL이 .env 파일에 설정되지 않았습니다.');
+    }
+    return url;
+  }
+
   /// ✅ 인증 없이 호출 가능한 엔드포인트
   static bool _isAuthFree(String path) {
     return path.contains('/api/auth/signup') ||
@@ -10,28 +20,26 @@ class AuthApi {
         path.contains('/api/auth/refresh');
   }
 
-  static final Dio _dio =
-      Dio(
-          BaseOptions(
-            baseUrl: 'http://k13b205.p.ssafy.io',
-            connectTimeout: const Duration(seconds: 5),
-            receiveTimeout: const Duration(seconds: 5),
-            contentType: 'application/json',
-            responseType: ResponseType.json,
-          ),
-        )
-        ..interceptors.add(
-          InterceptorsWrapper(
-            onRequest: (options, handler) async {
-              // ✅ 회원가입/로그인/리프레시는 Authorization 금지
-              if (!_isAuthFree(options.path)) {
-                final accessToken = await TokenStorage.getAccessToken();
-                if (accessToken != null) {
-                  options.headers['Authorization'] = 'Bearer $accessToken';
-                }
-              }
-              return handler.next(options);
-            },
+  static final Dio _dio = Dio(
+    BaseOptions(
+      baseUrl: baseUrl,
+      connectTimeout: const Duration(seconds: 5),
+      receiveTimeout: const Duration(seconds: 5),
+      contentType: 'application/json',
+      responseType: ResponseType.json,
+    ),
+  )..interceptors.add(
+    InterceptorsWrapper(
+      onRequest: (options, handler) async {
+        // ✅ 회원가입/로그인/리프레시는 Authorization 금지
+        if (!_isAuthFree(options.path)) {
+          final accessToken = await TokenStorage.getAccessToken();
+          if (accessToken != null) {
+            options.headers['Authorization'] = 'Bearer $accessToken';
+          }
+        }
+        return handler.next(options);
+      },
 
             onError: (DioException e, handler) async {
               // ✅ auth-free 요청은 refresh 시도 금지

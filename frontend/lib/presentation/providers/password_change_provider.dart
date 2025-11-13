@@ -1,12 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../../core/utils/device_id_manager.dart';
 import '../../data/datasources/local/token_storage.dart'; // ✅ TokenStorage 사용
 
 class PasswordChangeProvider extends ChangeNotifier {
   final passwordController = TextEditingController();
   final passwordConfirmController = TextEditingController();
-  final _dio = Dio();
+
+  /// ✅ BASE_URL 환경변수에서 읽기
+  String get baseUrl {
+    final url = dotenv.env['BASE_URL'];
+    if (url == null || url.isEmpty) {
+      throw Exception('BASE_URL이 .env 파일에 설정되지 않았습니다.');
+    }
+    return url;
+  }
+
+  late final Dio _dio = Dio(
+    BaseOptions(
+      baseUrl: baseUrl,
+      contentType: 'application/json',
+    ),
+  );
 
   bool isLoading = false;
   String? passwordError;
@@ -72,7 +88,7 @@ class PasswordChangeProvider extends ChangeNotifier {
 
       // ✅ 비밀번호 변경 요청
       final response = await _dio.patch(
-        'http://k13b205.p.ssafy.io/api/users/me/password',
+        '/api/users/me/password',
         options: Options(
           headers: {
             'Authorization': bearerToken,

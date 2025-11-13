@@ -3,12 +3,16 @@ import 'package:frontend/routes/app_router.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'presentation/providers/auth_provider.dart';
 import 'presentation/providers/user_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // ✅ 환경변수 로드
+  await dotenv.load(fileName: ".env");
 
   // ✅ 한국어 날짜/시간 포맷 초기화 (필수)
   await initializeDateFormatting('ko_KR', null);
