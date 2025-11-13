@@ -1,5 +1,6 @@
 package com.ssafy.b205.backend.domain.companyanalysis.repository;
 
+import com.ssafy.b205.backend.domain.companyanalysis.dto.response.AssetMasterResponse;
 import com.ssafy.b205.backend.domain.companyanalysis.dto.response.AssetSearchResponse;
 import com.ssafy.b205.backend.domain.companyanalysis.dto.response.MajorIndexResponse;
 import com.ssafy.b205.backend.domain.companyanalysis.dto.response.PersonaCommentResponse;
@@ -196,6 +197,28 @@ public class CompanyAnalysisQueryRepository {
 
     public Map<String, LatestPriceRow> findLatestEtfPrices(Collection<String> tickers) {
         return findLatestPrices("etf_price_daily", tickers, false);
+    }
+
+    public List<AssetMasterResponse> findAssetsByTypes(List<AssetType> types) {
+        if (types == null || types.isEmpty()) {
+            return List.of();
+        }
+        List<String> typeValues = types.stream()
+                .map(type -> type.name().toLowerCase(Locale.ROOT))
+                .toList();
+        String sql = """
+            SELECT ticker, asset_type, created_at, updated_at
+            FROM assets_master
+            WHERE asset_type IN (:assetTypes)
+            ORDER BY ticker
+            """;
+        var params = new MapSqlParameterSource().addValue("assetTypes", typeValues);
+        return jdbc.query(sql, params, (rs, rowNum) -> new AssetMasterResponse(
+                rs.getString("ticker"),
+                AssetType.fromDbValue(rs.getString("asset_type")),
+                rs.getObject("created_at", OffsetDateTime.class).toInstant(),
+                rs.getObject("updated_at", OffsetDateTime.class).toInstant()
+        ));
     }
 
     public List<AssetSearchResponse> searchAssets(String keyword, int limit) {
