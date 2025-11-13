@@ -165,16 +165,14 @@ class AppRouter {
         redirect: (context, state) => RouteGuards.requireAuth(context, state),
       ),
 
-      /// 전체 뉴스 상세
+      /// 전체 뉴스 상세 (추천 뉴스 상세)
       GoRoute(
         path: '/news/:id',
         name: 'all-news-detail',
-        builder: (context, state) => const AllNewsDetailScreen(),
-        //param 데이터 주어질 때 이걸로 바꾸세요
-        // builder: (context, state) {
-        //   final id = state.pathParameters['id']!;
-        //   return AllNewsDetailScreen(newsId: id);
-        // },
+        builder: (context, state) {
+          final id = state.pathParameters['id']!;
+          return AllNewsDetailScreen(newsId: id);
+        },
         redirect: (context, state) => RouteGuards.requireAuth(context, state),
       ),
       // ==================== COMPANY ====================
