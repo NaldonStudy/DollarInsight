@@ -186,6 +186,25 @@ class CompanyApi {
     }
   }
 
+  /// 전체 자산(주식 + ETF) 목록 조회
+  ///
+  /// 반환: Asset 리스트 (주식 + ETF)
+  ///
+  /// API 엔드포인트: GET /api/company-analysis/assets
+  Future<List<Map<String, dynamic>>> getAssets() async {
+    try {
+      final response = await _apiClient.get(
+        '/api/company-analysis/assets',
+      );
+
+      // API 응답이 { ok, data, timestamp } 구조로 래핑되어 있음
+      final data = response['data'] as List<dynamic>;
+      return data.map((item) => item as Map<String, dynamic>).toList();
+    } catch (e) {
+      throw Exception('자산 목록 조회 실패: $e');
+    }
+  }
+
   // ---------------------------------------------------------------------------
   // 🗑️ 기존 메서드 (하위 호환성을 위해 유지, 내부적으로 새 메서드 사용)
   // ---------------------------------------------------------------------------

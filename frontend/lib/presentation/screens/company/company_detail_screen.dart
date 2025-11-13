@@ -38,6 +38,7 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
   late TabController _tabController;
   final ScrollController _scrollController = ScrollController();
   final PageController _scorePageController = PageController(); // 종목정보 탭 내부 페이지
+  late CompanyDetailProvider _provider; // Provider를 State 변수로 관리
 
   bool showFab = false;
   bool isCompany = true; // 기업분석/채팅 토글 상태
@@ -46,6 +47,7 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
   @override
   void initState() {
     super.initState();
+    _provider = CompanyDetailProvider(companyId: widget.companyId); // Provider 한 번만 생성
     _tabController = TabController(length: 3, vsync: this); // 3개 탭 (차트, 종목정보, 주가예측)
 
     _scrollController.addListener(() {
@@ -67,6 +69,7 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
 
   @override
   void dispose() {
+    _provider.dispose(); // Provider dispose
     _tabController.dispose();
     _scrollController.dispose();
     _scorePageController.dispose();
@@ -79,8 +82,8 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
     final w = size.width;
     final h = size.height;
 
-    return ChangeNotifierProvider(
-      create: (_) => CompanyDetailProvider(companyId: widget.companyId),
+    return ChangeNotifierProvider.value(
+      value: _provider, // 이미 생성된 Provider 전달
       child: Scaffold(
         backgroundColor: const Color(0xFFF7F8FB),
         floatingActionButton: ScrollFabButton(
