@@ -8,120 +8,63 @@ KIS Open API를 호출해 일별 시세를 조회하고
 from __future__ import annotations
 
 import datetime as dt
-from typing import Iterable, List, Tuple
+from typing import Dict, Iterable, List, Tuple
 
-from psycopg2.extras import execute_batch
+from psycopg2.extras import execute_batch  # type: ignore
 
 from pipelines.db import get_connection
-from pipelines.kis_client import KISClient, KISClientError, default_client
+from pipelines.kis_client import KISClient, default_client
+from pipelines.daily_json_export import (
+    collect_stock_prices as export_collect_stock_prices,
+    collect_etf_prices as export_collect_etf_prices,
+    collect_index_prices as export_collect_index_prices,
+)
+from pipelines.watchlists import US_INDICES
 
 
-def _format_date(value: dt.date | dt.datetime) -> str:
-    return value.strftime("%Y%m%d")
+def _to_float(value):
+    if value in (None, ""):
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
 
 
-def _fetch_daily_itemchart(
-    client: KISClient,
-    *,
-    ticker: str,
-    start_date: dt.date,
-    end_date: dt.date,
-    market_div_code: str,
-) -> List[dict]:
-    """공통 itemchartprice 호출."""
+def _to_int(value):
+    if value in (None, ""):
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
 
-    if start_date > end_date:
-        start_date, end_date = end_date, start_date
-
-    request_start = start_date
-    if (end_date - start_date).days < 3:
-        request_start = start_date - dt.timedelta(days=5)
-
-    params = {
-        "FID_COND_MRKT_DIV_CODE": market_div_code,
-        "FID_INPUT_ISCD": ticker,
-        "FID_INPUT_DATE_1": _format_date(request_start),
-        "FID_INPUT_DATE_2": _format_date(end_date),
-        "FID_PERIOD_DIV_CODE": "D",
-        "FID_ORG_ADJ_PRC": "1",
-    }
-    data = client.request(
-        "GET",
-        "/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice",
-        tr_id="FHKST03010100",
-        params=params,
-    )
-    output = data.get("output2") or data.get("output") or data.get("output1")
-    if isinstance(output, dict):
-        output = []
-    if not isinstance(output, list):
-        raise KISClientError(f"Unexpected response payload: {data}")
-    filtered = []
-    for row in output:
-        bsop_date = dt.datetime.strptime(row["stck_bsop_date"], "%Y%m%d").date()
-        if start_date <= bsop_date <= end_date:
-            filtered.append(row)
-    return filtered
-
-
-def _fetch_daily_indexchart(
-    client: KISClient,
-    *,
-    ticker: str,
-    start_date: dt.date,
-    end_date: dt.date,
-) -> List[dict]:
-    params = {
-        "FID_COND_MRKT_DIV_CODE": "U",
-        "FID_INPUT_ISCD": ticker,
-        "FID_INPUT_DATE_1": _format_date(start_date),
-        "FID_INPUT_DATE_2": _format_date(end_date),
-        "FID_PERIOD_DIV_CODE": "D",
-        "FID_ORG_ADJ_PRC": "1",
-    }
-    data = client.request(
-        "GET",
-        "/uapi/domestic-stock/v1/quotations/inquire-daily-indexchartprice",
-        tr_id="FHPUP02100000",
-        params=params,
-    )
-    output = data.get("output2") or data.get("output") or data.get("output1")
-    if isinstance(output, dict):
-        return []
-    if not isinstance(output, list):
-        raise KISClientError(f"Unexpected response payload: {data}")
-    return output
-
-
-def _map_price_record(ticker: str, row: dict) -> Tuple:
-    price_date = dt.datetime.strptime(row["stck_bsop_date"], "%Y%m%d").date()
-    return (
-        ticker,
-        price_date,
-        float(row.get("stck_oprc", 0) or 0),
-        float(row.get("stck_hgpr", 0) or 0),
-        float(row.get("stck_lwpr", 0) or 0),
-        float(row.get("stck_clpr", 0) or 0),
-        int(row.get("acml_vol", 0) or 0),
-        float(row.get("stck_clpr", 0) or 0),
-    )
-
-
-def _insert_price_records(table: str, rows: Iterable[Tuple]) -> int:
+def _insert_stock_price_records(rows: Iterable[Tuple]) -> int:
     rows = list(rows)
     if not rows:
         return 0
-    sql = f"""
-        INSERT INTO {table} (
-            ticker, price_date, open, high, low, close, volume, adj_close
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+    sql = """
+        INSERT INTO stock_price_daily (
+            ticker, price_date, open, high, low, close, volume, adj_close,
+            amount, change, change_pct, change_sign,
+            bid, ask, bid_size, ask_size, source_vendor
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         ON CONFLICT (ticker, price_date) DO UPDATE SET
             open = EXCLUDED.open,
             high = EXCLUDED.high,
             low = EXCLUDED.low,
             close = EXCLUDED.close,
             volume = EXCLUDED.volume,
-            adj_close = EXCLUDED.adj_close
+            adj_close = EXCLUDED.adj_close,
+            amount = EXCLUDED.amount,
+            change = EXCLUDED.change,
+            change_pct = EXCLUDED.change_pct,
+            change_sign = EXCLUDED.change_sign,
+            bid = EXCLUDED.bid,
+            ask = EXCLUDED.ask,
+            bid_size = EXCLUDED.bid_size,
+            ask_size = EXCLUDED.ask_size,
+            source_vendor = EXCLUDED.source_vendor
     """
     with get_connection() as conn:
         with conn.cursor() as cur:
@@ -138,20 +81,39 @@ def collect_stock_daily_prices(
     save_to_db: bool = True,
 ):
     client = client or default_client()
-    all_rows: List[Tuple] = []
-    for ticker in tickers:
-        data = _fetch_daily_itemchart(
-            client,
-            ticker=ticker,
-            start_date=start_date,
-            end_date=end_date,
-            market_div_code="J",
-        )
-        rows = [_map_price_record(ticker, row) for row in data]
-        all_rows.extend(rows)
+    rows_by_key: Dict[Tuple[str, dt.date], Tuple] = {}
+    ticker_list = list(tickers)
+    day = start_date
+    while day <= end_date:
+        records = export_collect_stock_prices(date=day, tickers=ticker_list, client=client)
+        for record in records:
+            price_date = dt.date.fromisoformat(record["price_date"])
+            key = (record["ticker"], price_date)
+            rows_by_key[key] = (
+                record["ticker"],
+                price_date,
+                float(record.get("open") or 0),
+                float(record.get("high") or 0),
+                float(record.get("low") or 0),
+                float(record.get("close") or 0),
+                int(record.get("volume") or 0),
+                float(record.get("adj_close") or record.get("close") or 0),
+                _to_float(record.get("amount")),
+                _to_float(record.get("change")),
+                _to_float(record.get("change_pct")),
+                record.get("change_sign"),
+                _to_float(record.get("bid")),
+                _to_float(record.get("ask")),
+                _to_int(record.get("bid_size")),
+                _to_int(record.get("ask_size")),
+                record.get("source_vendor"),
+            )
+        day += dt.timedelta(days=1)
+
+    rows = list(rows_by_key.values())
     if not save_to_db:
-        return all_rows
-    return _insert_price_records("stock_price_daily", all_rows)
+        return rows
+    return _insert_stock_price_records(rows)
 
 
 def collect_etf_daily_prices(
@@ -163,20 +125,29 @@ def collect_etf_daily_prices(
     save_to_db: bool = True,
 ):
     client = client or default_client()
-    all_rows: List[Tuple] = []
-    for ticker in tickers:
-        data = _fetch_daily_itemchart(
-            client,
-            ticker=ticker,
-            start_date=start_date,
-            end_date=end_date,
-            market_div_code="J",
-        )
-        rows = [_map_price_record(ticker, row) for row in data]
-        all_rows.extend(rows)
+    rows_by_key: Dict[Tuple[str, dt.date], Tuple] = {}
+    ticker_list = list(tickers)
+    day = start_date
+    while day <= end_date:
+        records = export_collect_etf_prices(date=day, tickers=ticker_list, client=client)
+        for record in records:
+            price_date = dt.date.fromisoformat(record["price_date"])
+            key = (record["ticker"], price_date)
+            rows_by_key[key] = (
+                price_date,
+                record["ticker"],
+                float(record.get("open") or 0),
+                float(record.get("high") or 0),
+                float(record.get("low") or 0),
+                float(record.get("close") or 0),
+                int(record.get("volume") or 0),
+            )
+        day += dt.timedelta(days=1)
+
+    rows = list(rows_by_key.values())
     if not save_to_db:
-        return all_rows
-    return _insert_price_records("etf_price_daily", all_rows)
+        return rows
+    return _insert_etf_price_records(rows)
 
 
 def collect_index_daily_prices(
@@ -188,19 +159,65 @@ def collect_index_daily_prices(
     save_to_db: bool = True,
 ):
     client = client or default_client()
-    all_rows: List[Tuple] = []
-    for ticker in tickers:
-        data = _fetch_daily_indexchart(
-            client,
-            ticker=ticker,
-            start_date=start_date,
-            end_date=end_date,
-        )
-        rows = [_map_price_record(ticker, row) for row in data]
-        all_rows.extend(rows)
+    rows_by_key: Dict[Tuple[str, dt.date], Tuple] = {}
+    index_map = {ticker: US_INDICES[ticker] for ticker in tickers if ticker in US_INDICES}
+    day = start_date
+    while day <= end_date:
+        records = export_collect_index_prices(date=day, indices=index_map or US_INDICES, client=client)
+        for record in records:
+            price_date = dt.date.fromisoformat(record["price_date"])
+            key = (record["ticker"], price_date)
+            rows_by_key[key] = (
+                price_date,
+                record["ticker"],
+                float(record.get("close") or 0),
+                float(record.get("change_pct") or 0),
+            )
+        day += dt.timedelta(days=1)
+
+    rows = list(rows_by_key.values())
     if not save_to_db:
-        return all_rows
-    return _insert_price_records("index_price_daily", all_rows)
+        return rows
+    return _insert_index_price_records(rows)
+
+
+def _insert_etf_price_records(rows: Iterable[Tuple]) -> int:
+    rows = list(rows)
+    if not rows:
+        return 0
+    sql = """
+        INSERT INTO etf_price_daily (
+            price_date, ticker, open, high, low, close, volume
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+        ON CONFLICT (price_date, ticker) DO UPDATE SET
+            open = EXCLUDED.open,
+            high = EXCLUDED.high,
+            low = EXCLUDED.low,
+            close = EXCLUDED.close,
+            volume = EXCLUDED.volume
+    """
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            execute_batch(cur, sql, rows, page_size=500)
+    return len(rows)
+
+
+def _insert_index_price_records(rows: Iterable[Tuple]) -> int:
+    rows = list(rows)
+    if not rows:
+        return 0
+    sql = """
+        INSERT INTO index_price_daily (
+            price_date, ticker, close, change_pct
+        ) VALUES (%s, %s, %s, %s)
+        ON CONFLICT (price_date, ticker) DO UPDATE SET
+            close = EXCLUDED.close,
+            change_pct = EXCLUDED.change_pct
+    """
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            execute_batch(cur, sql, rows, page_size=500)
+    return len(rows)
 
 
 __all__ = [
