@@ -17,20 +17,33 @@ class StockSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    print('🟡 StockSection - dailyPicks 개수: ${dailyPicks.length}');
+    if (dailyPicks.isNotEmpty) {
+      print('🟡 첫 번째 픽: ${dailyPicks[0].companyName}, ${dailyPicks[0].ticker}');
+    }
+
     // ✅ 페르소나 코드에 따른 이미지 매핑
     String _getPersonaImage(String personaCode) {
-      switch (personaCode.toUpperCase()) {
+      final code = personaCode.toUpperCase();
+      print('🎭 personaCode: $code');
+
+      switch (code) {
+        case 'HEEYUL':
         case 'HEEYULE':
           return 'assets/images/Heeyule.webp';
+        case 'JIYUL':
         case 'JIYULE':
           return 'assets/images/Jiyule.webp';
+        case 'TEO':
         case 'TAEO':
           return 'assets/images/Taeo.webp';
         case 'MINJI':
           return 'assets/images/Minji.webp';
+        case 'DEOKSU':
         case 'DUCKSU':
           return 'assets/images/Ducksu.webp';
         default:
+          print('⚠️ 알 수 없는 페르소나 코드: $code');
           return 'assets/images/Heeyule.webp'; // 기본 이미지
       }
     }

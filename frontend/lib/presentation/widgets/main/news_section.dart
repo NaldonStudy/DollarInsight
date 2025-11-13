@@ -17,6 +17,11 @@ class NewsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    print('🟢 NewsSection - recommendedNews 개수: ${recommendedNews.length}');
+    if (recommendedNews.isNotEmpty) {
+      print('🟢 첫 번째 뉴스: ${recommendedNews[0].title}');
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

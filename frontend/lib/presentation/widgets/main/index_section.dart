@@ -15,6 +15,11 @@ class IndexSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    print('🔵 IndexSection - majorIndices 개수: ${majorIndices.length}');
+    if (majorIndices.isNotEmpty) {
+      print('🔵 첫 번째 지수: ${majorIndices[0].name}, ${majorIndices[0].close}');
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
