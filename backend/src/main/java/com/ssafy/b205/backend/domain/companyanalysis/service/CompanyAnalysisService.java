@@ -1,6 +1,7 @@
 package com.ssafy.b205.backend.domain.companyanalysis.service;
 
 import com.ssafy.b205.backend.domain.companyanalysis.dto.response.AssetBasicInfoResponse;
+import com.ssafy.b205.backend.domain.companyanalysis.dto.response.AssetMasterResponse;
 import com.ssafy.b205.backend.domain.companyanalysis.dto.response.AssetSearchResponse;
 import com.ssafy.b205.backend.domain.companyanalysis.dto.response.CompanyDetailResponse;
 import com.ssafy.b205.backend.domain.companyanalysis.dto.response.DailyPickResponse;
@@ -62,6 +63,7 @@ public class CompanyAnalysisService {
     private static final int MAX_SEARCH_SIZE = 30;
     private static final int DASHBOARD_NEWS_SAMPLE = 3;
     private static final int DAILY_PICK_SAMPLE = 5;
+    private static final List<AssetType> DEFAULT_MASTER_TYPES = List.of(AssetType.STOCK, AssetType.ETF);
 
     private final CompanyAnalysisQueryRepository repository;
     private final CompanyAnalysisMongoDao mongoDao;
@@ -98,6 +100,12 @@ public class CompanyAnalysisService {
         int limit = Math.min(Math.max(size, 1), MAX_SEARCH_SIZE);
         log.info("[CompanySvc-00] 티커 검색 keyword={}, size={}", normalizedKeyword, limit);
         return repository.searchAssets(normalizedKeyword, limit);
+    }
+
+    public List<AssetMasterResponse> listAssets(List<String> typeFilters) {
+        List<AssetType> targetTypes = normalizeAssetTypes(typeFilters);
+        log.info("[CompanySvc-08] 자산 마스터 전체 조회 types={}", targetTypes);
+        return repository.findAssetsByTypes(targetTypes);
     }
 
     public CompanyDetailResponse getCompanyDetail(String rawTicker) {
@@ -405,6 +413,26 @@ public class CompanyAnalysisService {
 
     private static LocalDate rangeStart(LocalDate end, int days) {
         return end.minusDays(Math.max(days - 1L, 0));
+    }
+
+    private List<AssetType> normalizeAssetTypes(List<String> rawTypes) {
+        if (rawTypes == null || rawTypes.isEmpty()) {
+            return DEFAULT_MASTER_TYPES;
+        }
+        List<AssetType> normalized = rawTypes.stream()
+                .filter(CompanyAnalysisService::hasText)
+                .map(String::trim)
+                .map(type -> {
+                    try {
+                        return AssetType.fromDbValue(type);
+                    } catch (IllegalArgumentException ex) {
+                        throw new AppException(ErrorCode.BAD_REQUEST,
+                                "[CompanySvc-E10] 지원하지 않는 자산 타입: " + type, ex);
+                    }
+                })
+                .distinct()
+                .toList();
+        return normalized.isEmpty() ? DEFAULT_MASTER_TYPES : normalized;
     }
 
     private static String normalizeTicker(String ticker) {
