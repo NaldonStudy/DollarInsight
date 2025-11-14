@@ -61,6 +61,22 @@ AGENT_NAME_MAPPING = {
 
 AGENT_NAME_REVERSE = {v: k for k, v in AGENT_NAME_MAPPING.items()}
 
+# 백엔드에서 넘어올 수 있는 다양한 형식 매핑 추가
+BACKEND_NAME_MAPPING = {
+    # 대문자 시작 형식
+    "Minji": "minji",
+    "Taeo": "teo",
+    "Ducksu": "deoksu",  # 백엔드에서 "Ducksu"로 넘어올 수 있음
+    "Heuyeol": "heuyeol",
+    "Jiyul": "jiyul",
+    # 소문자 형식 (이미 REVERSE에 있지만 명시적으로 추가)
+    "minji": "minji",
+    "teo": "teo",
+    "deoksu": "deoksu",
+    "heuyeol": "heuyeol",
+    "jiyul": "jiyul",
+}
+
 
 def to_english_name(korean_name: str) -> str:
     """한글 에이전트 이름을 영문으로 변환"""
@@ -68,15 +84,38 @@ def to_english_name(korean_name: str) -> str:
 
 
 def to_korean_name(english_name: str) -> str:
-    """영문 에이전트 이름을 한글로 변환"""
-    return AGENT_NAME_REVERSE.get(english_name, english_name)
+    """영문 에이전트 이름을 한글로 변환 (백엔드 형식 지원)"""
+    # 1. 백엔드 특정 형식 먼저 확인
+    normalized = BACKEND_NAME_MAPPING.get(english_name)
+    if normalized:
+        return AGENT_NAME_REVERSE.get(normalized, english_name)
+    
+    # 2. 소문자로 변환 후 매핑 시도
+    lower_name = english_name.lower()
+    if lower_name in AGENT_NAME_REVERSE:
+        return AGENT_NAME_REVERSE[lower_name]
+    
+    # 3. 원본 그대로 반환 (매핑 실패)
+    return english_name
 
 
 def convert_personas_to_korean(personas: Optional[List[str]]) -> Optional[List[str]]:
     """personas 리스트의 영문 이름을 한글로 변환"""
     if personas is None:
         return None
-    return [to_korean_name(p) for p in personas]
+    converted = []
+    for p in personas:
+        korean = to_korean_name(p)
+        if korean != p:  # 변환이 성공한 경우
+            print(f"✅ 페르소나 이름 변환: '{p}' → '{korean}'")
+        else:
+            # 변환이 실패한 경우 (이미 한글이거나 매핑되지 않은 경우)
+            if p in AGENT_NAME_MAPPING:
+                print(f"ℹ️  페르소나 이름 (이미 한글): '{p}'")
+            else:
+                print(f"⚠️  페르소나 이름 변환 실패: '{p}' (한글로 유지)")
+        converted.append(korean)
+    return converted
 
 
 def convert_personas_to_english(personas: Optional[List[str]]) -> Optional[List[str]]:
@@ -193,11 +232,26 @@ def run_autogen_discussion(
 
         # 선택된 에이전트들만 사용
         all_agents = session.ai_agents
-        ai_agents = [
-            all_agents[name] for name in session.speakers if name in all_agents
-        ]
+        
+        # 에이전트 매칭 및 로깅
+        matched_agents = []
+        unmatched_names = []
+        for name in session.speakers:
+            if name in all_agents:
+                matched_agents.append(all_agents[name])
+            else:
+                unmatched_names.append(name)
+        
+        if unmatched_names:
+            print(f"⚠️ 에이전트 매칭 실패: {unmatched_names} (사용 가능한 에이전트: {list(all_agents.keys())})")
+            print(f"   세션의 speakers: {session.speakers}")
+        
+        ai_agents = matched_agents
 
         if not ai_agents:
+            print(f"❌ 매칭된 에이전트가 없습니다. 토론을 시작할 수 없습니다.")
+            print(f"   요청된 페르소나: {session.speakers}")
+            print(f"   사용 가능한 에이전트: {list(all_agents.keys())}")
             return
 
         last_speaker = None
