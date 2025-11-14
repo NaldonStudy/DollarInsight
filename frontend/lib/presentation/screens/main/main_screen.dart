@@ -178,44 +178,6 @@ class _MainScreenState extends State<MainScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          /// ✅ 임시 테스트 버튼 (기업 상세 페이지로 이동)
-          Padding(
-            padding: const EdgeInsets.only(top: 16, bottom: 8),
-            child: Center(
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  context.push('/company/NVDA');
-                },
-                icon: const Icon(Icons.business),
-                label: const Text('기업 상세 페이지 테스트 (엔비디아)'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF60A4DA),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                ),
-              ),
-            ),
-          ),
-
-          /// ✅ 임시 테스트 버튼 (ETF 상세 페이지로 이동)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 16),
-            child: Center(
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  context.push('/etf/SPY');
-                },
-                icon: const Icon(Icons.candlestick_chart),
-                label: const Text('ETF 상세 페이지 테스트 (TIGER 미국S&P500)'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFABCEEA),
-                  foregroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                ),
-              ),
-            ),
-          ),
-
           /// ✅ 실시간 채팅 박스
           LiveChatCard(w: w, h: h),
 
