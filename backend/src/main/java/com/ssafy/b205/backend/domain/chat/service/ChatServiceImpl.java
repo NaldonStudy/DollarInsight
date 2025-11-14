@@ -3,6 +3,7 @@ package com.ssafy.b205.backend.domain.chat.service;
 import com.ssafy.b205.backend.domain.chat.dto.request.AppendMessageRequest;
 import com.ssafy.b205.backend.domain.chat.dto.request.CreateSessionRequest;
 import com.ssafy.b205.backend.domain.chat.dto.response.AppendMessageResponse;
+import com.ssafy.b205.backend.domain.chat.dto.response.ChatSessionSummaryResponse;
 import com.ssafy.b205.backend.domain.chat.dto.response.CreateSessionResponse;
 import com.ssafy.b205.backend.domain.chat.dto.response.HistoryResponse;
 import com.ssafy.b205.backend.domain.chat.entity.ChatSession;
@@ -19,17 +20,22 @@ import com.ssafy.b205.backend.infra.mongo.chat.ChatMessageRepository;
 import com.ssafy.b205.backend.infra.sse.SseEmitterRegistry;
 import com.ssafy.b205.backend.support.error.AppException;
 import com.ssafy.b205.backend.support.error.ErrorCode;
+import com.ssafy.b205.backend.support.response.PageResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import org.bson.types.ObjectId;
 import reactor.core.Disposable;
 
 import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -52,6 +58,7 @@ public class ChatServiceImpl implements ChatService {
     private final UserRepository userRepository;
     private final FastAiGateway gateway;
     private final SseEmitterRegistry emitterRegistry;
+    private final PlatformTransactionManager transactionManager;
 
     /** UUID → 내부 int id */
     private int toUserId(String userUuid) {
@@ -89,6 +96,27 @@ public class ChatServiceImpl implements ChatService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public PageResponse<ChatSessionSummaryResponse> listSessions(String userUuid, int page, int size) {
+        final int userId = toUserId(userUuid);
+        final int safePage = Math.max(0, page);
+        final int safeSize = Math.max(1, Math.min(100, size));
+        final var pageable = PageRequest.of(safePage, safeSize, Sort.by(Sort.Direction.DESC, "updatedAt"));
+        return PageResponse.of(
+                sessionRepo.findByUserIdAndDeletedAtIsNull(userId, pageable)
+                        .map(ChatSessionSummaryResponse::from)
+        );
+    }
+
+    @Override
+    @Transactional
+    public void deleteSession(String userUuid, UUID sessionUuid) {
+        final int userId = toUserId(userUuid);
+        final ChatSession session = loadOwnedSession(userId, sessionUuid);
+        session.markDeleted();
+    }
+
+    @Override
     @Transactional
     public AppendMessageResponse appendUserMessage(String userUuid, UUID sessionUuid, AppendMessageRequest req) {
         final int userId = toUserId(userUuid);
@@ -114,6 +142,8 @@ public class ChatServiceImpl implements ChatService {
         } else {
             gateway.sendUserInput(sessionUuid.toString(), req.getContent());
         }
+
+        sessionRepo.touchUpdatedAt(session.getId(), OffsetDateTime.now());
         return new AppendMessageResponse(saved.getId());
     }
 
@@ -123,7 +153,8 @@ public class ChatServiceImpl implements ChatService {
     @Transactional(readOnly = true)
     public SseEmitter streamAssistant(String userUuid, UUID sessionUuid, String deviceId, String lastEventId) {
         final int userId = toUserId(userUuid);
-        loadOwnedSession(userId, sessionUuid); // 소유권 검증
+        final ChatSession session = loadOwnedSession(userId, sessionUuid); // 소유권 검증
+        final int sessionDbId = session.getId();
 
         final SseEmitter emitter = emitterRegistry.create(sessionUuid, deviceId, lastEventId);
         final AtomicLong seq = new AtomicLong(1);
@@ -155,6 +186,9 @@ public class ChatServiceImpl implements ChatService {
                                     .seq(seq.get())
                                     .ts(Instant.now())
                                     .build());
+                            new TransactionTemplate(transactionManager).executeWithoutResult(status ->
+                                    sessionRepo.touchUpdatedAt(sessionDbId, OffsetDateTime.now())
+                            );
                         }
 
                         emitter.send(SseEmitter.event()
@@ -257,7 +291,7 @@ public class ChatServiceImpl implements ChatService {
     }
 
     private ChatSession loadOwnedSession(Integer userId, UUID sessionUuid) {
-        final ChatSession s = sessionRepo.findByUuid(sessionUuid)
+        final ChatSession s = sessionRepo.findByUuidAndDeletedAtIsNull(sessionUuid)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, E_NOTF));
         if (!s.getUserId().equals(userId)) {
             throw new AppException(ErrorCode.FORBIDDEN, E_OWNER);

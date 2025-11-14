@@ -4,12 +4,14 @@ import com.ssafy.b205.backend.domain.chat.dto.request.AppendMessageRequest;
 import com.ssafy.b205.backend.domain.chat.dto.request.ChangePaceRequest;
 import com.ssafy.b205.backend.domain.chat.dto.request.CreateSessionRequest;
 import com.ssafy.b205.backend.domain.chat.dto.response.AppendMessageResponse;
+import com.ssafy.b205.backend.domain.chat.dto.response.ChatSessionSummaryResponse;
 import com.ssafy.b205.backend.domain.chat.dto.response.CreateSessionResponse;
 import com.ssafy.b205.backend.domain.chat.dto.response.HistoryCursorResponse;
 import com.ssafy.b205.backend.domain.chat.dto.response.HistoryResponse;
 import com.ssafy.b205.backend.domain.chat.service.ChatService;
 import com.ssafy.b205.backend.infra.docs.DocRefs;
 import com.ssafy.b205.backend.support.response.ApiResponse;
+import com.ssafy.b205.backend.support.response.PageResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
@@ -145,7 +147,91 @@ public class ChatController {
     }
 
     // ---------------------------------------------------------------------
-    // 3) SSE 스트림
+    // 3) 세션 목록
+    // ---------------------------------------------------------------------
+    @Operation(
+            summary = "세션 목록 조회",
+            description = """
+            사용자가 생성한 채팅 세션을 페이지네이션으로 조회합니다.
+            가장 최근에 상호작용한 세션(updated_at 내림차순)부터 반환합니다.
+            """,
+            security = @SecurityRequirement(name = "bearerAuth"),
+            responses = {
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                            responseCode = "200", description = "목록 조회 성공",
+                            content = @Content(mediaType = "application/json",
+                                    schema = @Schema(implementation = PageResponse.class),
+                                    examples = @ExampleObject(name = "ok", value = """
+                                        {
+                                          "items": [
+                                            {
+                                              "sessionUuid": "4b1c0a5c-2c4c-49d9-8c8f-19b6e0a6a1d2",
+                                              "topicType": "CUSTOM",
+                                              "title": "엔비디아 전망 토크",
+                                              "ticker": "NVDA",
+                                              "companyNewsId": null,
+                                              "createdAt": "2025-11-07T04:50:00Z",
+                                              "updatedAt": "2025-11-07T05:00:00Z"
+                                            }
+                                          ],
+                                          "page": 0,
+                                          "size": 20,
+                                          "totalElements": 1,
+                                          "totalPages": 1,
+                                          "hasNext": false
+                                        }
+                                    """)
+                            )
+                    ),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", ref = DocRefs.UNAUTHORIZED),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", ref = DocRefs.FORBIDDEN),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", ref = DocRefs.INTERNAL)
+            }
+    )
+    @Parameter(name = "X-Device-Id", in = ParameterIn.HEADER, required = true,
+            description = "디바이스 식별자(UUID v4)", example = "11111111-1111-1111-1111-111111111111")
+    @GetMapping("/sessions")
+    public ApiResponse<PageResponse<ChatSessionSummaryResponse>> listSessions(
+            @AuthenticationPrincipal String userUuid,
+            @Parameter(description = "페이지 번호(0부터)", example = "0")
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @Parameter(description = "페이지 크기(1~100, 기본 20)", example = "20")
+            @RequestParam(name = "size", defaultValue = "20") int size
+    ) {
+        return ApiResponse.ok(chatService.listSessions(userUuid, page, size));
+    }
+
+    // ---------------------------------------------------------------------
+    // 4) 세션 삭제
+    // ---------------------------------------------------------------------
+    @Operation(
+            summary = "세션 삭제",
+            description = """
+            세션 메타데이터(PostgreSQL)만 소프트 삭제합니다.
+            Mongo 히스토리는 보관되지만 더 이상 목록/조회에 노출되지 않습니다.
+            """,
+            security = @SecurityRequirement(name = "bearerAuth"),
+            responses = {
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "삭제 성공"),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", ref = DocRefs.UNAUTHORIZED),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", ref = DocRefs.FORBIDDEN),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", ref = DocRefs.NOT_FOUND),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", ref = DocRefs.INTERNAL)
+            }
+    )
+    @Parameter(name = "X-Device-Id", in = ParameterIn.HEADER, required = true,
+            description = "디바이스 식별자(UUID v4)", example = "11111111-1111-1111-1111-111111111111")
+    @DeleteMapping("/sessions/{sid}")
+    public ResponseEntity<Void> deleteSession(
+            @AuthenticationPrincipal String userUuid,
+            @Parameter(name = "sid", description = "세션 UUID") @PathVariable("sid") UUID sessionId
+    ) {
+        chatService.deleteSession(userUuid, sessionId);
+        return ResponseEntity.noContent().build();
+    }
+
+    // ---------------------------------------------------------------------
+    // 5) SSE 스트림
     // ---------------------------------------------------------------------
     @Operation(
             summary = "SSE 스트림 시작",
@@ -196,7 +282,7 @@ public class ChatController {
     }
 
     // ---------------------------------------------------------------------
-    // 4) 중단/재개/속도 제어
+    // 6) 중단/재개/속도 제어
     // ---------------------------------------------------------------------
     @Operation(
             summary = "중단(인터럽트)",
@@ -279,7 +365,7 @@ public class ChatController {
     }
 
     // ---------------------------------------------------------------------
-    // 5) 히스토리 조회 (v1: ts 기반)
+    // 7) 히스토리 조회 (v1: ts 기반)
     // ---------------------------------------------------------------------
     @Operation(
             summary = "히스토리 조회 (v1: ts 기반, 간단 조회)",
@@ -322,7 +408,7 @@ public class ChatController {
     }
 
     // ---------------------------------------------------------------------
-    // 6) 히스토리 조회 (v2: _id 커서 기반)
+    // 8) 히스토리 조회 (v2: _id 커서 기반)
     // ---------------------------------------------------------------------
     @Operation(
             summary = "히스토리 조회 (v2: _id 커서 기반 페이지네이션)",
