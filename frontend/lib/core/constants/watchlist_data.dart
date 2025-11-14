@@ -110,11 +110,13 @@ class WatchlistData {
 /// 미국 기업 데이터
 class USCompanyData {
   final String name;
+  final String ticker;
   final String logoPath;
   final String category;
 
   const USCompanyData({
     required this.name,
+    required this.ticker,
     required this.logoPath,
     required this.category,
   });
@@ -122,67 +124,109 @@ class USCompanyData {
 
 /// 카테고리별 미국 기업 추천 데이터 (더미)
 class USWatchlistData {
-  /// 기술주 카테고리 미국 기업 12개
+  /// 기술주 카테고리 미국 기업 17개
   static const List<USCompanyData> techStocks = [
     USCompanyData(
       name: '애플',
-      logoPath: 'assets/images/company/apple.webp', // 없음 - 추가 필요
+      ticker: 'AAPL',
+      logoPath: 'assets/images/company/apple.webp',
       category: '기술',
     ),
     USCompanyData(
       name: '마이크로소프트',
-      logoPath: 'assets/images/company/microsoft.webp', // 없음 - 추가 필요
+      ticker: 'MSFT',
+      logoPath: 'assets/images/company/microsoft.webp',
       category: '기술',
     ),
     USCompanyData(
       name: '구글',
+      ticker: 'GOOGL',
       logoPath: 'assets/images/company/alphabeta.webp',
       category: '기술',
     ),
     USCompanyData(
       name: '아마존',
+      ticker: 'AMZN',
       logoPath: 'assets/images/company/amazon.webp',
       category: '기술',
     ),
     USCompanyData(
       name: '메타',
-      logoPath: 'assets/images/company/meta.webp', // 없음 - 추가 필요
+      ticker: 'META',
+      logoPath: 'assets/images/company/meta.webp',
       category: '기술',
     ),
     USCompanyData(
       name: '엔비디아',
-      logoPath: 'assets/images/company/nvidia.webp', // 없음 - 추가 필요
+      ticker: 'NVDA',
+      logoPath: 'assets/images/company/nvidia.webp',
       category: '기술',
     ),
     USCompanyData(
       name: 'AMD',
+      ticker: 'AMD',
       logoPath: 'assets/images/company/amd.webp',
       category: '기술',
     ),
     USCompanyData(
       name: '인텔',
+      ticker: 'INTC',
       logoPath: 'assets/images/company/intel.webp',
       category: '기술',
     ),
     USCompanyData(
       name: 'TSMC',
+      ticker: 'TSM',
       logoPath: 'assets/images/company/tsmc.webp',
       category: '기술',
     ),
     USCompanyData(
       name: 'ASML',
+      ticker: 'ASML',
       logoPath: 'assets/images/company/asml.webp',
       category: '기술',
     ),
     USCompanyData(
       name: '어도비',
+      ticker: 'ADBE',
       logoPath: 'assets/images/company/adobe.webp',
       category: '기술',
     ),
     USCompanyData(
       name: '오라클',
+      ticker: 'ORCL',
       logoPath: 'assets/images/company/oracle.webp',
       category: '기술',
+    ),
+    USCompanyData(
+      name: '쿠팡',
+      ticker: 'CPNG',
+      logoPath: 'assets/images/company/coupang.webp',
+      category: '커머스',
+    ),
+    USCompanyData(
+      name: '알리바바',
+      ticker: 'BABA',
+      logoPath: 'assets/images/company/alibaba.webp',
+      category: '커머스',
+    ),
+    USCompanyData(
+      name: '테슬라',
+      ticker: 'TSLA',
+      logoPath: 'assets/images/company/tesla.webp',
+      category: '자동차',
+    ),
+    USCompanyData(
+      name: '보잉',
+      ticker: 'BA',
+      logoPath: 'assets/images/company/boing.webp',
+      category: '항공',
+    ),
+    USCompanyData(
+      name: '델타항공',
+      ticker: 'DAL',
+      logoPath: 'assets/images/company/delta.webp',
+      category: '항공',
     ),
   ];
 
