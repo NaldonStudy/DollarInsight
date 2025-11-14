@@ -3,6 +3,7 @@ package com.ssafy.b205.backend.infra.mongo.companyanalysis;
 import com.ssafy.b205.backend.infra.mongo.companyanalysis.doc.CompanyAnalysisDoc;
 import com.ssafy.b205.backend.infra.mongo.companyanalysis.doc.InvestingNewsDoc;
 import com.ssafy.b205.backend.infra.mongo.companyanalysis.doc.NewsPersonaAnalysisDoc;
+import org.bson.types.ObjectId;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.Aggregation;
@@ -73,7 +74,16 @@ public class CompanyAnalysisMongoDao {
         if (!StringUtils.hasText(newsId)) {
             return Optional.empty();
         }
-        Query query = new Query(Criteria.where("news_id").is(newsId));
+
+        Criteria criteria;
+        if (ObjectId.isValid(newsId)) {
+            // Support both string-stored IDs and true ObjectId references.
+            criteria = Criteria.where("news_id").in(newsId, new ObjectId(newsId));
+        } else {
+            criteria = Criteria.where("news_id").is(newsId);
+        }
+
+        Query query = new Query(criteria);
         return Optional.ofNullable(
                 mongoTemplate.findOne(query, NewsPersonaAnalysisDoc.class, COLLECTION_NEWS_PERSONA)
         );
