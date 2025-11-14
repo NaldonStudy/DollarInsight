@@ -32,6 +32,8 @@ import '../presentation/screens/mypage/password_change_screen.dart';
 import '../presentation/screens/mypage/password_change_new_screen.dart';
 import '../presentation/screens/mypage/ai_friend_change_screen.dart';
 
+import '../presentation/screens/test_chat_screen.dart';
+
 // Route Guards
 import 'route_guards.dart';
 
@@ -40,6 +42,10 @@ class AppRouter {
   static final GoRouter router = GoRouter(
     initialLocation: '/',
     routes: [
+      GoRoute(
+        path: '/test-chat',
+        builder: (context, state) => const TestChatScreen(),
+      ),
 
       // ==================== SPLASH & ONBOARDING ====================
 

@@ -23,8 +23,21 @@ class ChatApi {
         body: request.toJson(),
       );
 
-      // Swagger 스펙에 따르면 직접적인 객체 응답 (data wrapper 없음)
-      return CreateSessionResponse.fromJson(response);
+      // 응답 구조 확인하고 data 래퍼 처리
+      if (response is Map<String, dynamic>) {
+        // data 래퍼가 있는 경우
+        if (response.containsKey('data') && response['ok'] == true) {
+          return CreateSessionResponse.fromJson(response['data']);
+        }
+        // data 래퍼가 없는 경우 (직접 응답)
+        else if (response.containsKey('sessionUuid')) {
+          return CreateSessionResponse.fromJson(response);
+        }
+      }
+
+      // 예상치 못한 응답 구조
+      throw ChatApiException('Unexpected response structure: $response');
+
     } on DioException catch (e) {
       throw _handleDioException(e, 'Failed to create chat session');
     } catch (e) {
@@ -44,7 +57,16 @@ class ChatApi {
         body: request.toJson(),
       );
 
-      return AppendMessageResponse.fromJson(response);
+      // data 래퍼 처리
+      if (response is Map<String, dynamic>) {
+        if (response.containsKey('data') && response['ok'] == true) {
+          return AppendMessageResponse.fromJson(response['data']);
+        } else if (response.containsKey('messageId')) {
+          return AppendMessageResponse.fromJson(response);
+        }
+      }
+
+      throw ChatApiException('Unexpected response structure: $response');
     } on DioException catch (e) {
       throw _handleDioException(e, 'Failed to send message');
     } catch (e) {
@@ -100,7 +122,16 @@ class ChatApi {
         queryParameters: {'limit': limit},
       );
 
-      return HistoryResponse.fromJson(response);
+      // data 래퍼 처리
+      if (response is Map<String, dynamic>) {
+        if (response.containsKey('data') && response['ok'] == true) {
+          return HistoryResponse.fromJson(response['data']);
+        } else if (response.containsKey('items')) {
+          return HistoryResponse.fromJson(response);
+        }
+      }
+
+      throw ChatApiException('Unexpected response structure: $response');
     } on DioException catch (e) {
       throw _handleDioException(e, 'Failed to get chat history');
     } catch (e) {
