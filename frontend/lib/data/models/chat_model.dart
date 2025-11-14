@@ -128,31 +128,31 @@ class HistoryResponse {
   Map<String, dynamic> toJson() => _$HistoryResponseToJson(this);
 }
 
-/// 커서 기반 히스토리 아이템 (v2)
+/// 커서 기반 히스토리 아이템 (v2) - Swagger 스키마 'Item'과 일치
 @JsonSerializable()
-class HistoryItemWithCursor {
+class Item {
   final String id;
   final String role;
   final String content;
   final DateTime ts;
 
-  HistoryItemWithCursor({
+  Item({
     required this.id,
     required this.role,
     required this.content,
     required this.ts,
   });
 
-  factory HistoryItemWithCursor.fromJson(Map<String, dynamic> json) =>
-      _$HistoryItemWithCursorFromJson(json);
+  factory Item.fromJson(Map<String, dynamic> json) =>
+      _$ItemFromJson(json);
 
-  Map<String, dynamic> toJson() => _$HistoryItemWithCursorToJson(this);
+  Map<String, dynamic> toJson() => _$ItemToJson(this);
 }
 
 /// 커서 기반 히스토리 응답 (v2)
 @JsonSerializable()
 class HistoryCursorResponse {
-  final List<HistoryItemWithCursor> items;
+  final List<Item> items;
   final String? nextCursor;
   final bool hasMore;
 
@@ -196,5 +196,51 @@ class SSEMessage {
     };
 
     return SSEMessage(type: type, data: data, id: id);
+  }
+
+  @override
+  String toString() {
+    return 'SSEMessage{type: $type, data: $data, id: $id}';
+  }
+}
+
+/// API 에러 모델
+@JsonSerializable()
+class ApiError {
+  final String code;
+  final String message;
+  final String path;
+  final DateTime timestamp;
+
+  ApiError({
+    required this.code,
+    required this.message,
+    required this.path,
+    required this.timestamp,
+  });
+
+  factory ApiError.fromJson(Map<String, dynamic> json) =>
+      _$ApiErrorFromJson(json);
+
+  Map<String, dynamic> toJson() => _$ApiErrorToJson(this);
+}
+
+/// Chat API 관련 예외 클래스
+class ChatApiException implements Exception {
+  final String message;
+  final String? code;
+  final int? statusCode;
+  final ApiError? apiError;
+
+  ChatApiException(
+      this.message, {
+        this.code,
+        this.statusCode,
+        this.apiError,
+      });
+
+  @override
+  String toString() {
+    return 'ChatApiException: $message${code != null ? ' (Code: $code)' : ''}${statusCode != null ? ' (Status: $statusCode)' : ''}';
   }
 }

@@ -3,7 +3,6 @@
 
 import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import '../datasources/remote/chat_api.dart';
 import '../models/chat_model.dart';
@@ -37,8 +36,11 @@ class ChatRepository {
   }
 
   /// 메시지 전송
-  Future<AppendMessageResponse> sendMessage(String sessionId, String content) async {
-    if (content.trim().isEmpty) {
+  Future<AppendMessageResponse> sendMessage(String sessionId,
+      String content) async {
+    if (content
+        .trim()
+        .isEmpty) {
       throw Exception('메시지 내용이 비어있습니다');
     }
 
@@ -67,7 +69,8 @@ class ChatRepository {
   }
 
   /// 채팅 히스토리 조회 (간단 버전)
-  Future<List<HistoryItem>> getChatHistory(String sessionId, {int limit = 50}) async {
+  Future<List<HistoryItem>> getChatHistory(String sessionId,
+      {int limit = 50}) async {
     if (limit <= 0 || limit > 100) {
       throw Exception('limit은 1-100 사이의 값이어야 합니다');
     }
@@ -77,8 +80,7 @@ class ChatRepository {
   }
 
   /// 채팅 히스토리 조회 (페이지네이션 버전)
-  Future<HistoryCursorResponse> getChatHistoryWithPagination(
-    String sessionId, {
+  Future<HistoryCursorResponse> getChatHistoryWithPagination(String sessionId, {
     int limit = 50,
     String? cursor,
   }) async {
@@ -86,11 +88,12 @@ class ChatRepository {
       throw Exception('limit은 1-100 사이의 값이어야 합니다');
     }
 
-    return await _chatApi.getHistoryWithCursor(sessionId, limit: limit, cursor: cursor);
+    return await _chatApi.getHistoryWithCursor(
+        sessionId, limit: limit, cursor: cursor);
   }
 
   /// SSE 스트림 연결
-  /// 
+  ///
   /// 실제 SSE 이벤트 스트림을 반환합니다.
   /// 사용법:
   /// ```dart
@@ -99,7 +102,8 @@ class ChatRepository {
   ///   // SSE 메시지 처리
   /// });
   /// ```
-  Future<Stream<SSEMessage>> connectToSSEStream(String sessionId, {String? lastEventId}) async {
+  Future<Stream<SSEMessage>> connectToSSEStream(String sessionId,
+      {String? lastEventId}) async {
     try {
       // SSE 연결용 Dio 인스턴스 생성
       final dio = await _chatApi.createSSEDio();
@@ -133,53 +137,26 @@ class ChatRepository {
       );
 
       final responseStream = response.data as ResponseBody;
-      
-      // 타입 안전한 스트림 변환
-      return responseStream.stream
-          .cast<Uint8List>()
-          .transform(utf8.decoder)
-          .transform(const LineSplitter())
-          .where((line) => line.isNotEmpty)
-          .map(_parseSSELine)
-          .where((message) => message != null)
-          .cast<SSEMessage>();
 
+      // utf8.decoder를 통해 바이트 스트림을 문자열 스트림으로 변환하고, 라인 단위로 분할합니다.
+      final decodedStream = utf8.decoder.bind(responseStream.stream);
+      final lineStream = decodedStream.transform(const LineSplitter());
+
+      // 더 정교한 _parseSSEStream 함수를 사용하여 SSE 메시지 파싱
+      return _parseSSEStream(lineStream);
     } catch (e) {
       throw Exception('SSE 스트림 연결 실패: $e');
     }
   }
 
-  /// SSE 라인 파싱
-  SSEMessage? _parseSSELine(String line) {
-    if (line.startsWith('id:')) {
-      // ID 라인은 다음 data 라인과 함께 처리되므로 여기서는 무시
-      return null;
-    } else if (line.startsWith('event:')) {
-      // 이벤트 타입 라인도 마찬가지로 다음 data와 함께 처리
-      return null;
-    } else if (line.startsWith('data:')) {
-      // 실제 데이터 라인
-      final data = line.substring(5).trim(); // 'data:' 제거
-      
-      // 기본적으로 message 타입으로 처리
-      // 실제 구현에서는 이전 라인들을 파싱해서 정확한 이벤트 타입을 결정해야 함
-      return SSEMessage(
-        type: SSEEventType.message,
-        data: data,
-      );
-    }
-    
-    return null;
-  }
-
   /// 더 정교한 SSE 파싱을 위한 스트림 변환기
-  /// 
+  ///
   /// SSE 형식에 맞춰 이벤트를 정확히 파싱합니다:
   /// ```
   /// id: 1
   /// event: message
   /// data: {"content": "hello"}
-  /// 
+  ///
   /// ```
   Stream<SSEMessage> _parseSSEStream(Stream<String> lineStream) async* {
     String? currentId;
@@ -187,7 +164,9 @@ class ChatRepository {
     String? currentData;
 
     await for (final line in lineStream) {
-      if (line.trim().isEmpty) {
+      if (line
+          .trim()
+          .isEmpty) {
         // 빈 라인은 이벤트의 끝을 의미
         if (currentData != null) {
           yield SSEMessage.fromRaw(
@@ -206,7 +185,8 @@ class ChatRepository {
         currentEvent = line.substring(6).trim();
       } else if (line.startsWith('data:')) {
         final data = line.substring(5).trim();
-        currentData = currentData == null ? data : '$currentData\n$data';
+        // 여러 'data:' 라인을 개행문자(\n)로 연결합니다.
+        currentData = (currentData == null) ? data : '$currentData\n$data';
       }
     }
 
