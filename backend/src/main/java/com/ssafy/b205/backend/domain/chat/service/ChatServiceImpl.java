@@ -307,10 +307,15 @@ public class ChatServiceImpl implements ChatService {
             final ObjectId cursor = new ObjectId(lastEventId);
             final List<ChatMessageDoc> docs = msgRepo.findAfterId(sessionUuid, cursor);
             for (ChatMessageDoc doc : docs) {
-                emitter.send(SseEmitter.event()
-                        .id(doc.getId())
-                        .name("message")
-                        .data(doc.getContent()));
+                try {
+                    emitter.send(SseEmitter.event()
+                            .id(doc.getId())
+                            .name("message")
+                            .data(doc.getContent()));
+                } catch (Exception sendError) {
+                    log.debug("[ChatSvc-Stream] replay send interrupted: {}", sendError.getMessage());
+                    return;
+                }
             }
         } catch (IllegalArgumentException e) {
             log.warn("[ChatSvc-Stream] lastEventId {} is not a valid ObjectId", lastEventId);
