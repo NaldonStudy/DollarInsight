@@ -18,7 +18,8 @@ if utils_dir not in sys.path:
 # 프로젝트 루트 경로
 project_root = airflow_dir  # /opt/airflow
 
-from crawl_reddit_stocks import RedditPostsCrawler
+# Lazy import: 무거운 라이브러리는 함수 내부에서 import하여 DAG 파싱 시 CPU/메모리 사용량 감소
+# from crawl_reddit_stocks import RedditPostsCrawler
 
 
 # 기본 인자 설정
@@ -47,6 +48,8 @@ dag = DAG(
 
 def crawl_reddit_stocks(**context):
     """Reddit 주식 게시글 크롤링 실행"""
+    # Lazy import: 무거운 라이브러리는 함수 내부에서 import하여 DAG 파싱 시 CPU/메모리 사용량 감소
+    from crawl_reddit_stocks import RedditPostsCrawler
     import os
     from datetime import datetime
 

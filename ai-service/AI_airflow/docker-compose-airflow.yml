@@ -20,6 +20,7 @@ x-airflow-common:
     AIRFLOW__CORE__PARALLELISM: '8'  # 전체 시스템 동시 실행 태스크 수 제한 (기본값: 32, AI 학습 DAG 고려)
     AIRFLOW__CORE__DAG_CONCURRENCY: '4'  # DAG별 동시 실행 태스크 수 제한 (기본값: 16, AI 학습 DAG 고려)
     AIRFLOW__SCHEDULER__MAX_THREADS: '2'  # 스케줄러 스레드 수 (기본값: 2)
+    AIRFLOW__SCHEDULER__JOB_HEARTBEAT_SEC: '1800'  # 스케줄러 실행 간격 30분 (1800초, 기본값: 5초)
     AIRFLOW__WEBSERVER__WORKERS: '2'  # 웹서버 워커 수 (기본값: 4)
     _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:-}
     # Reddit API 인증 정보 (OAuth 사용 필수)
@@ -98,6 +99,9 @@ services:
     command: webserver
     ports:
       - "8090:8090"
+    mem_limit: 1g  # 메모리 사용량 제한 (최대 1GB) - 서버 총량(16GB)의 약 6%
+    mem_reservation: 256m  # 최소 메모리 보장
+    cpus: 0.5  # CPU 사용량 제한 (최대 0.5코어) - 서버 총량(4코어)의 12.5%
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://localhost:8090/health"]
       interval: 30s
@@ -117,6 +121,9 @@ services:
     environment:
       <<: *airflow-common-env
       AIRFLOW__WEBSERVER__WEB_SERVER_PORT: ''
+    mem_limit: 6g  # 메모리 사용량 제한 (최대 6GB) - 서버 총량(16GB)의 약 37.5%
+    mem_reservation: 1g  # 최소 메모리 보장
+    cpus: 1.5  # CPU 사용량 제한 (최대 1.5코어) - 서버 총량(4코어)의 37.5%
     healthcheck:
       test: ["CMD-SHELL", 'airflow jobs check --job-type SchedulerJob --hostname "$${HOSTNAME}"']
       interval: 30s

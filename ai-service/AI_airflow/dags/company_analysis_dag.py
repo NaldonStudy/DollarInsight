@@ -16,7 +16,8 @@ utils_dir = os.path.join(airflow_dir, "utils")
 if utils_dir not in sys.path:
     sys.path.insert(0, utils_dir)
 
-from process_company_analysis import process_companies, get_mongodb_client, get_mongodb_collection
+# Lazy import: 무거운 라이브러리는 함수 내부에서 import하여 DAG 파싱 시 CPU/메모리 사용량 감소
+# from process_company_analysis import process_companies, get_mongodb_client, get_mongodb_collection
 
 # 기본 인자 설정
 # 한국 시간(KST, UTC+9) 기준으로 설정
@@ -46,6 +47,8 @@ dag = DAG(
 
 def analyze_companies_task(**context):
     """50개 기업 분석 실행"""
+    # Lazy import: 무거운 라이브러리는 함수 내부에서 import하여 DAG 파싱 시 CPU/메모리 사용량 감소
+    from process_company_analysis import process_companies, get_mongodb_client, get_mongodb_collection
     import os
     from datetime import datetime
     
