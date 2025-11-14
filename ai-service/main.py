@@ -436,23 +436,70 @@ def run_autogen_discussion(
                     print(f"{user_input}")
                     print(f"{'─'*40}\n")
                     auto_turns = 0  # 카운터 리셋
+                    session.pause_mode = False  # 사용자 입력이 있으면 pause 모드 해제
                 else:
                     # 사용자 입력이 없으면 자동 턴 증가
                     auto_turns += 1
                     if auto_turns >= AUTO_MAX_ROUNDS:
                         print("\n" + "🏁" * 30)
-                        print(f"💥 {AUTO_MAX_ROUNDS}라운드 완료! 토론 종료!")
+                        print(f"💥 {AUTO_MAX_ROUNDS}라운드 완료! 사용자 입력 대기 중...")
                         print("🏁" * 30)
-                        break
+                        # pause 모드로 전환하여 사용자 입력 대기
+                        session.pause_mode = True
+                        # 사용자 입력을 무한정 대기 (block=True)
+                        try:
+                            user_input = user_input_queue.get(block=True)
+                            if user_input and user_input.strip():
+                                # 사용자 입력이 있으면 토론 재개
+                                messages.append(
+                                    {"content": user_input, "role": "user", "name": "user"}
+                                )
+                                session.messages = (
+                                    messages[-MAX_CONTEXT_MESSAGES:]
+                                    if len(messages) > MAX_CONTEXT_MESSAGES
+                                    else messages
+                                )
+                                print(f"\n👤 사용자:")
+                                print(f"{'─'*40}")
+                                print(f"{user_input}")
+                                print(f"{'─'*40}\n")
+                                auto_turns = 0  # 카운터 리셋
+                                session.pause_mode = False  # pause 모드 해제
+                        except Exception as e:
+                            print(f"❌ 사용자 입력 대기 중 에러: {e}")
+                            break
             except queue.Empty:
                 print(f"\n⏰ {INPUT_TIMEOUT}초 타임아웃 - 자동 진행")
                 # 사용자 입력이 없으면 자동 턴 증가
                 auto_turns += 1
                 if auto_turns >= AUTO_MAX_ROUNDS:
                     print("\n" + "🏁" * 30)
-                    print(f"💥 {AUTO_MAX_ROUNDS}라운드 완료! 토론 종료!")
+                    print(f"💥 {AUTO_MAX_ROUNDS}라운드 완료! 사용자 입력 대기 중...")
                     print("🏁" * 30)
-                    break
+                    # pause 모드로 전환하여 사용자 입력 대기
+                    session.pause_mode = True
+                    # 사용자 입력을 무한정 대기 (block=True)
+                    try:
+                        user_input = user_input_queue.get(block=True)
+                        if user_input and user_input.strip():
+                            # 사용자 입력이 있으면 토론 재개
+                            messages.append(
+                                {"content": user_input, "role": "user", "name": "user"}
+                            )
+                            session.messages = (
+                                messages[-MAX_CONTEXT_MESSAGES:]
+                                if len(messages) > MAX_CONTEXT_MESSAGES
+                                else messages
+                            )
+                            print(f"\n👤 사용자:")
+                            print(f"{'─'*40}")
+                            print(f"{user_input}")
+                            print(f"{'─'*40}\n")
+                            auto_turns = 0  # 카운터 리셋
+                            session.pause_mode = False  # pause 모드 해제
+                    except Exception as e:
+                        print(f"❌ 사용자 입력 대기 중 에러: {e}")
+                        break
             except Exception as e:
                 print(f"❌ 사용자 입력 대기 에러: {e}")
                 break
