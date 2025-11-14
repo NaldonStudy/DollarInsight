@@ -1,6 +1,6 @@
 """
 Investing.com 뉴스 크롤링 Airflow DAG
-10분마다 실행하여 최신 뉴스를 수집하고 JSON 파일에 누적 저장
+30분마다 실행하여 최신 뉴스를 수집하고 JSON 파일에 누적 저장
 """
 
 from airflow import DAG
@@ -20,7 +20,8 @@ if utils_dir not in sys.path:
 # Docker 컨테이너 내부에서 /opt/airflow가 루트이므로 airflow_dir 사용
 project_root = airflow_dir  # /opt/airflow
 
-from crawl_investing_news import InvestingNewsCrawler
+# Lazy import: 무거운 라이브러리는 함수 내부에서 import하여 DAG 파싱 시 CPU/메모리 사용량 감소
+# from crawl_investing_news import InvestingNewsCrawler
 
 
 # 기본 인자 설정
@@ -38,8 +39,8 @@ default_args = {
 dag = DAG(
     "investing_news_crawler",
     default_args=default_args,
-    description="Investing.com 뉴스 크롤링 - 10분마다 실행",
-    schedule="*/10 * * * *",  # 10분마다 실행 - schedule_interval 대신 schedule 사용
+    description="Investing.com 뉴스 크롤링 - 30분마다 실행",
+    schedule="*/30 * * * *",  # 30분마다 실행 - schedule_interval 대신 schedule 사용
     catchup=False,
     max_active_runs=1,  # 동시에 실행될 수 있는 같은 DAG 인스턴스 수 (1개만 허용)
     max_active_tasks=1,  # 동시에 실행될 수 있는 Task 수
@@ -49,6 +50,8 @@ dag = DAG(
 
 def crawl_investing_news(**context):
     """Investing.com 뉴스 크롤링 실행"""
+    # Lazy import: 무거운 라이브러리는 함수 내부에서 import하여 DAG 파싱 시 CPU/메모리 사용량 감소
+    from crawl_investing_news import InvestingNewsCrawler
     import os
     from datetime import datetime
 
