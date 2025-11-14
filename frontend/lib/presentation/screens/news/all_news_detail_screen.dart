@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/constants/app_spacing.dart';
@@ -7,10 +8,16 @@ import '../../widgets/common/top_navigation.dart';
 import '../../widgets/main/live_chat_card.dart';
 import '../chat/chat_list_screen.dart';
 import '../../widgets/chat/chat_bubble.dart';
-import '../../widgets/common/scroll_fab_button.dart'; // ✅ 추가
+import '../../widgets/common/scroll_fab_button.dart';
+import '../../providers/all_news_detail_provider.dart';
 
 class AllNewsDetailScreen extends StatefulWidget {
-  const AllNewsDetailScreen({super.key});
+  final String newsId;
+
+  const AllNewsDetailScreen({
+    super.key,
+    required this.newsId,
+  });
 
   @override
   State<AllNewsDetailScreen> createState() => _AllNewsDetailScreenState();
@@ -40,16 +47,30 @@ class _AllNewsDetailScreenState extends State<AllNewsDetailScreen> {
     super.dispose();
   }
 
+  /// URL 열기 함수
+  Future<void> _launchUrl(String urlString) async {
+    final Uri url = Uri.parse(urlString);
+    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('링크를 열 수 없습니다')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
     final w = size.width;
     final h = size.height;
 
-    return Scaffold(
+    return ChangeNotifierProvider(
+      create: (_) => AllNewsDetailProvider(newsId: widget.newsId),
+      child: Scaffold(
       backgroundColor: const Color(0xFFF7F8FB),
 
-      /// ✅ 스크롤 시 나타나는 FAB 버튼
+      /// 스크롤 시 나타나는 FAB 버튼
       floatingActionButton: ScrollFabButton(
         w: w,
         showFab: showFab,
@@ -87,12 +108,46 @@ class _AllNewsDetailScreenState extends State<AllNewsDetailScreen> {
           ],
         ),
       ),
+      ),
     );
   }
 
-  /// ✅ 뉴스 상세 페이지 본문
+  /// 뉴스 상세 페이지 본문
   Widget _buildNewsDetailBody(BuildContext context, double w, double h) {
-    return SingleChildScrollView(
+    return Consumer<AllNewsDetailProvider>(
+      builder: (context, provider, child) {
+        // 로딩 중
+        if (provider.isLoading) {
+          return const Center(
+            child: CircularProgressIndicator(),
+          );
+        }
+
+        // 에러 발생
+        if (provider.error != null) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  provider.error!,
+                  style: const TextStyle(color: Colors.red),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: AppSpacing.medium(context)),
+                ElevatedButton(
+                  onPressed: () => provider.refresh(),
+                  child: const Text('다시 시도'),
+                ),
+              ],
+            ),
+          );
+        }
+
+        // 데이터 로드 완료
+        return RefreshIndicator(
+          onRefresh: () => provider.refresh(),
+          child: SingleChildScrollView(
       controller: _scrollController, // ✅ 반드시 연결
       padding: EdgeInsets.symmetric(horizontal: AppSpacing.horizontal(context)),
       child: Column(
@@ -103,41 +158,6 @@ class _AllNewsDetailScreenState extends State<AllNewsDetailScreen> {
 
           SizedBox(height: AppSpacing.section(context)),
 
-          /// ✅ 원문보기 / 채팅하기 버튼 영역
-          Padding(
-            padding: EdgeInsets.only(
-              left: w * 0.03,
-              right: w * 0.03,
-              top: AppSpacing.small(context),
-              bottom: AppSpacing.small(context),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                GestureDetector(
-                  onTap: () async {
-                    final url = Uri.parse(
-                      "https://kr.investing.com/news/stock-market-news/article-432SI-1703021",
-                    );
-                    if (await canLaunchUrl(url)) {
-                      await launchUrl(
-                        url,
-                        mode: LaunchMode.externalApplication, // ✅ 외부 브라우저 강제 실행
-                      );
-                    }
-                  },
-                  child: Text(
-                    "원문보기",
-                    style: TextStyle(
-                      fontSize: w * 0.038,
-                      color: const Color(0xFF8A8A8A),
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
 
           /// ✅ 전체 컨텐츠 흰색 카드
           Container(
@@ -161,9 +181,9 @@ class _AllNewsDetailScreenState extends State<AllNewsDetailScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                /// ✅ 뉴스 제목
+                /// 뉴스 제목
                 Text(
-                  "미국 빅테크 3분기 실적 희비…구글 분기 매출 첫 1000억 달러 돌파",
+                  provider.title ?? '',
                   style: TextStyle(
                     fontSize: w * 0.055,
                     fontWeight: FontWeight.w700,
@@ -173,21 +193,17 @@ class _AllNewsDetailScreenState extends State<AllNewsDetailScreen> {
 
                 SizedBox(height: AppSpacing.small(context)),
 
-                /// ✅ 날짜
+                /// 날짜
                 Text(
-                  "2025년 10월 30일 15:15",
+                  provider.publishedAt ?? '',
                   style: TextStyle(fontSize: w * 0.038, color: Colors.grey),
                 ),
 
                 SizedBox(height: AppSpacing.medium(context)),
 
-                /// ✅ 본문 텍스트
+                /// 요약 텍스트 (summary)
                 Text(
-                  "3사 모두 사상 최대 매출\n"
-                  "시장 평가는 크게 엇갈려\n"
-                  "알파벳, 클라우드 부문 고성장 견인\n"
-                  "MS, 과도한 설비 투자에 투자자 불안감 커져"
-                  "메타, 현실성 떨어진 비용에 EPS 예상 쇼크",
+                  provider.summary ?? '',
                   style: TextStyle(
                     fontSize: w * 0.040,
                     height: 1.5,
@@ -195,10 +211,45 @@ class _AllNewsDetailScreenState extends State<AllNewsDetailScreen> {
                   ),
                 ),
 
+                SizedBox(height: AppSpacing.medium(context)),
+
+                /// 원문보기 / 채팅하기 버튼
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    if (provider.url != null)
+                      TextButton(
+                        onPressed: () => _launchUrl(provider.url!),
+                        child: Text(
+                          '원문보기',
+                          style: TextStyle(
+                            fontSize: w * 0.035,
+                            color: const Color(0xFFA9A9A9),
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    SizedBox(width: w * 0.02),
+                    TextButton(
+                      onPressed: () {
+                        context.push('/chat/:id');
+                      },
+                      child: Text(
+                        '채팅하기',
+                        style: TextStyle(
+                          fontSize: w * 0.035,
+                          color: const Color(0xFFA9A9A9),
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
                 SizedBox(height: AppSpacing.big(context)),
 
-                /// ✅ AI 말풍선 리스트
-                _buildAiComments(),
+                /// AI 멤버별 반응 섹션
+                _buildAiComments(provider, w, h),
               ],
             ),
           ),
@@ -206,37 +257,30 @@ class _AllNewsDetailScreenState extends State<AllNewsDetailScreen> {
           SizedBox(height: AppSpacing.bottomLarge(context)),
         ],
       ),
+          ),
+        );
+      },
     );
   }
 
-  /// ✅ AI 댓글 말풍선 리스트
-  Widget _buildAiComments() {
-    final comments = [
-      "구글 미쳤다ㅋㅋ 드디어 분기 매출 1,000억 달러 돌파🔥 알파벳이 AI 시장 제대로 접수했네!",
-      "MS는 투자 너무 과했어요. 데이터센터에 349억 달러라니 리스크 커보여요",
-      "클라우드 잔액 1,550억 달러면 구조적으로 알파벳이 AI 인프라 경쟁서 유리한 포지션이야",
-      "메타 주가 8% 급락😨 이번엔 세금공제 때문에 커뮤니티 분위기도 싸늘해요.",
-      "AI 붐이 끝없이 이어질 순 없지. 투자 과열 땐 항상 조정이 오더라고",
-    ];
-
-    final images = [
-      "assets/images/Heeyule.webp",
-      "assets/images/Jiyule.webp",
-      "assets/images/Taeo.webp",
-      "assets/images/Minji.webp",
-      "assets/images/Ducksu.webp",
-    ];
+  /// AI 댓글 말풍선 리스트
+  Widget _buildAiComments(
+      AllNewsDetailProvider provider, double w, double h) {
+    if (provider.aiComments.isEmpty) {
+      return const SizedBox.shrink();
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: List.generate(comments.length, (index) {
+      children: List.generate(provider.aiComments.length, (index) {
+        final comment = provider.aiComments[index];
         return Padding(
           padding: EdgeInsets.only(bottom: AppSpacing.small(context)),
           child: ChatBubble(
-            text: comments[index],
-            imagePath: images[index % images.length],
-            w: MediaQuery.of(context).size.width,
-            h: MediaQuery.of(context).size.height,
+            text: comment['text'] ?? '',
+            imagePath: comment['imagePath'] ?? '',
+            w: w,
+            h: h,
           ),
         );
       }),

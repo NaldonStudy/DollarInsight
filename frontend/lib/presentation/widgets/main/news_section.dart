@@ -67,7 +67,7 @@ class NewsSection extends StatelessWidget {
                   children: [
                     for (int i = 0; i < recommendedNews.length; i++) ...[
                       if (i > 0) _divider(),
-                      _newsItem(recommendedNews[i]),
+                      _newsItem(context, recommendedNews[i]),
                     ],
                   ],
                 ),
@@ -78,13 +78,11 @@ class NewsSection extends StatelessWidget {
 
   Widget _divider() => Container(height: 1, color: const Color(0xFFE0E0E0));
 
-  Widget _newsItem(RecommendedNews news) {
+  Widget _newsItem(BuildContext context, RecommendedNews news) {
     return GestureDetector(
-      onTap: () async {
-        final uri = Uri.parse(news.url);
-        if (await canLaunchUrl(uri)) {
-          await launchUrl(uri, mode: LaunchMode.externalApplication);
-        }
+      onTap: () {
+        // 뉴스 상세 페이지로 이동
+        context.push('/news/${news.id}');
       },
       child: Container(
         width: double.infinity,
@@ -92,31 +90,13 @@ class NewsSection extends StatelessWidget {
           horizontal: w * 0.04,
           vertical: h * 0.018,
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              news.title,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                height: 1.4,
-              ),
-            ),
-            if (news.summary.isNotEmpty) ...[
-              const SizedBox(height: 4),
-              Text(
-                news.summary,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey,
-                  height: 1.3,
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-          ],
+        child: Text(
+          news.title,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            height: 1.4,
+          ),
         ),
       ),
     );

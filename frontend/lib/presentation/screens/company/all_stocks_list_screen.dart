@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../widgets/company/watch_button.dart';
+import '../../providers/all_stocks_list_provider.dart';
 
 /// 전체 종목 보기 스크린
-/// 미국 주식 36개 + ETF 14개 = 총 50개 종목
+/// 미국 주식 + ETF 전체 목록
 class AllStocksListScreen extends StatefulWidget {
   const AllStocksListScreen({super.key});
 
@@ -28,39 +30,87 @@ class _AllStocksListScreenState extends State<AllStocksListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FB),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => context.pop(),
-        ),
-        title: const Text(
-          '전체 종목 보기',
-          style: TextStyle(
-            color: Colors.black,
-            fontSize: 20,
-            fontFamily: 'Pretendard',
-            fontWeight: FontWeight.w700,
+    return ChangeNotifierProvider(
+      create: (_) => AllStocksListProvider(),
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF7F8FB),
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.black),
+            onPressed: () => context.pop(),
           ),
+          title: const Text(
+            '전체 종목 보기',
+            style: TextStyle(
+              color: Colors.black,
+              fontSize: 20,
+              fontFamily: 'Pretendard',
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          centerTitle: true,
         ),
-        centerTitle: true,
-      ),
-      body: ListView.builder(
-        padding: EdgeInsets.symmetric(
-          horizontal: AppSpacing.horizontal(context),
-          vertical: AppSpacing.section(context),
+        body: Consumer<AllStocksListProvider>(
+          builder: (context, provider, child) {
+            // 로딩 중
+            if (provider.isLoading) {
+              return const Center(
+                child: CircularProgressIndicator(),
+              );
+            }
+
+            // 에러 발생
+            if (provider.error != null) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      provider.error!,
+                      style: const TextStyle(color: Colors.red),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () => provider.refresh(),
+                      child: const Text('다시 시도'),
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            // 데이터 로드 완료
+            final allAssets = provider.allAssets;
+
+            if (allAssets.isEmpty) {
+              return const Center(
+                child: Text('종목이 없습니다'),
+              );
+            }
+
+            return RefreshIndicator(
+              onRefresh: () => provider.refresh(),
+              child: ListView.builder(
+                padding: EdgeInsets.symmetric(
+                  horizontal: AppSpacing.horizontal(context),
+                  vertical: AppSpacing.section(context),
+                ),
+                itemCount: allAssets.length,
+                itemBuilder: (context, index) {
+                  final asset = allAssets[index];
+                  return _buildStockItem(
+                    asset.ticker,
+                    asset.ticker,
+                    asset.isETF,
+                  );
+                },
+              ),
+            );
+          },
         ),
-        itemCount: 8, // 임시로 8개 (5개 기업 + 3개 ETF)
-        itemBuilder: (context, index) {
-          // 임시 데이터
-          final isETF = index >= 5;
-          final name = isETF ? 'TIGER 미국S&P500' : '테슬라';
-          final ticker = isETF ? 'SPY${index - 5}' : 'TSLA$index';
-          return _buildStockItem(name, ticker, isETF);
-        },
       ),
     );
   }

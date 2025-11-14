@@ -4,15 +4,13 @@ import '../../data/datasources/remote/news_api.dart';
 import '../../data/models/news_model.dart';
 import '../../core/utils/date_formatter.dart';
 
-/// 기업별 뉴스 상세 화면의 상태와 비즈니스 로직을 관리하는 Provider
-/// API 연결을 통해 뉴스 상세 데이터, AI 댓글 등을 불러옴
-class CompanyNewsDetailProvider with ChangeNotifier {
+/// 추천 뉴스 상세 화면의 상태와 비즈니스 로직을 관리하는 Provider
+/// ticker가 없는 추천 뉴스의 상세 데이터, AI 댓글 등을 불러옴
+class AllNewsDetailProvider with ChangeNotifier {
   final NewsApi _newsApi;
-  final String companyId;
   final String newsId;
 
-  CompanyNewsDetailProvider({
-    required this.companyId,
+  AllNewsDetailProvider({
     required this.newsId,
     NewsApi? newsApi,
   }) : _newsApi = newsApi ?? NewsApi() {
@@ -46,8 +44,8 @@ class CompanyNewsDetailProvider with ChangeNotifier {
   String? _url;
   String? get url => _url;
 
-  String? _companyName;
-  String? get companyName => _companyName;
+  String? _ticker;
+  String? get ticker => _ticker;
 
   // AI 댓글 데이터
   List<Map<String, String>> _aiComments = [];
@@ -71,7 +69,7 @@ class CompanyNewsDetailProvider with ChangeNotifier {
       _summary = newsDetail.summary;
       _publishedAt = DateFormatter.formatToKorean(newsDetail.publishedAt);
       _url = newsDetail.url;
-      _companyName = newsDetail.ticker; // ticker를 회사명으로 사용
+      _ticker = newsDetail.ticker;
 
       // AI 댓글 매핑 (페르소나 이미지 경로는 personaCode로 매핑)
       _aiComments = newsDetail.personaComments.map((comment) {
@@ -111,7 +109,7 @@ class CompanyNewsDetailProvider with ChangeNotifier {
       default:
         // 매칭되지 않는 경우 디버그 로그 출력 및 기본 이미지 반환
         if (kDebugMode) {
-          print('[CompanyNewsDetailProvider] 알 수 없는 personaCode: $personaCode');
+          print('[AllNewsDetailProvider] 알 수 없는 personaCode: $personaCode');
         }
         return 'assets/images/heeyul.webp'; // 기본 이미지
     }

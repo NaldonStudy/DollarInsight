@@ -1,5 +1,4 @@
 import '../datasources/remote/company_api.dart';
-import '../models/company_model.dart';
 import '../models/company_detail_model.dart';
 
 /// 기업 Repository
@@ -9,16 +8,6 @@ class CompanyRepository {
 
   CompanyRepository({CompanyApi? companyApi})
       : _companyApi = companyApi ?? CompanyApi();
-
-  /// 기업 정보 조회
-  Future<CompanyInfo> getCompanyInfo(String companyId) async {
-    try {
-      return await _companyApi.getCompanyInfo(companyId);
-    } catch (e) {
-      // 에러 처리는 상위에서 처리
-      rethrow;
-    }
-  }
 
   /// 기업 상세 정보 조회
   Future<CompanyDetailResponse> getCompanyDetail(String ticker) async {
@@ -30,16 +19,20 @@ class CompanyRepository {
     }
   }
 
-  /// 기업 검색
-  Future<List<CompanyInfo>> searchCompanies({
-    required String query,
-    int limit = 10,
-  }) async {
+  /// 기업/ETF 검색 (자동완성)
+  Future<List<Map<String, dynamic>>> searchCompanies(String keyword) async {
     try {
-      return await _companyApi.searchCompanies(
-        query: query,
-        limit: limit,
-      );
+      return await _companyApi.searchCompanies(keyword);
+    } catch (e) {
+      // 에러 처리는 상위에서 처리
+      rethrow;
+    }
+  }
+
+  /// 전체 자산 목록 조회
+  Future<List<Map<String, dynamic>>> getAssets() async {
+    try {
+      return await _companyApi.getAssets();
     } catch (e) {
       // 에러 처리는 상위에서 처리
       rethrow;
