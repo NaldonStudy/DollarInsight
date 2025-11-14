@@ -1,0 +1,467 @@
+{
+  "AAPL": {
+    "ticker": "AAPL",
+    "call_code": "NASAAPL",
+    "exchange": "NAS",
+    "exchange_name": "나스닥",
+    "name_kr": "애플",
+    "name_en": "Apple Inc",
+    "category": "기술"
+  },
+  "MSFT": {
+    "ticker": "MSFT",
+    "call_code": "NASMSFT",
+    "exchange": "NAS",
+    "exchange_name": "나스닥",
+    "name_kr": "마이크로소프트",
+    "name_en": "Microsoft Corporation",
+    "category": "기술"
+  },
+  "GOOGL": {
+    "ticker": "GOOGL",
+    "call_code": "NASGOOGL",
+    "exchange": "NAS",
+    "exchange_name": "나스닥",
+    "name_kr": "알파벳 A",
+    "name_en": "Alphabet Inc",
+    "category": "기술"
+  },
+  "AMZN": {
+    "ticker": "AMZN",
+    "call_code": "NASAMZN",
+    "exchange": "NAS",
+    "exchange_name": "나스닥",
+    "name_kr": "아마존닷컴",
+    "name_en": "Amazon.com Inc",
+    "category": "기술"
+  },
+  "META": {
+    "ticker": "META",
+    "call_code": "NASMETA",
+    "exchange": "NAS",
+    "exchange_name": "나스닥",
+    "name_kr": "메타 플랫폼스(페이스북)",
+    "name_en": "Meta Platforms Inc",
+    "category": "기술"
+  },
+  "NVDA": {
+    "ticker": "NVDA",
+    "call_code": "NASNVDA",
+    "exchange": "NAS",
+    "exchange_name": "나스닥",
+    "name_kr": "엔비디아",
+    "name_en": "NVIDIA Corporation",
+    "category": "기술"
+  },
+  "AMD": {
+    "ticker": "AMD",
+    "call_code": "NASAMD",
+    "exchange": "NAS",
+    "exchange_name": "나스닥",
+    "name_kr": "AMD",
+    "name_en": "Advanced Micro Devices Inc",
+    "category": "기술"
+  },
+  "INTC": {
+    "ticker": "INTC",
+    "call_code": "NASINTC",
+    "exchange": "NAS",
+    "exchange_name": "나스닥",
+    "name_kr": "인텔",
+    "name_en": "Intel Corporation",
+    "category": "기술"
+  },
+  "TSM": {
+    "ticker": "TSM",
+    "call_code": "NYSTSM",
+    "exchange": "NYS",
+    "exchange_name": "뉴욕증권거래소",
+    "name_kr": "TSMC(ADR)",
+    "name_en": "Taiwan Semiconductor Manufacturing Co Ltd",
+    "category": "기술"
+  },
+  "ASML": {
+    "ticker": "ASML",
+    "call_code": "NASASML",
+    "exchange": "NAS",
+    "exchange_name": "나스닥",
+    "name_kr": "ASML 홀딩(ADR)",
+    "name_en": "ASML Holding NV",
+    "category": "기술"
+  },
+  "ADBE": {
+    "ticker": "ADBE",
+    "call_code": "NASADBE",
+    "exchange": "NAS",
+    "exchange_name": "나스닥",
+    "name_kr": "어도비",
+    "name_en": "Adobe Inc",
+    "category": "기술"
+  },
+  "ORCL": {
+    "ticker": "ORCL",
+    "call_code": "NYSORCL",
+    "exchange": "NYS",
+    "exchange_name": "뉴욕증권거래소",
+    "name_kr": "오라클",
+    "name_en": "Oracle Corporation",
+    "category": "기술"
+  },
+  "CPNG": {
+    "ticker": "CPNG",
+    "call_code": "NYSCPNG",
+    "exchange": "NYS",
+    "exchange_name": "뉴욕증권거래소",
+    "name_kr": "쿠팡",
+    "name_en": "Coupang Inc",
+    "category": "커머스"
+  },
+  "BABA": {
+    "ticker": "BABA",
+    "call_code": "NYSBABA",
+    "exchange": "NYS",
+    "exchange_name": "뉴욕증권거래소",
+    "name_kr": "알리바바 그룹 홀딩(ADR)",
+    "name_en": "Alibaba Group Holding Ltd",
+    "category": "커머스"
+  },
+  "TSLA": {
+    "ticker": "TSLA",
+    "call_code": "NASTSLA",
+    "exchange": "NAS",
+    "exchange_name": "나스닥",
+    "name_kr": "테슬라",
+    "name_en": "Tesla Inc",
+    "category": "자동차"
+  },
+  "BA": {
+    "ticker": "BA",
+    "call_code": "NYSBA",
+    "exchange": "NYS",
+    "exchange_name": "뉴욕증권거래소",
+    "name_kr": "보잉",
+    "name_en": "The Boeing Company",
+    "category": "항공"
+  },
+  "DAL": {
+    "ticker": "DAL",
+    "call_code": "NYSDAL",
+    "exchange": "NYS",
+    "exchange_name": "뉴욕증권거래소",
+    "name_kr": "델타 에어라인스",
+    "name_en": "Delta Air Lines Inc",
+    "category": "항공"
+  },
+  "UBER": {
+    "ticker": "UBER",
+    "call_code": "NYSUBER",
+    "exchange": "NYS",
+    "exchange_name": "뉴욕증권거래소",
+    "name_kr": "우버 테크놀로지스",
+    "name_en": "Uber Technologies Inc",
+    "category": "모빌리티"
+  },
+  "FDX": {
+    "ticker": "FDX",
+    "call_code": "NYSFDX",
+    "exchange": "NYS",
+    "exchange_name": "뉴욕증권거래소",
+    "name_kr": "페덱스",
+    "name_en": "FedEx Corporation",
+    "category": "산업/물류"
+  },
+  "WMT": {
+    "ticker": "WMT",
+    "call_code": "NYSWMT",
+    "exchange": "NYS",
+    "exchange_name": "뉴욕증권거래소",
+    "name_kr": "월마트",
+    "name_en": "Walmart Inc",
+    "category": "리테일"
+  },
+  "COST": {
+    "ticker": "COST",
+    "call_code": "NASCOST",
+    "exchange": "NAS",
+    "exchange_name": "나스닥",
+    "name_kr": "코스트코 홀세일",
+    "name_en": "Costco Wholesale Corporation",
+    "category": "리테일"
+  },
+  "JPM": {
+    "ticker": "JPM",
+    "call_code": "NYSJPM",
+    "exchange": "NYS",
+    "exchange_name": "뉴욕증권거래소",
+    "name_kr": "제이피모간 체이스",
+    "name_en": "JPMorgan Chase & Co",
+    "category": "금융(은행)"
+  },
+  "BAC": {
+    "ticker": "BAC",
+    "call_code": "NYSBAC",
+    "exchange": "NYS",
+    "exchange_name": "뉴욕증권거래소",
+    "name_kr": "뱅크오브아메리카",
+    "name_en": "Bank of America Corp",
+    "category": "금융(은행)"
+  },
+  "GS": {
+    "ticker": "GS",
+    "call_code": "NYSGS",
+    "exchange": "NYS",
+    "exchange_name": "뉴욕증권거래소",
+    "name_kr": "골드만삭스",
+    "name_en": "The Goldman Sachs Group Inc",
+    "category": "금융(IB)"
+  },
+  "V": {
+    "ticker": "V",
+    "call_code": "NYSV",
+    "exchange": "NYS",
+    "exchange_name": "뉴욕증권거래소",
+    "name_kr": "비자",
+    "name_en": "Visa Inc",
+    "category": "결제"
+  },
+  "MA": {
+    "ticker": "MA",
+    "call_code": "NYSMA",
+    "exchange": "NYS",
+    "exchange_name": "뉴욕증권거래소",
+    "name_kr": "마스타카드",
+    "name_en": "Mastercard Inc",
+    "category": "결제"
+  },
+  "PYPL": {
+    "ticker": "PYPL",
+    "call_code": "NASPYPL",
+    "exchange": "NAS",
+    "exchange_name": "나스닥",
+    "name_kr": "페이팔 홀딩스",
+    "name_en": "PayPal Holdings Inc",
+    "category": "온라인결제"
+  },
+  "AIG": {
+    "ticker": "AIG",
+    "call_code": "NYSAIG",
+    "exchange": "NYS",
+    "exchange_name": "뉴욕증권거래소",
+    "name_kr": "아메리칸 인터내셔널 그룹",
+    "name_en": "American International Group Inc",
+    "category": "보험"
+  },
+  "KO": {
+    "ticker": "KO",
+    "call_code": "NYSKO",
+    "exchange": "NYS",
+    "exchange_name": "뉴욕증권거래소",
+    "name_kr": "코카콜라",
+    "name_en": "The Coca-Cola Company",
+    "category": "소비재"
+  },
+  "PEP": {
+    "ticker": "PEP",
+    "call_code": "NASPEP",
+    "exchange": "NAS",
+    "exchange_name": "나스닥",
+    "name_kr": "펩시코",
+    "name_en": "PepsiCo Inc",
+    "category": "소비재"
+  },
+  "MCD": {
+    "ticker": "MCD",
+    "call_code": "NYSMCD",
+    "exchange": "NYS",
+    "exchange_name": "뉴욕증권거래소",
+    "name_kr": "맥도날드",
+    "name_en": "McDonald's Corporation",
+    "category": "소비재"
+  },
+  "SBUX": {
+    "ticker": "SBUX",
+    "call_code": "NASSBUX",
+    "exchange": "NAS",
+    "exchange_name": "나스닥",
+    "name_kr": "스타벅스",
+    "name_en": "Starbucks Corporation",
+    "category": "소비재"
+  },
+  "NKE": {
+    "ticker": "NKE",
+    "call_code": "NYSNKE",
+    "exchange": "NYS",
+    "exchange_name": "뉴욕증권거래소",
+    "name_kr": "나이키 B",
+    "name_en": "Nike Inc",
+    "category": "소비재"
+  },
+  "NFLX": {
+    "ticker": "NFLX",
+    "call_code": "NASNFLX",
+    "exchange": "NAS",
+    "exchange_name": "나스닥",
+    "name_kr": "넷플릭스",
+    "name_en": "Netflix Inc",
+    "category": "미디어"
+  },
+  "DIS": {
+    "ticker": "DIS",
+    "call_code": "NYSDIS",
+    "exchange": "NYS",
+    "exchange_name": "뉴욕증권거래소",
+    "name_kr": "월트 디즈니",
+    "name_en": "The Walt Disney Company",
+    "category": "미디어/엔터"
+  },
+  "SONY": {
+    "ticker": "SONY",
+    "call_code": "NYSSONY",
+    "exchange": "NYS",
+    "exchange_name": "뉴욕증권거래소",
+    "name_kr": "소니 그룹(ADR)",
+    "name_en": "Sony Group Corporation",
+    "category": "게임+엔터"
+  },
+  "VOO": {
+    "ticker": "VOO",
+    "call_code": "AMSVOO",
+    "exchange": "AMS",
+    "exchange_name": "아멕스",
+    "name_kr": "VANGUARD S&P 500",
+    "name_en": "Vanguard S&P 500 ETF",
+    "category": "S&P500",
+    "is_etf": true
+  },
+  "SPY": {
+    "ticker": "SPY",
+    "call_code": "AMSSPY",
+    "exchange": "AMS",
+    "exchange_name": "아멕스",
+    "name_kr": "SPDR S&P 500",
+    "name_en": "SPDR S&P 500 ETF Trust",
+    "category": "S&P500",
+    "is_etf": true
+  },
+  "VTI": {
+    "ticker": "VTI",
+    "call_code": "AMSVTI",
+    "exchange": "AMS",
+    "exchange_name": "아멕스",
+    "name_kr": "VANGUARD TOTAL STOCK MARKET",
+    "name_en": "Vanguard Total Stock Market ETF",
+    "category": "미국 전체",
+    "is_etf": true
+  },
+  "QQQ": {
+    "ticker": "QQQ",
+    "call_code": "NASQQQ",
+    "exchange": "NAS",
+    "exchange_name": "나스닥",
+    "name_kr": "INVESCO QQQ TRUST",
+    "name_en": "Invesco QQQ Trust",
+    "category": "기술",
+    "is_etf": true
+  },
+  "QQQM": {
+    "ticker": "QQQM",
+    "call_code": "NASQQQM",
+    "exchange": "NAS",
+    "exchange_name": "나스닥",
+    "name_kr": "INVESCO NASDAQ 100",
+    "name_en": "Invesco NASDAQ 100 ETF",
+    "category": "기술",
+    "is_etf": true
+  },
+  "TQQQ": {
+    "ticker": "TQQQ",
+    "call_code": "NASTQQQ",
+    "exchange": "NAS",
+    "exchange_name": "나스닥",
+    "name_kr": "PROSHARES QQQ 3X",
+    "name_en": "ProShares UltraPro QQQ",
+    "category": "레버리지",
+    "is_etf": true
+  },
+  "SCHD": {
+    "ticker": "SCHD",
+    "call_code": "AMSSCHD",
+    "exchange": "AMS",
+    "exchange_name": "아멕스",
+    "name_kr": "SCHWAB US DIVIDEND EQUITY",
+    "name_en": "Schwab US Dividend Equity ETF",
+    "category": "배당",
+    "is_etf": true
+  },
+  "SOXX": {
+    "ticker": "SOXX",
+    "call_code": "NASSOXX",
+    "exchange": "NAS",
+    "exchange_name": "나스닥",
+    "name_kr": "ISHARES PHLX SEMICONDUCTOR",
+    "name_en": "iShares Semiconductor ETF",
+    "category": "반도체",
+    "is_etf": true
+  },
+  "SMH": {
+    "ticker": "SMH",
+    "call_code": "NASSMH",
+    "exchange": "NAS",
+    "exchange_name": "나스닥",
+    "name_kr": "VANECK SEMICONDUCTOR",
+    "name_en": "VanEck Semiconductor ETF",
+    "category": "반도체",
+    "is_etf": true
+  },
+  "ITA": {
+    "ticker": "ITA",
+    "call_code": "AMSITA",
+    "exchange": "AMS",
+    "exchange_name": "아멕스",
+    "name_kr": "ISHARES US AEROSPACE & DEFENSE",
+    "name_en": "iShares US Aerospace & Defense ETF",
+    "category": "산업/방산",
+    "is_etf": true
+  },
+  "XLF": {
+    "ticker": "XLF",
+    "call_code": "AMSXLF",
+    "exchange": "AMS",
+    "exchange_name": "아멕스",
+    "name_kr": "SPDR FINANCIAL SELECT SECTOR",
+    "name_en": "SPDR Financial Select Sector ETF",
+    "category": "금융",
+    "is_etf": true
+  },
+  "XLY": {
+    "ticker": "XLY",
+    "call_code": "AMSXLY",
+    "exchange": "AMS",
+    "exchange_name": "아멕스",
+    "name_kr": "SPDR CONSUMER DISCRETIONARY SELECT SECTOR",
+    "name_en": "SPDR Consumer Discretionary Select Sector ETF",
+    "category": "소비재",
+    "is_etf": true
+  },
+  "XLP": {
+    "ticker": "XLP",
+    "call_code": "AMSXLP",
+    "exchange": "AMS",
+    "exchange_name": "아멕스",
+    "name_kr": "SPDR CONSUMER STAPLES SELECT SECTOR",
+    "name_en": "SPDR Consumer Staples Select Sector ETF",
+    "category": "필수소비재",
+    "is_etf": true
+  },
+  "ICLN": {
+    "ticker": "ICLN",
+    "call_code": "NASICLN",
+    "exchange": "NAS",
+    "exchange_name": "나스닥",
+    "name_kr": "ISHARES GLOBAL CLEAN ENERGY",
+    "name_en": "iShares Global Clean Energy ETF",
+    "category": "친환경",
+    "is_etf": true
+  }
+}
+
