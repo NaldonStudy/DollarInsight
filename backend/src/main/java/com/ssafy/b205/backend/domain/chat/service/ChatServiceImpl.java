@@ -33,14 +33,15 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import org.bson.types.ObjectId;
 import reactor.core.Disposable;
+import reactor.core.publisher.Flux;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicLong;
 
 @Slf4j
 @Service
@@ -126,7 +127,6 @@ public class ChatServiceImpl implements ChatService {
                 .sessionUuid(sessionUuid)
                 .role("user")
                 .content(req.getContent())
-                .seq(System.nanoTime()) // 최초 메시지 트리거 판단은 count로 하므로 OK
                 .ts(Instant.now())
                 .build());
 
@@ -157,7 +157,8 @@ public class ChatServiceImpl implements ChatService {
         final int sessionDbId = session.getId();
 
         final SseEmitter emitter = emitterRegistry.create(sessionUuid, deviceId, lastEventId);
-        final AtomicLong seq = new AtomicLong(1);
+        replayMissedMessages(emitter, sessionUuid, lastEventId);
+        final Disposable keepAlive = startKeepAlive(emitter);
 
         final Disposable sub = gateway.stream(sessionUuid.toString())
                 .doOnError(err -> {
@@ -179,20 +180,23 @@ public class ChatServiceImpl implements ChatService {
 
                         // 메시지 이벤트는 Mongo에 저장 (token chunk가 아니라 완성 텍스트 기준이면 게이트웨이 쪽에서 제어)
                         if ("message".equals(eventName) && data != null && !data.isBlank()) {
-                            msgRepo.save(ChatMessageDoc.builder()
+                            final ChatMessageDoc saved = msgRepo.save(ChatMessageDoc.builder()
                                     .sessionUuid(sessionUuid)
                                     .role("assistant")
                                     .content(data)
-                                    .seq(seq.get())
                                     .ts(Instant.now())
                                     .build());
                             new TransactionTemplate(transactionManager).executeWithoutResult(status ->
                                     sessionRepo.touchUpdatedAt(sessionDbId, OffsetDateTime.now())
                             );
+                            emitter.send(SseEmitter.event()
+                                    .id(saved.getId())
+                                    .name(eventName)
+                                    .data(data));
+                            return;
                         }
 
                         emitter.send(SseEmitter.event()
-                                .id(String.valueOf(seq.getAndIncrement()))
                                 .name(eventName)
                                 .data(data));
                     } catch (Exception e) {
@@ -200,8 +204,13 @@ public class ChatServiceImpl implements ChatService {
                     }
                 });
 
-        emitter.onCompletion(sub::dispose);
-        emitter.onTimeout(sub::dispose);
+        Runnable disposeAll = () -> {
+            sub.dispose();
+            keepAlive.dispose();
+        };
+        emitter.onCompletion(disposeAll);
+        emitter.onTimeout(disposeAll);
+        emitter.onError(e -> disposeAll.run());
         return emitter;
     }
 
@@ -288,6 +297,39 @@ public class ChatServiceImpl implements ChatService {
         final int userId = toUserId(userUuid);
         loadOwnedSession(userId, sessionUuid);
         gateway.control(sessionUuid.toString(), "CHANGE_PACE", paceMs);
+    }
+
+    private void replayMissedMessages(SseEmitter emitter, UUID sessionUuid, String lastEventId) {
+        if (lastEventId == null || lastEventId.isBlank()) {
+            return;
+        }
+        try {
+            final ObjectId cursor = new ObjectId(lastEventId);
+            final List<ChatMessageDoc> docs = msgRepo.findAfterId(sessionUuid, cursor);
+            for (ChatMessageDoc doc : docs) {
+                emitter.send(SseEmitter.event()
+                        .id(doc.getId())
+                        .name("message")
+                        .data(doc.getContent()));
+            }
+        } catch (IllegalArgumentException e) {
+            log.warn("[ChatSvc-Stream] lastEventId {} is not a valid ObjectId", lastEventId);
+        } catch (Exception e) {
+            log.warn("[ChatSvc-Stream] replay send error: {}", e.getMessage());
+        }
+    }
+
+    private Disposable startKeepAlive(SseEmitter emitter) {
+        return Flux.interval(Duration.ofSeconds(25))
+                .subscribe(tick -> {
+                    try {
+                        emitter.send(SseEmitter.event()
+                                .name("ping")
+                                .data("keep-alive"));
+                    } catch (Exception e) {
+                        log.debug("[ChatSvc-Stream] keep-alive send failed: {}", e.getMessage());
+                    }
+                });
     }
 
     private ChatSession loadOwnedSession(Integer userId, UUID sessionUuid) {
