@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/constants/watchlist_data.dart';
+import '../../../../data/datasources/remote/api_client.dart';
+import '../../../../data/datasources/remote/watchlist_api.dart';
+import '../../../../data/repositories/watchlist_repository.dart';
 import '../../../widgets/signup/company_chip.dart';
 
 /// 회원가입 - 관심 종목 추천 결과 화면
@@ -27,6 +30,12 @@ class _SignupWatchlistResultScreenState
   // 선택된 미국 기업 (초기값: 모두 선택)
   late Set<String> _selectedUSCompanies;
 
+  // 로딩 상태
+  bool _isLoading = false;
+
+  // Repository 인스턴스
+  late final WatchlistRepository _watchlistRepository;
+
   @override
   void initState() {
     super.initState();
@@ -35,6 +44,15 @@ class _SignupWatchlistResultScreenState
 
     // 초기값: 모든 추천 기업 선택
     _selectedUSCompanies = _recommendedCompanies.map((c) => c.name).toSet();
+
+    // Repository 초기화
+    _watchlistRepository = WatchlistRepository(WatchlistApi(ApiClient()));
+  }
+
+  @override
+  void dispose() {
+    _watchlistRepository.dispose();
+    super.dispose();
   }
 
   /// 미국 기업 선택/해제 토글
@@ -46,6 +64,92 @@ class _SignupWatchlistResultScreenState
         _selectedUSCompanies.add(companyName);
       }
     });
+  }
+
+  /// 선택된 관심종목들을 API에 등록
+  Future<void> _registerWatchlist() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // 선택된 기업 이름들에 해당하는 ticker 추출
+      final selectedTickers = _recommendedCompanies
+          .where((company) => _selectedUSCompanies.contains(company.name))
+          .map((company) => company.ticker)
+          .toList();
+
+      print('=== 관심종목 등록 시작 ===');
+      print('선택된 기업: ${_selectedUSCompanies.toList()}');
+      print('등록할 티커: $selectedTickers');
+
+      // 각 ticker를 순차적으로 등록
+      int successCount = 0;
+      int failCount = 0;
+      final List<String> failedTickers = [];
+
+      for (final ticker in selectedTickers) {
+        try {
+          await _watchlistRepository.addToWatchlist(ticker, checkDuplicate: false);
+          successCount++;
+          print('✓ $ticker 등록 성공');
+        } catch (e) {
+          failCount++;
+          failedTickers.add(ticker);
+          print('✗ $ticker 등록 실패: $e');
+          // 개별 실패는 무시하고 계속 진행
+        }
+      }
+
+      print('=== 관심종목 등록 완료 ===');
+      print('성공: $successCount개, 실패: $failCount개');
+      if (failedTickers.isNotEmpty) {
+        print('실패한 티커: $failedTickers');
+      }
+
+      setState(() {
+        _isLoading = false;
+      });
+
+      // 등록 완료 후 다음 화면으로 이동
+      if (mounted) {
+        // 실패가 있어도 성공이 하나라도 있으면 진행
+        if (successCount > 0) {
+          context.push('/persona-intro');
+        } else {
+          // 모두 실패한 경우 에러 표시
+          _showErrorDialog('관심종목 등록에 실패했습니다. 다시 시도해주세요.');
+        }
+      }
+    } catch (e) {
+      print('=== 관심종목 등록 중 오류 발생 ===');
+      print('Error: $e');
+
+      setState(() {
+        _isLoading = false;
+      });
+
+      if (mounted) {
+        _showErrorDialog('관심종목 등록 중 오류가 발생했습니다: $e');
+      }
+    }
+  }
+
+  /// 에러 다이얼로그 표시
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('오류'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('확인'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -120,45 +224,40 @@ class _SignupWatchlistResultScreenState
             Padding(
               padding: const EdgeInsets.fromLTRB(33, 20, 33, 30),
               child: GestureDetector(
-                onTap: () {
-                  // API로 전송할 데이터
-                  final apiData = {
-                    'selectedIndustries': widget.selectedIndustries?.toList() ?? [],
-                    'selectedKoreanCompanies': widget.selectedCompanies?.toList() ?? [],
-                    'selectedUSCompanies': _selectedUSCompanies.toList(),
-                  };
-
-                  print('=== API 전송 데이터 ===');
-                  print('선택 산업: ${apiData['selectedIndustries']}');
-                  print('선택 한국 기업: ${apiData['selectedKoreanCompanies']}');
-                  print('선택 미국 기업: ${apiData['selectedUSCompanies']}');
-                  // print('==================');
-
-                  // TODO: 백엔드 API 호출하여 데이터 저장
-                  context.push('/persona-intro');
-                },
+                onTap: _isLoading ? null : _registerWatchlist,
                 child: Container(
                   width: double.infinity,
                   height: 53,
                   decoration: ShapeDecoration(
-                    color: const Color(0xFF143D60),
+                    color: _isLoading
+                        ? const Color(0xFF143D60).withOpacity(0.6)
+                        : const Color(0xFF143D60),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(30),
                     ),
                   ),
-                  child: const Center(
-                    child: Text(
-                      '완료',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontFamily: 'Pretendard',
-                        fontWeight: FontWeight.w700,
-                        height: 1.40,
-                        letterSpacing: 0.48,
-                      ),
-                    ),
+                  child: Center(
+                    child: _isLoading
+                        ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
+                          )
+                        : const Text(
+                            '완료',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontFamily: 'Pretendard',
+                              fontWeight: FontWeight.w700,
+                              height: 1.40,
+                              letterSpacing: 0.48,
+                            ),
+                          ),
                   ),
                 ),
               ),
