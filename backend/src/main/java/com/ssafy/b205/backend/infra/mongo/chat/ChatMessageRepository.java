@@ -21,4 +21,7 @@ public interface ChatMessageRepository extends MongoRepository<ChatMessageDoc, S
 
     @Query(value = "{ 'sessionUuid': ?0, '_id': { $lt: ?1 } }", sort = "{ '_id': -1 }")
     List<ChatMessageDoc> pageByCursor(UUID sessionUuid, ObjectId beforeId, Pageable pageable);
+
+    @Query(value = "{ 'sessionUuid': ?0, '_id': { $gt: ?1 } }", sort = "{ '_id': 1 }")
+    List<ChatMessageDoc> findAfterId(UUID sessionUuid, ObjectId afterId);
 }
