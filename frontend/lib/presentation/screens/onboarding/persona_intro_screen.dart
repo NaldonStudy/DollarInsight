@@ -21,7 +21,7 @@ class _PersonaIntroScreenState extends State<PersonaIntroScreen> {
       'description': '열정가득 승부사',
       'strengths': '단기 수익실현',
       'weaknesses': '과열 투자, 근거 빈약, 유행민감',
-      'image': 'assets/images/heeyul.webp',
+      'image': 'assets/images/heuyeol.webp',
       'color': const Color(0x4CFD0000),
     },
     {
