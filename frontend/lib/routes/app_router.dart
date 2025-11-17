@@ -31,7 +31,7 @@ import '../presentation/screens/mypage/company_search_screen.dart';
 import '../presentation/screens/mypage/password_change_screen.dart';
 import '../presentation/screens/mypage/password_change_new_screen.dart';
 import '../presentation/screens/mypage/ai_friend_change_screen.dart';
-
+import '../presentation/screens/mypage/nickname_change.dart';
 import '../presentation/screens/test_chat_screen.dart';
 
 // Route Guards
@@ -126,6 +126,13 @@ class AppRouter {
           );
         },
       ),
+
+      // 닉네임 변경
+      GoRoute(
+        path: '/mypage/nickname-change',
+        builder: (context, state) => const NicknameChangeScreen(),
+      ),
+
 
       /// 회원가입 완료
       GoRoute(
