@@ -12,6 +12,8 @@ import '../../widgets/main/stock_section.dart';
 import '../../widgets/common/scroll_fab_button.dart';
 import '../../../data/datasources/remote/company_api.dart';
 import '../../../data/models/dashboard_model.dart';
+import 'package:provider/provider.dart';
+import '../../providers/chat_provider.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -83,44 +85,48 @@ class _MainScreenState extends State<MainScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FB),
 
-      /// ✅ 스크롤 시 나타나는 FAB 버튼
-      floatingActionButton: ScrollFabButton(
-        w: w,
-        showFab: showFab,
-        onTap: () {
-          _scrollController.animateTo(
-            0,
-            duration: const Duration(milliseconds: 350),
-            curve: Curves.easeOut,
-          );
-        },
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-
       /// ✅ MAIN BODY
       body: SafeArea(
-        child: Column(
+        child: Stack(
           children: [
-            /// ✅ Top Navigation
-            TopNavigation(
-              w: w,
-              h: h,
-              isCompany: isCompany,
-              onTapCompany: () => setState(() => isCompany = true),
-              onTapChat: () => setState(() => isCompany = false),
-              onProfileTap: () => context.push('/mypage'),
-            ),
+            Column(
+              children: [
+                /// ✅ Top Navigation
+                TopNavigation(
+                  w: w,
+                  h: h,
+                  isCompany: isCompany,
+                  onTapCompany: () => setState(() => isCompany = true),
+                  onTapChat: () => setState(() => isCompany = false),
+                  onProfileTap: () => context.push('/mypage'),
+                ),
 
-            /// ✅ 기업분석일 때만 Navigation 아래 간격 추가
+                /// ✅ 기업분석일 때만 Navigation 아래 간격 추가
+                if (isCompany)
+                  SizedBox(height: AppSpacing.section(context)),
+
+                /// ✅ 화면 스위칭 (화면 전체 전환 아님)
+                Expanded(
+                  child: isCompany
+                      ? _buildCompanyBody(context, w, h)
+                      : const ChatListScreen(),
+                ),
+              ],
+            ),
+            
+            /// ✅ 채팅 생성 FAB (항상 표시)
             if (isCompany)
-              SizedBox(height: AppSpacing.section(context)),
-
-            /// ✅ 화면 스위칭 (화면 전체 전환 아님)
-            Expanded(
-              child: isCompany
-                  ? _buildCompanyBody(context, w, h)
-                  : const ChatListScreen(),
-            ),
+              Positioned(
+                right: w * 0.05,
+                bottom: w * 0.05,
+                child: ScrollFabButton(
+                  w: w,
+                  showFab: true, // 항상 표시
+                  actionType: FabActionType.chat,
+                  chatType: ChatContextType.custom,
+                  title: '새로운 채팅',
+                ),
+              ),
           ],
         ),
       ),

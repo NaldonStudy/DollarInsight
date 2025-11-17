@@ -4,90 +4,68 @@ import 'package:provider/provider.dart';
 import '../../providers/chat_provider.dart';
 import '../../../data/models/chat_model.dart';
 
-/// 스크롤 FAB 버튼 타입
-enum FabActionType {
-  scroll,   // 스크롤 업
-  chat,     // 채팅 생성
-}
-
-/// 채팅 컨텍스트 타입
-enum ChatContextType {
+/// 컨텍스트 기반 채팅 FAB 타입
+enum ChatFabType {
   news,     // 뉴스 채팅
   company,  // 기업 채팅
   custom,   // 일반 채팅
 }
 
-class ScrollFabButton extends StatelessWidget {
-  final bool showFab;
-  final double w;
-  final VoidCallback? onTap;
-  
-  // 채팅 기능 관련 파라미터
-  final FabActionType actionType;
-  final ChatContextType? chatType;
+/// 컨텍스트 기반 채팅 생성 FAB
+/// 
+/// 현재 페이지의 컨텍스트(뉴스/기업/일반)에 따라
+/// 적절한 타입의 채팅방을 생성하고 이동합니다.
+class ContextChatFab extends StatelessWidget {
+  final ChatFabType type;
   final String? title;
   final String? ticker;
   final String? newsId;
+  final double? bottom;
+  final double? right;
 
-  const ScrollFabButton({
+  const ContextChatFab({
     super.key,
-    required this.showFab,
-    required this.w,
-    this.onTap,
-    this.actionType = FabActionType.scroll,
-    this.chatType,
+    required this.type,
     this.title,
     this.ticker,
     this.newsId,
+    this.bottom,
+    this.right,
   });
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedScale(
-      scale: showFab ? 1 : 0,
-      duration: const Duration(milliseconds: 230),
-      child: AnimatedOpacity(
-        opacity: showFab ? 1 : 0,
-        duration: const Duration(milliseconds: 180),
-        child: GestureDetector(
-          onTap: () => _handleTap(context),
-          child: Container(
-            width: w * 0.15,
-            height: w * 0.15,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: const Color(0xFFEFF8FF),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.25),
-                  blurRadius: 5,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Center(
-              child: Image.asset(
-                "assets/images/main8.webp",
-                width: w * 0.1,
+    final size = MediaQuery.of(context).size;
+    final w = size.width;
+
+    return Positioned(
+      right: right ?? w * 0.05,
+      bottom: bottom ?? w * 0.05,
+      child: GestureDetector(
+        onTap: () => _handleChatCreation(context),
+        child: Container(
+          width: w * 0.15,
+          height: w * 0.15,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: const Color(0xFFEFF8FF),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.25),
+                blurRadius: 5,
+                offset: const Offset(0, 2),
               ),
+            ],
+          ),
+          child: Center(
+            child: Image.asset(
+              "assets/images/main8.webp",
+              width: w * 0.1,
             ),
           ),
         ),
       ),
     );
-  }
-
-  /// 탭 처리
-  void _handleTap(BuildContext context) {
-    if (actionType == FabActionType.scroll) {
-      // 스크롤 업
-      if (onTap != null) {
-        onTap!();
-      }
-    } else if (actionType == FabActionType.chat) {
-      // 채팅 생성
-      _handleChatCreation(context);
-    }
   }
 
   /// 채팅 생성 처리
@@ -101,8 +79,8 @@ class ScrollFabButton extends StatelessWidget {
       CreateSessionResponse? response;
       String? autoMessage;
 
-      switch (chatType) {
-        case ChatContextType.news:
+      switch (type) {
+        case ChatFabType.news:
           // 뉴스 채팅 생성
           final newsTitle = title ?? '뉴스 관련 채팅';
           response = await chatProvider.createNewsChat(
@@ -113,7 +91,7 @@ class ScrollFabButton extends StatelessWidget {
           autoMessage = '$newsTitle에 대해 분석해주세요';
           break;
 
-        case ChatContextType.company:
+        case ChatFabType.company:
           // 기업 채팅 생성
           final companyTitle = title ?? '기업 분석 채팅';
           response = await chatProvider.createCompanyChat(
@@ -124,15 +102,12 @@ class ScrollFabButton extends StatelessWidget {
           autoMessage = '$companyTitle에 대해 분석해주세요';
           break;
 
-        case ChatContextType.custom:
+        case ChatFabType.custom:
           // 일반 채팅 생성
           response = await chatProvider.createCustomChat(
             title ?? '새로운 채팅',
           );
           autoMessage = null; // 일반 채팅은 자동 메시지 없음
-          break;
-
-        default:
           break;
       }
 

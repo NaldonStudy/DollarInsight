@@ -270,7 +270,14 @@ class AppRouter {
       GoRoute(
         path: '/chat/:id',
         name: 'chat-room',
-        builder: (context, state) => const ChatRoomScreen(),
+        builder: (context, state) {
+          final sessionId = state.pathParameters['id']!;
+          final autoMessage = state.uri.queryParameters['autoMessage'];
+          return ChatRoomScreen(
+            sessionId: sessionId,
+            autoMessage: autoMessage,
+          );
+        },
         redirect: (context, state) => RouteGuards.requireAuth(context, state),
       ),
 

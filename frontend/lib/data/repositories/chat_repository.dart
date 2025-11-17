@@ -92,6 +92,24 @@ class ChatRepository {
         sessionId, limit: limit, cursor: cursor);
   }
 
+  /// 세션 목록 조회
+  /// 
+  /// 사용자의 모든 채팅 세션을 조회합니다.
+  Future<SessionListResponse> getSessionList({
+    int page = 0,
+    int size = 20,
+  }) async {
+    return await _chatApi.getChatSessions(page: page, size: size);
+  }
+
+  /// 모든 세션 목록 조회 (첫 번째 페이지만)
+  /// 
+  /// 기본적으로 첫 번째 페이지(20개)만 조회하는 편의 메소드
+  Future<List<SessionItem>> getRecentSessions({int size = 20}) async {
+    final response = await getSessionList(page: 0, size: size);
+    return response.items;
+  }
+
   /// SSE 스트림 연결
   ///
   /// 실제 SSE 이벤트 스트림을 반환합니다.
@@ -164,14 +182,25 @@ class ChatRepository {
     String? currentData;
 
     await for (final line in lineStream) {
-      if (line
-          .trim()
-          .isEmpty) {
+      if (line.trim().isEmpty) {
         // 빈 라인은 이벤트의 끝을 의미
         if (currentData != null) {
+          // JSON 형식인지 확인하고 파싱
+          String finalData = currentData;
+          try {
+            // JSON인 경우 content 필드 추출 시도
+            final jsonData = json.decode(currentData);
+            if (jsonData is Map<String, dynamic> && jsonData.containsKey('content')) {
+              finalData = jsonData['content'] as String;
+            }
+          } catch (e) {
+            // JSON이 아니면 원본 데이터 사용
+            finalData = currentData;
+          }
+          
           yield SSEMessage.fromRaw(
             currentEvent ?? 'message',
-            currentData,
+            finalData,
             currentId,
           );
         }
@@ -192,9 +221,21 @@ class ChatRepository {
 
     // 마지막 이벤트 처리 (스트림이 끝날 때)
     if (currentData != null) {
+      // JSON 형식인지 확인하고 파싱
+      String finalData = currentData;
+      try {
+        final jsonData = json.decode(currentData);
+        if (jsonData is Map<String, dynamic> && jsonData.containsKey('content')) {
+          finalData = jsonData['content'] as String;
+        }
+      } catch (e) {
+        // JSON이 아니면 원본 데이터 사용
+        finalData = currentData;
+      }
+      
       yield SSEMessage.fromRaw(
         currentEvent ?? 'message',
-        currentData,
+        finalData,
         currentId,
       );
     }
