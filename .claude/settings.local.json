@@ -14,7 +14,8 @@
       "Bash(taskkill:*)",
       "Bash(flutter run:*)",
       "Bash(timeout 5 cat:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(timeout 10 cat:*)"
     ],
     "deny": [],
     "ask": []
