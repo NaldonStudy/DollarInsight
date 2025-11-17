@@ -80,7 +80,7 @@ class ChatRepository {
   }
 
   /// 채팅 히스토리 조회 (페이지네이션 버전)
-  Future<HistoryCursorResponse> getChatHistoryWithPagination(String sessionId, {
+  Future<HistoryCursorResponse> getHistoryWithPagination(String sessionId, {
     int limit = 50,
     String? cursor,
   }) async {
@@ -93,40 +93,29 @@ class ChatRepository {
   }
 
   /// 세션 목록 조회
-  /// 
+  ///
   /// 사용자의 모든 채팅 세션을 조회합니다.
   Future<SessionListResponse> getSessionList({
     int page = 0,
     int size = 20,
   }) async {
-    return await _chatApi.getChatSessions(page: page, size: size);
+    // 올바른 메서드 이름으로 수정
+    return await _chatApi.getSessionList(page: page, size: size);
   }
 
   /// 모든 세션 목록 조회 (첫 번째 페이지만)
-  /// 
+  ///
   /// 기본적으로 첫 번째 페이지(20개)만 조회하는 편의 메소드
   Future<List<SessionItem>> getRecentSessions({int size = 20}) async {
     final response = await getSessionList(page: 0, size: size);
-    return response.items;
+    return response.items; 
   }
 
   /// SSE 스트림 연결
-  ///
-  /// 실제 SSE 이벤트 스트림을 반환합니다.
-  /// 사용법:
-  /// ```dart
-  /// final stream = await repository.connectToSSEStream(sessionId);
-  /// stream.listen((message) => {
-  ///   // SSE 메시지 처리
-  /// });
-  /// ```
   Future<Stream<SSEMessage>> connectToSSEStream(String sessionId,
       {String? lastEventId}) async {
     try {
-      // SSE 연결용 Dio 인스턴스 생성
       final dio = await _chatApi.createSSEDio();
-
-      // 필요한 헤더들 준비
       final deviceId = await DeviceIdManager.getDeviceId();
       final accessToken = await TokenStorage.getAccessToken();
 
@@ -139,43 +128,30 @@ class ChatRepository {
       if (accessToken != null) {
         headers['Authorization'] = 'Bearer $accessToken';
       }
-
       if (lastEventId != null) {
         headers['Last-Event-ID'] = lastEventId;
       }
 
-      // SSE 스트림 요청
       final response = await dio.get(
         '/api/chat/sessions/$sessionId/stream',
         queryParameters: {'device_id': deviceId},
-        options: Options(
-          headers: headers,
-          responseType: ResponseType.stream,
-        ),
+        options: Options(headers: headers, responseType: ResponseType.stream),
       );
 
       final responseStream = response.data as ResponseBody;
+      
+      // 약간의 인코딩 오류를 허용하는 관대한(lenient) 디코더 사용
+      final lineStream = Utf8Decoder(allowMalformed: true)
+          .bind(responseStream.stream)
+          .transform(const LineSplitter());
 
-      // utf8.decoder를 통해 바이트 스트림을 문자열 스트림으로 변환하고, 라인 단위로 분할합니다.
-      final decodedStream = utf8.decoder.bind(responseStream.stream);
-      final lineStream = decodedStream.transform(const LineSplitter());
-
-      // 더 정교한 _parseSSEStream 함수를 사용하여 SSE 메시지 파싱
       return _parseSSEStream(lineStream);
     } catch (e) {
       throw Exception('SSE 스트림 연결 실패: $e');
     }
   }
 
-  /// 더 정교한 SSE 파싱을 위한 스트림 변환기
-  ///
-  /// SSE 형식에 맞춰 이벤트를 정확히 파싱합니다:
-  /// ```
-  /// id: 1
-  /// event: message
-  /// data: {"content": "hello"}
-  ///
-  /// ```
+  /// SSE 스트림 파서
   Stream<SSEMessage> _parseSSEStream(Stream<String> lineStream) async* {
     String? currentId;
     String? currentEvent;
@@ -184,60 +160,76 @@ class ChatRepository {
     await for (final line in lineStream) {
       if (line.trim().isEmpty) {
         // 빈 라인은 이벤트의 끝을 의미
-        if (currentData != null) {
-          // JSON 형식인지 확인하고 파싱
+        final eventType = currentEvent ?? 'message';
+
+        // 처리하기로 약속된 이벤트 타입들
+        const knownEvents = {'message', 'done', 'error'};
+
+        // 데이터가 있고, 우리가 아는 이벤트 타입일 경우에만 처리
+        if (currentData != null && knownEvents.contains(eventType)) {
           String finalData = currentData;
-          try {
-            // JSON인 경우 content 필드 추출 시도
-            final jsonData = json.decode(currentData);
-            if (jsonData is Map<String, dynamic> && jsonData.containsKey('content')) {
-              finalData = jsonData['content'] as String;
+          // 'message' 이벤트의 데이터는 JSON일 수 있으므로 파싱 시도
+          if (eventType == 'message') {
+            try {
+              final jsonData = json.decode(currentData);
+              if (jsonData is Map<String, dynamic>) {
+                // 서버 응답 필드 'text' 또는 'content'를 모두 확인
+                if (jsonData.containsKey('text')) {
+                  finalData = jsonData['text'] as String;
+                } else if (jsonData.containsKey('content')) {
+                  finalData = jsonData['content'] as String;
+                }
+              }
+            } catch (e) {
+              // JSON이 아니면 원본 데이터 사용 (단순 문자열 스트림)
+              finalData = currentData;
             }
-          } catch (e) {
-            // JSON이 아니면 원본 데이터 사용
-            finalData = currentData;
           }
-          
-          yield SSEMessage.fromRaw(
-            currentEvent ?? 'message',
-            finalData,
-            currentId,
-          );
+          yield SSEMessage.fromRaw(eventType, finalData, currentId);
         }
-        // 현재 이벤트 초기화
+
+        // 상태 초기화. ping 같은 모르는 이벤트는 여기서 조용히 무시됨.
         currentId = null;
         currentEvent = null;
         currentData = null;
+
       } else if (line.startsWith('id:')) {
         currentId = line.substring(3).trim();
       } else if (line.startsWith('event:')) {
         currentEvent = line.substring(6).trim();
       } else if (line.startsWith('data:')) {
         final data = line.substring(5).trim();
-        // 여러 'data:' 라인을 개행문자(\n)로 연결합니다.
         currentData = (currentData == null) ? data : '$currentData\n$data';
+      } else {
+        // 주석 (:) 또는 알 수 없는 라인은 무시
       }
     }
-
-    // 마지막 이벤트 처리 (스트림이 끝날 때)
+    
+    // 스트림이 예기치 않게 종료되었을 때, 마지막으로 쌓인 데이터가 있다면 처리
     if (currentData != null) {
-      // JSON 형식인지 확인하고 파싱
-      String finalData = currentData;
-      try {
-        final jsonData = json.decode(currentData);
-        if (jsonData is Map<String, dynamic> && jsonData.containsKey('content')) {
-          finalData = jsonData['content'] as String;
-        }
-      } catch (e) {
-        // JSON이 아니면 원본 데이터 사용
-        finalData = currentData;
-      }
-      
-      yield SSEMessage.fromRaw(
-        currentEvent ?? 'message',
-        finalData,
-        currentId,
-      );
+      final eventType = currentEvent ?? 'message';
+      const knownEvents = {'message', 'done', 'error'};
+       if (knownEvents.contains(eventType)) {
+         String finalData = currentData;
+          // 'message' 이벤트의 데이터는 JSON일 수 있으므로 파싱 시도
+          if (eventType == 'message') {
+            try {
+              final jsonData = json.decode(currentData);
+              if (jsonData is Map<String, dynamic>) {
+                // 서버 응답 필드 'text' 또는 'content'를 모두 확인
+                if (jsonData.containsKey('text')) {
+                  finalData = jsonData['text'] as String;
+                } else if (jsonData.containsKey('content')) {
+                  finalData = jsonData['content'] as String;
+                }
+              }
+            } catch (e) {
+              // 불완전한 JSON일 수 있으므로 오류를 무시하고 원본 데이터를 전달
+              finalData = currentData;
+            }
+          }
+         yield SSEMessage.fromRaw(eventType, finalData, currentId);
+       }
     }
   }
 
