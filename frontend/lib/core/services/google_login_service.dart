@@ -1,3 +1,4 @@
+import 'dart:convert'; // 디버깅용(필수는 아님)
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -41,6 +42,11 @@ class GoogleLoginService {
       final account = await _gsi.authenticate(
         scopeHint: const ['email', 'profile'],
       );
+
+      if (account == null) {
+        print('❌ account == null (사용자 취소 가능)');
+        return false;
+      }
 
       // ✅ 서버용 auth code 받기
       final codeResult =

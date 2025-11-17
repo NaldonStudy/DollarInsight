@@ -2,8 +2,13 @@ import 'package:dio/dio.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../../../core/utils/device_id_manager.dart';
 import '../local/token_storage.dart';
+import '../remote/api_client.dart';
 
 class UserApi {
+
+  /// 🔥 ApiClient 인스턴스 (PATCH 요청 등에 사용)
+  static final ApiClient _client = ApiClient();
+
   /// ✅ BASE_URL 환경변수에서 읽기
   static String get baseUrl {
     final url = dotenv.env['BASE_URL'];
@@ -13,6 +18,7 @@ class UserApi {
     return url;
   }
 
+  /// 🔥 기존 Dio는 fetchMe, logout 에서만 사용
   static final Dio _dio = Dio(
     BaseOptions(
       baseUrl: baseUrl,
@@ -59,9 +65,8 @@ class UserApi {
         ),
       );
 
-      // ✅ 204 OK (성공)
       if (response.statusCode == 204) {
-        await TokenStorage.clearTokens(); // 저장된 토큰 제거
+        await TokenStorage.clearTokens();
       }
 
       return response.statusCode ?? 500;
@@ -70,4 +75,34 @@ class UserApi {
       return 500;
     }
   }
+
+  /// 🔥 닉네임 변경 API
+  /// 🔥 닉네임 변경 API
+  static Future<bool> updateNickname(String newNickname) async {
+    try {
+      final response = await _dio.patch(
+        '/api/users/me/nickname',
+        data: {'nickname': newNickname},
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer ${await TokenStorage.getAccessToken()}',
+            'X-Device-Id': await DeviceIdManager.getDeviceId(),
+          },
+          validateStatus: (status) => true, // 우리가 직접 처리
+        ),
+      );
+
+      // 🔥 닉네임 변경 성공 (204)
+      if (response.statusCode == 204) {
+        return true;
+      }
+
+      print("❌ 닉네임 변경 실패 응답: ${response.data}");
+      return false;
+    } catch (e) {
+      print("❌ [updateNickname] $e");
+      return false;
+    }
+  }
+
 }
