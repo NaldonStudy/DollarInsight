@@ -151,7 +151,7 @@ class _MypageScreenState extends State<MypageScreen> {
                     final status = await UserApi.logout();
 
                     if (status == 204 && context.mounted) {
-                      context.go('/login');
+                      context.go('/landing');
                     }
                   },
                 ),

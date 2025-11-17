@@ -12,6 +12,7 @@ import 'presentation/providers/watchlist_provider.dart';
 
 import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart';
 
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env"); // ✅ 반드시 추가
