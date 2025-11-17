@@ -99,8 +99,8 @@ services:
     command: webserver
     ports:
       - "8090:8090"
-    mem_limit: 1g  # 메모리 사용량 제한 (최대 1GB) - 서버 총량(16GB)의 약 6%
-    mem_reservation: 256m  # 최소 메모리 보장
+    mem_limit: 2.5g  # 메모리 사용량 제한 (최대 2.5GB) - OOM 방지 및 안정성 확보
+    mem_reservation: 512m  # 최소 메모리 보장
     cpus: 0.5  # CPU 사용량 제한 (최대 0.5코어) - 서버 총량(4코어)의 12.5%
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://localhost:8090/health"]
