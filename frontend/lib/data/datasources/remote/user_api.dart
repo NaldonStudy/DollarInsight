@@ -41,7 +41,6 @@ class UserApi {
 
       return resp.data['data'];
     } catch (e) {
-      print("❌ [fetchMe] error: $e");
       rethrow;
     }
   }
@@ -136,10 +135,8 @@ class UserApi {
         return List<Map<String, dynamic>>.from(response.data);
       }
 
-      print("❌ 예상치 못한 응답 형식: ${response.data}");
       return [];
     } catch (e) {
-      print("❌ [fetchAllPersonas] error: $e");
       return [];
     }
   }
@@ -160,12 +157,9 @@ class UserApi {
         ),
       );
 
-      print("🔥 내 활성 페르소나 API 응답: ${response.data}"); // 디버깅
-
       // ✅ API 응답이 {ok: true, data: [...]} 형태
       if (response.data is Map && response.data['data'] is List) {
         final personas = List<Map<String, dynamic>>.from(response.data['data']);
-        print("🔥 내 활성 페르소나 목록: $personas"); // 디버깅
         return personas;
       }
 
@@ -174,10 +168,8 @@ class UserApi {
         return List<Map<String, dynamic>>.from(response.data);
       }
 
-      print("❌ 예상치 못한 응답 형식: ${response.data}");
       return [];
     } catch (e) {
-      print("❌ [fetchMyPersonas] error: $e");
       return [];
     }
   }
@@ -188,11 +180,10 @@ class UserApi {
       final deviceId = await DeviceIdManager.getDeviceId();
       final access = await TokenStorage.getAccessToken();
 
-      print("🔥 페르소나 변경 요청: $personaCodes"); // 디버깅
 
       final response = await _dio.patch(
         '/api/users/me/personas',
-        data: {'personaCodes': personaCodes}, // ✅ 필드명 수정
+
         options: Options(
           headers: {
             'Authorization': 'Bearer $access',
@@ -202,16 +193,12 @@ class UserApi {
         ),
       );
 
-      print("🔥 페르소나 변경 응답: ${response.statusCode} - ${response.data}"); // 디버깅
-
       if (response.statusCode == 200 || response.statusCode == 204) {
         return true;
       }
 
-      print("❌ 페르소나 변경 실패: ${response.data}");
       return false;
     } catch (e) {
-      print("❌ [updatePersonas] error: $e");
       return false;
     }
   }

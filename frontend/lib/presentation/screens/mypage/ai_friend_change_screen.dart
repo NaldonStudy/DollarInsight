@@ -54,18 +54,12 @@ class _AiFriendChangeScreenState extends State<AiFriendChangeScreen> {
     try {
       // 1. 전체 페르소나 목록 가져오기
       final allPersonas = await UserApi.fetchAllPersonas();
-      print('🔥 전체 페르소나 목록: $allPersonas');
-
       // 2. 내 활성 페르소나 목록 가져오기
       final myPersonas = await UserApi.fetchMyPersonas();
-      print('🔥 내 활성 페르소나: $myPersonas');
-
       // 활성화된 페르소나 코드 리스트 추출
       final activeCodes = myPersonas
           .map((p) => (p['code'] as String).toLowerCase())
           .toList();
-      print('🔥 활성화된 코드: $activeCodes');
-
       setState(() {
         _allPersonas = allPersonas;
         _selected = List.filled(allPersonas.length, false);
@@ -78,7 +72,6 @@ class _AiFriendChangeScreenState extends State<AiFriendChangeScreen> {
         _isLoading = false;
       });
     } catch (e) {
-      print('❌ 페르소나 로드 실패: $e');
       setState(() {
         _isLoading = false;
       });
@@ -181,8 +174,6 @@ class _AiFriendChangeScreenState extends State<AiFriendChangeScreen> {
         selectedCodes.add(code.toLowerCase()); // 소문자로 변환
       }
     }
-
-    print('🔥 선택된 페르소나 (전송 데이터): $selectedCodes'); // 디버깅
 
     // 최소 1개는 선택되어야 함
     if (selectedCodes.isEmpty) {
