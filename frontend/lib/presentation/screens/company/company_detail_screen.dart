@@ -9,6 +9,7 @@ import '../../widgets/common/scroll_fab_button.dart';
 import '../../widgets/common/top_navigation.dart';
 import '../chat/chat_list_screen.dart';
 import '../../../core/constants/app_spacing.dart';
+import '../../../core/utils/ticker_logo_mapper.dart';
 import 'package:go_router/go_router.dart';
 import 'company_chart_screen.dart';
 import 'company_news_list_screen.dart';
@@ -203,10 +204,10 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
               color: Color(0xFFD9D9D9),
               shape: BoxShape.circle,
             ),
-            child: provider.logoUrl != null
+            child: TickerLogoMapper.hasLogo(widget.companyId)
                 ? ClipOval(
-                    child: Image.network(
-                      provider.logoUrl!,
+                    child: Image.asset(
+                      TickerLogoMapper.getLogoPath(widget.companyId),
                       fit: BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) =>
                           const SizedBox(),

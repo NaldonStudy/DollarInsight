@@ -53,30 +53,8 @@ class StockSection extends StatelessWidget {
                 fontWeight: FontWeight.w700,
               ),
             ),
-
-            /// ✅ 오른쪽 "편집 · 전체보기"
-            Row(
-              children: [
-                GestureDetector(
-                  onTap: () {
-                    context.push('/mypage/ai-friend');
-                  },
-                  child: Text(
-                    "AI친구수정",
-                    style: TextStyle(
-                      fontSize: w * 0.032, // 약 12px
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFFA9A9A9),
-                    ),
-                  ),
-                ),
-
-              ],
-            ),
           ],
         ),
-
-        SizedBox(height: h * 0.012),
 
         /// ✅ 데일리픽 리스트 카드
         Container(
