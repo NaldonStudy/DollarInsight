@@ -10,6 +10,7 @@ import '../../widgets/main/live_chat_card.dart';
 import '../chat/chat_list_screen.dart';
 import '../../widgets/chat/chat_bubble.dart';
 import '../../widgets/common/scroll_fab_button.dart';
+import '../../providers/chat_provider.dart';
 
 class CompanyNewsDetailScreen extends StatefulWidget {
   final String companyId;
@@ -91,25 +92,29 @@ class _CompanyNewsDetailScreenState extends State<CompanyNewsDetailScreen> {
         floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
 
         body: SafeArea(
-          child: Column(
+          child: Stack(
             children: [
-              /// ✅ Top Navigation
-              TopNavigation(
-                w: w,
-                h: h,
-                isCompany: isCompany,
-                onTapCompany: () => setState(() => isCompany = true),
-                onTapChat: () => setState(() => isCompany = false),
-                onProfileTap: () => context.push('/mypage'),
-              ),
+              Column(
+                children: [
+                  /// ✅ Top Navigation
+                  TopNavigation(
+                    w: w,
+                    h: h,
+                    isCompany: isCompany,
+                    onTapCompany: () => setState(() => isCompany = true),
+                    onTapChat: () => setState(() => isCompany = false),
+                    onProfileTap: () => context.push('/mypage'),
+                  ),
 
-              if (isCompany) SizedBox(height: AppSpacing.section(context)),
+                  if (isCompany) SizedBox(height: AppSpacing.section(context)),
 
-              /// ✅ 화면 전환
-              Expanded(
-                child: isCompany
-                    ? _buildNewsDetailBody(context, w, h)
-                    : const ChatListScreen(),
+                  /// ✅ 화면 전환
+                  Expanded(
+                    child: isCompany
+                        ? _buildNewsDetailBody(context, w, h)
+                        : const ChatListScreen(),
+                  ),
+                ],
               ),
             ],
           ),
@@ -239,8 +244,53 @@ class _CompanyNewsDetailScreenState extends State<CompanyNewsDetailScreen> {
                             ),
                           SizedBox(width: w * 0.02),
                           TextButton(
-                            onPressed: () {
-                              context.push('/chat/:id');
+                            onPressed: () async {
+                              // 뉴스 기반 채팅 세션 생성
+                              final chatProvider = context.read<ChatProvider>();
+                              
+                              // 로딩 표시
+                              showDialog(
+                                context: context,
+                                barrierDismissible: false,
+                                builder: (context) => const Center(
+                                  child: CircularProgressIndicator(),
+                                ),
+                              );
+                              
+                              try {
+                                final response = await chatProvider.createNewsChat(
+                                  title: provider.title ?? '뉴스 채팅',
+                                  companyNewsId: int.tryParse(widget.newsId),
+                                );
+                                
+                                if (!mounted) return;
+                                Navigator.pop(context); // 로딩 닫기
+                                
+                                if (response != null) {
+                                  // 세션 생성 성공 - 자동 메시지와 함께 채팅방으로 이동
+                                  final newsTitle = provider.title ?? '뉴스';
+                                  final autoMessage = '$newsTitle 뉴스가 경제에 미치는 영향 알려주세요';
+                                  
+                                  // URI 인코딩하여 전달
+                                  final encodedMessage = Uri.encodeComponent(autoMessage);
+                                  context.push('/chat/${response.sessionUuid}?autoMessage=$encodedMessage');
+                                } else {
+                                  // 세션 생성 실패
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('채팅방 생성에 실패했습니다.'),
+                                    ),
+                                  );
+                                }
+                              } catch (e) {
+                                if (!mounted) return;
+                                Navigator.pop(context); // 로딩 닫기
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('오류가 발생했습니다: $e'),
+                                  ),
+                                );
+                              }
                             },
                             child: Text(
                               '채팅하기',

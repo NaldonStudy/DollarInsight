@@ -7,6 +7,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'presentation/providers/auth_provider.dart';
 import 'presentation/providers/user_provider.dart';
+import 'presentation/providers/chat_provider.dart';
 import 'presentation/providers/watchlist_provider.dart';
 
 import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart';
@@ -31,6 +32,7 @@ void main() async {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()), // ✅ 로그인/회원가입 Provider 주입
         ChangeNotifierProvider(create: (_) => UserProvider()),
+        ChangeNotifierProvider(create: (_) => ChatProvider()), // 채팅
         ChangeNotifierProvider(create: (_) => WatchlistProvider()),
       ],
       child: const MyApp(),

@@ -86,40 +86,51 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
       value: _provider, // 이미 생성된 Provider 전달
       child: Scaffold(
         backgroundColor: const Color(0xFFF7F8FB),
-        floatingActionButton: ScrollFabButton(
-          w: w,
-          showFab: showFab,
-          onTap: () {
-            _scrollController.animateTo(
-              0,
-              duration: const Duration(milliseconds: 350),
-              curve: Curves.easeOut,
-            );
-          },
-        ),
-        floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
         body: SafeArea(
-          child: Column(
+          child: Stack(
             children: [
-              /// TopNavigation (기업분석/채팅 토글)
-              TopNavigation(
-                w: w,
-                h: h,
-                isCompany: isCompany,
-                onTapCompany: () => setState(() => isCompany = true),
-                onTapChat: () => setState(() => isCompany = false),
-                onProfileTap: () {
-                  // TODO: 마이페이지로 이동
-                  // context.push('/mypage');
-                },
-              ),
+              Column(
+                children: [
+                  /// TopNavigation (기업분석/채팅 토글)
+                  TopNavigation(
+                    w: w,
+                    h: h,
+                    isCompany: isCompany,
+                    onTapCompany: () => setState(() => isCompany = true),
+                    onTapChat: () => setState(() => isCompany = false),
+                    onProfileTap: () {
+                      // TODO: 마이페이지로 이동
+                      // context.push('/mypage');
+                    },
+                  ),
 
-              /// 화면 전환 (기업분석 / 채팅)
-              Expanded(
-                child: isCompany
-                    ? _buildCompanyAnalysisBody(w, h)
-                    : const ChatListScreen(),
+                  /// 화면 전환 (기업분석 / 채팅)
+                  Expanded(
+                    child: isCompany
+                        ? _buildCompanyAnalysisBody(w, h)
+                        : const ChatListScreen(),
+                  ),
+                ],
               ),
+              
+              /// ✅ 채팅 생성 FAB (항상 표시)
+              if (isCompany)
+                Positioned(
+                  right: w * 0.05,
+                  bottom: w * 0.05,
+                  child: Consumer<CompanyDetailProvider>(
+                    builder: (context, provider, child) {
+                      return ScrollFabButton(
+                        w: w,
+                        showFab: true, // 항상 표시
+                        actionType: FabActionType.chat,
+                        chatType: ChatContextType.company,
+                        title: provider.companyName,
+                        ticker: widget.companyId,
+                      );
+                    },
+                  ),
+                ),
             ],
           ),
         ),
