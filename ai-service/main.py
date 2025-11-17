@@ -35,6 +35,7 @@ from autogen_forum import (
 
 # 뉴스 분석용
 from news_analyzer import analyze_news
+
 # 기업 분석용
 from company_analyzer import analyze_company
 
@@ -45,10 +46,12 @@ app = FastAPI(title="AI Debate SSE Server")
 from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
 from starlette.responses import Response
 
+
 @app.get("/metrics")
 async def metrics():
     """Prometheus metrics 엔드포인트"""
     return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
 
 # ===== 에이전트 이름 매핑 (한글 ↔ 영문) =====
 AGENT_NAME_MAPPING = {
@@ -89,12 +92,12 @@ def to_korean_name(english_name: str) -> str:
     normalized = BACKEND_NAME_MAPPING.get(english_name)
     if normalized:
         return AGENT_NAME_REVERSE.get(normalized, english_name)
-    
+
     # 2. 소문자로 변환 후 매핑 시도
     lower_name = english_name.lower()
     if lower_name in AGENT_NAME_REVERSE:
         return AGENT_NAME_REVERSE[lower_name]
-    
+
     # 3. 원본 그대로 반환 (매핑 실패)
     return english_name
 
@@ -232,7 +235,7 @@ def run_autogen_discussion(
 
         # 선택된 에이전트들만 사용
         all_agents = session.ai_agents
-        
+
         # 에이전트 매칭 및 로깅
         matched_agents = []
         unmatched_names = []
@@ -241,11 +244,13 @@ def run_autogen_discussion(
                 matched_agents.append(all_agents[name])
             else:
                 unmatched_names.append(name)
-        
+
         if unmatched_names:
-            print(f"⚠️ 에이전트 매칭 실패: {unmatched_names} (사용 가능한 에이전트: {list(all_agents.keys())})")
+            print(
+                f"⚠️ 에이전트 매칭 실패: {unmatched_names} (사용 가능한 에이전트: {list(all_agents.keys())})"
+            )
             print(f"   세션의 speakers: {session.speakers}")
-        
+
         ai_agents = matched_agents
 
         if not ai_agents:
@@ -442,7 +447,9 @@ def run_autogen_discussion(
                     auto_turns += 1
                     if auto_turns >= AUTO_MAX_ROUNDS:
                         print("\n" + "🏁" * 30)
-                        print(f"💥 {AUTO_MAX_ROUNDS}라운드 완료! 사용자 입력 대기 중...")
+                        print(
+                            f"💥 {AUTO_MAX_ROUNDS}라운드 완료! 사용자 입력 대기 중..."
+                        )
                         print("🏁" * 30)
                         # pause 모드로 전환하여 사용자 입력 대기
                         session.pause_mode = True
@@ -452,7 +459,11 @@ def run_autogen_discussion(
                             if user_input and user_input.strip():
                                 # 사용자 입력이 있으면 토론 재개
                                 messages.append(
-                                    {"content": user_input, "role": "user", "name": "user"}
+                                    {
+                                        "content": user_input,
+                                        "role": "user",
+                                        "name": "user",
+                                    }
                                 )
                                 session.messages = (
                                     messages[-MAX_CONTEXT_MESSAGES:]
@@ -600,12 +611,37 @@ async def input_message(request: Request):
 # ===== SSE 스트림 =====
 async def sse_generator(request: Request, session_id: str):
     """SSE 스트림 생성기"""
+    # 응답 시작 전에 세션 확인 (재시도 포함)
+    # 백엔드가 /start를 호출하기 전에 /stream이 올 수 있으므로 재시도 필요
+    max_retries = 10
+    retry_delay = 0.2  # 200ms
+    s = None
+
+    for i in range(max_retries):
+        async with SESSIONS_LOCK:
+            s = SESSIONS.get(session_id)
+            if s is not None:
+                s.mark_used()
+                break
+
+        # 세션을 찾지 못했고 아직 재시도 가능하면 대기
+        if s is None and i < max_retries - 1:
+            await asyncio.sleep(retry_delay)
+
+    # 세션을 찾지 못한 경우 에러 이벤트 전송 후 종료
+    if s is None:
+        error_payload = json.dumps(
+            {"detail": "Session not found. Please call /start first."},
+            ensure_ascii=False,
+        )
+        yield f"event: error\ndata: {error_payload}\n\n"
+        return
+
+    # 세션을 찾았으므로 이제 응답 시작
     yield "retry: 2000\n\n"
 
     HEARTBEAT_SECS = 20
     hb_last = time.time()
-
-    s = await get_session_or_404(session_id)
 
     if not hasattr(s, "ai_response_queue"):
         s.ai_response_queue = queue.Queue()
@@ -709,12 +745,14 @@ async def list_sessions():
 
 class NewsAnalysisRequest(BaseModel):
     """뉴스 분석 요청 모델"""
+
     title: str
     content: str
 
 
 class NewsAnalysisResponse(BaseModel):
     """뉴스 분석 응답 모델"""
+
     summary: str
     persona_analyses: Dict[str, str]
     companies: List[str]
@@ -722,12 +760,14 @@ class NewsAnalysisResponse(BaseModel):
 
 class CompanyAnalysisRequest(BaseModel):
     """기업 분석 요청 모델"""
+
     company_name: str
     company_info: Optional[str] = ""
 
 
 class CompanyAnalysisResponse(BaseModel):
     """기업 분석 응답 모델"""
+
     company_name: str
     heuyeol: str
     deoksu: str
@@ -754,7 +794,7 @@ async def analyze_news_endpoint(request: NewsAnalysisRequest):
         return NewsAnalysisResponse(
             summary=result["summary"],
             persona_analyses=english_persona_analyses,
-            companies=result["companies"]
+            companies=result["companies"],
         )
     except ValueError as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -777,7 +817,7 @@ async def analyze_company_endpoint(request: CompanyAnalysisRequest):
             jiyul=result.get("jiyul", "jiyul 분석 생성 실패"),
             teo=result.get("teo", "teo 분석 생성 실패"),
             minji=result.get("minji", "minji 분석 생성 실패"),
-            analyzed_at=result["analyzed_at"]
+            analyzed_at=result["analyzed_at"],
         )
     except ValueError as e:
         raise HTTPException(status_code=500, detail=str(e))

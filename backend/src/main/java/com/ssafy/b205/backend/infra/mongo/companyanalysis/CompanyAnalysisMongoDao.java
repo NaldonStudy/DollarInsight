@@ -44,6 +44,24 @@ public class CompanyAnalysisMongoDao {
         return result.getMappedResults();
     }
 
+    public Optional<CompanyAnalysisDoc> sampleCompanyAnalysisWithPersonaComment(String personaField) {
+        if (!StringUtils.hasText(personaField)) {
+            return Optional.empty();
+        }
+        Criteria criteria = Criteria.where(personaField).ne(null).ne("");
+        Aggregation agg = Aggregation.newAggregation(
+                Aggregation.match(criteria),
+                Aggregation.sample(1)
+        );
+        AggregationResults<CompanyAnalysisDoc> result =
+                mongoTemplate.aggregate(agg, COLLECTION_COMPANY_ANALYSIS, CompanyAnalysisDoc.class);
+        List<CompanyAnalysisDoc> docs = result.getMappedResults();
+        if (docs.isEmpty()) {
+            return Optional.empty();
+        }
+        return Optional.of(docs.get(0));
+    }
+
     public List<InvestingNewsDoc> findInvestingNews(String ticker, int page, int size) {
         Query query = buildTickerQuery(ticker);
         query.with(Sort.by(Sort.Direction.DESC, "date", "_id"));

@@ -36,7 +36,8 @@ class ApiClient {
       BaseOptions(
         baseUrl: baseUrl,
         connectTimeout: const Duration(seconds: 10),
-        receiveTimeout: const Duration(seconds: 10),
+        // AI 응답 시간이 길 수 있으므로 수신 타임아웃을 60초로 늘림
+        receiveTimeout: const Duration(seconds: 60),
         contentType: 'application/json',
         responseType: ResponseType.json,
       ),
