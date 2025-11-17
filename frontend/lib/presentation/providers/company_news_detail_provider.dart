@@ -99,7 +99,7 @@ class CompanyNewsDetailProvider with ChangeNotifier {
 
     switch (code) {
       case 'heeyul':
-        return 'assets/images/heeyul.webp';
+        return 'assets/images/heuyeol.webp';
       case 'jiyul':
         return 'assets/images/jiyul.webp';
       case 'teo':
@@ -113,7 +113,7 @@ class CompanyNewsDetailProvider with ChangeNotifier {
         if (kDebugMode) {
           print('[CompanyNewsDetailProvider] 알 수 없는 personaCode: $personaCode');
         }
-        return 'assets/images/heeyul.webp'; // 기본 이미지
+        return 'assets/images/heuyeol.webp'; // 기본 이미지
     }
   }
 

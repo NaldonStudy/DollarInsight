@@ -23,7 +23,7 @@ class StockSection extends StatelessWidget {
 
       switch (code) {
         case 'heeyul':
-          return 'assets/images/heeyul.webp';
+          return 'assets/images/heuyeol.webp';
         case 'jiyul':
           return 'assets/images/jiyul.webp';
         case 'teo':
@@ -34,7 +34,7 @@ class StockSection extends StatelessWidget {
           return 'assets/images/deoksu.webp';
         default:
           // 알 수 없는 페르소나 코드는 기본 이미지 사용
-          return 'assets/images/heeyul.webp';
+          return 'assets/images/heuyeol.webp';
       }
     }
 
