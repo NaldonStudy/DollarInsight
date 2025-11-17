@@ -2,6 +2,7 @@
 // 채팅 관련 모델 클래스들
 
 import 'package:json_annotation/json_annotation.dart';
+import '../../core/utils/ticker_logo_mapper.dart';
 part 'chat_model.g.dart';
 
 /// 토픽 타입 열거형
@@ -249,7 +250,17 @@ class SessionItem {
       _$SessionItemFromJson(json);
 
   Map<String, dynamic> toJson() => _$SessionItemToJson(this);
+
+  /// 🔥 최종 확정 버전
+  /// 뉴스/커스텀 아이콘 제거 → ticker 기반 로고만 사용
+  String get resolvedLogoAsset {
+    if (ticker != null && TickerLogoMapper.hasLogo(ticker!)) {
+      return TickerLogoMapper.getLogoPath(ticker!);
+    }
+    return ""; // 기본 아이콘 제거 → 빈 문자열 반환
+  }
 }
+
 
 /// 세션 목록 응답
 @JsonSerializable()
