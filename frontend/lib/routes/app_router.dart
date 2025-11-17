@@ -40,7 +40,7 @@ import 'route_guards.dart';
 /// 앱 전체 라우터 설정
 class AppRouter {
   static final GoRouter router = GoRouter(
-    initialLocation: '/',
+    initialLocation: '/test-chat', // 🧪 테스트용: 인증 우회
     routes: [
       GoRoute(
         path: '/test-chat',
