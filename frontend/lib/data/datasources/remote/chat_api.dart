@@ -167,7 +167,7 @@ class ChatApi {
 
   /// 채팅 세션 목록 조회
   /// GET /api/chat/sessions
-  Future<SessionListResponse> getChatSessions({
+  Future<SessionListResponse> getSessionList({
     int page = 0,
     int size = 20,
   }) async {
@@ -212,7 +212,8 @@ class ChatApi {
       // 기본 설정
       dio.options.baseUrl = ApiClient.baseUrl;
       dio.options.connectTimeout = const Duration(seconds: 30);
-      dio.options.receiveTimeout = const Duration(seconds: 0); // SSE는 타임아웃 없음
+      // 수신 타임아웃을 null로 설정하여 무한정 대기 (스트리밍 연결 유지)
+      dio.options.receiveTimeout = null;
       dio.options.sendTimeout = const Duration(seconds: 30);
 
       // SSE 전용 헤더 설정
