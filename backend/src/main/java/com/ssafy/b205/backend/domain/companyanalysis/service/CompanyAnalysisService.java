@@ -63,18 +63,17 @@ public class CompanyAnalysisService {
     private static final int MONTHLY_RANGE_DAYS = 365;
     private static final int MAX_SEARCH_SIZE = 30;
     private static final int DASHBOARD_NEWS_SAMPLE = 3;
-    private static final int DAILY_PICK_SAMPLE = 5;
     private static final List<AssetType> DEFAULT_MASTER_TYPES = List.of(AssetType.STOCK, AssetType.ETF);
 
     private final CompanyAnalysisQueryRepository repository;
     private final CompanyAnalysisMongoDao mongoDao;
     private final Random random = new SecureRandom();
     private static final List<PersonaMeta> PERSONAS = List.of(
-            new PersonaMeta("DEOKSU", "덕수", PersonaCommentSource::getPersonaDeoksu),
-            new PersonaMeta("HYEOLYEOL", "혈열", PersonaCommentSource::getPersonaHyeolyeol),
-            new PersonaMeta("JIYUL", "지율", PersonaCommentSource::getPersonaJiyul),
-            new PersonaMeta("MINJI", "민지", PersonaCommentSource::getPersonaMinji),
-            new PersonaMeta("TEO", "테오", PersonaCommentSource::getPersonaTeo)
+            new PersonaMeta("DEOKSU", "덕수", "persona_deoksu", PersonaCommentSource::getPersonaDeoksu),
+            new PersonaMeta("HYEOLYEOL", "혈열", "persona_hyeolyeol", PersonaCommentSource::getPersonaHyeolyeol),
+            new PersonaMeta("JIYUL", "지율", "persona_jiyul", PersonaCommentSource::getPersonaJiyul),
+            new PersonaMeta("MINJI", "민지", "persona_minji", PersonaCommentSource::getPersonaMinji),
+            new PersonaMeta("TEO", "테오", "persona_teo", PersonaCommentSource::getPersonaTeo)
     );
 
     @Value("${app.market.fx.usd-krw:1350.0}")
@@ -232,16 +231,14 @@ public class CompanyAnalysisService {
     }
 
     private List<DailyPickResponse> buildDailyPickCards() {
-        List<CompanyAnalysisDoc> docs = mongoDao.sampleCompanyAnalyses(DAILY_PICK_SAMPLE);
-        if (docs.isEmpty()) {
-            return List.of();
-        }
         List<PersonaMeta> personaOrder = new ArrayList<>(PERSONAS);
         Collections.shuffle(personaOrder, random);
 
         List<DailyPickResponse> picks = new ArrayList<>();
         for (PersonaMeta persona : personaOrder) {
-            DailyPickResponse pick = pickPersonaDailyComment(docs, persona);
+            DailyPickResponse pick = mongoDao.sampleCompanyAnalysisWithPersonaComment(persona.commentField())
+                    .map(doc -> buildDailyPickCard(doc, persona))
+                    .orElseGet(() -> fallbackDailyPickCard(persona));
             if (pick != null) {
                 picks.add(pick);
             }
@@ -249,26 +246,48 @@ public class CompanyAnalysisService {
         return picks;
     }
 
-    private DailyPickResponse pickPersonaDailyComment(List<CompanyAnalysisDoc> docs, PersonaMeta persona) {
-        List<CompanyAnalysisDoc> shuffledDocs = new ArrayList<>(docs);
-        Collections.shuffle(shuffledDocs, random);
-        for (CompanyAnalysisDoc doc : shuffledDocs) {
-            if (!hasText(doc.getTicker())) {
-                continue;
-            }
-            PersonaCommentResponse comment = toPersonaComment(doc, persona);
-            if (comment == null) {
-                continue;
-            }
-            return new DailyPickResponse(
-                    doc.getTicker(),
-                    doc.getCompanyName(),
-                    doc.getCompanyInfo(),
-                    doc.getAnalyzedDate(),
-                    comment
-            );
+    private DailyPickResponse buildDailyPickCard(CompanyAnalysisDoc doc, PersonaMeta persona) {
+        if (doc == null || !hasText(doc.getTicker())) {
+            return null;
         }
-        return null;
+        PersonaCommentResponse comment = toPersonaComment(doc, persona);
+        if (comment == null) {
+            return null;
+        }
+        return new DailyPickResponse(
+                doc.getTicker(),
+                doc.getCompanyName(),
+                doc.getCompanyInfo(),
+                doc.getAnalyzedDate(),
+                comment
+        );
+    }
+
+    private DailyPickResponse fallbackDailyPickCard(PersonaMeta persona) {
+        List<CompanyAnalysisDoc> candidates = mongoDao.sampleCompanyAnalyses(1);
+        if (candidates.isEmpty()) {
+            return null;
+        }
+        CompanyAnalysisDoc doc = candidates.get(0);
+        if (doc == null || !hasText(doc.getTicker())) {
+            return null;
+        }
+        PersonaCommentResponse placeholder = new PersonaCommentResponse(
+                persona.code(),
+                persona.displayName(),
+                buildPlaceholderComment(persona)
+        );
+        return new DailyPickResponse(
+                doc.getTicker(),
+                doc.getCompanyName(),
+                doc.getCompanyInfo(),
+                doc.getAnalyzedDate(),
+                placeholder
+        );
+    }
+
+    private String buildPlaceholderComment(PersonaMeta persona) {
+        return persona.displayName() + "의 코멘트는 준비 중입니다.";
     }
 
     private PriceSeriesResponse buildPriceSeries(String ticker, boolean isStock) {
@@ -487,7 +506,7 @@ public class CompanyAnalysisService {
         return value != null && !value.trim().isEmpty();
     }
 
-    private record PersonaMeta(String code, String displayName,
+    private record PersonaMeta(String code, String displayName, String commentField,
                                Function<PersonaCommentSource, String> extractor) {
     }
 }
