@@ -199,17 +199,12 @@ class _AiFriendChangeScreenState extends State<AiFriendChangeScreen> {
     final success = await UserApi.updatePersonas(selectedCodes);
 
     if (success && mounted) {
-      context.go('/mypage');
-      Future.delayed(const Duration(milliseconds: 100), () {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("AI 친구가 변경되었습니다."),
-              duration: Duration(seconds: 2),
-            ),
-          );
-        }
-      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("AI 친구가 변경되었습니다."),
+          duration: Duration(seconds: 2),
+        ),
+      );
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(

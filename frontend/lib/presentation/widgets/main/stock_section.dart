@@ -62,7 +62,7 @@ class StockSection extends StatelessWidget {
                     context.push('/mypage/ai-friend');
                   },
                   child: Text(
-                    "편집",
+                    "AI친구수정",
                     style: TextStyle(
                       fontSize: w * 0.032, // 약 12px
                       fontWeight: FontWeight.w700,
@@ -71,21 +71,6 @@ class StockSection extends StatelessWidget {
                   ),
                 ),
 
-                SizedBox(width: w * 0.02), // 편집과 전체보기 간격
-
-                GestureDetector(
-                  onTap: () {
-                    // 전체보기 페이지 이동 처리
-                  },
-                  child: Text(
-                    "전체보기",
-                    style: TextStyle(
-                      fontSize: w * 0.032, // 약 12px
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFFA9A9A9),
-                    ),
-                  ),
-                ),
               ],
             ),
           ],
