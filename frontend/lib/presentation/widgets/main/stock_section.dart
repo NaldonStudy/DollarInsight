@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../widgets/chat/chat_bubble.dart';
 import '../../../data/models/dashboard_model.dart';
+import '../../../core/constants/etf_data.dart';
 
 class StockSection extends StatelessWidget {
   final double w;
@@ -89,8 +90,14 @@ class StockSection extends StatelessWidget {
                     for (int i = 0; i < dailyPicks.length; i++) ...[
                       GestureDetector(
                         onTap: () {
-                          // ✅ 티커를 사용해 기업 상세 페이지로 이동
-                          context.push('/company/${dailyPicks[i].ticker}');
+                          final ticker = dailyPicks[i].ticker;
+                          // ✅ ETF인지 확인 후 적절한 경로로 이동
+                          final isEtf = etfDataMap.containsKey(ticker.toUpperCase());
+                          if (isEtf) {
+                            context.push('/etf/$ticker');
+                          } else {
+                            context.push('/company/$ticker');
+                          }
                         },
                         child: ChatBubble(
                           text: dailyPicks[i].personaComment.comment,

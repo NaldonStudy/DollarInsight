@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../data/models/company_model.dart';
 import '../../data/repositories/company_repository.dart';
+import '../../core/constants/company_data.dart';
 
 /// 기업 설명 화면의 상태와 비즈니스 로직을 관리하는 Provider
 class CompanyInfoProvider with ChangeNotifier {
@@ -56,19 +57,15 @@ class CompanyInfoProvider with ChangeNotifier {
     }
   }
 
-  /// 임시 더미 데이터 (API 연결 전)
+  /// 하드코딩 데이터 사용 (company_data.dart에서 가져오기)
   void _useDummyData() {
-    _companyInfo = CompanyInfo(
-      id: companyId,
-      name: '엔비디아',
-      description:
-          '그래픽 프로세서 기술을 제공하는 세계적인 반도체 기업으로서, 컴퓨터, 게임기 등에 들어가는 GPU 개발 및 판매',
-      logoUrl: null,
-      homepage: 'http://www.nvidia.com',
-      ceo: 'Jen Hsun Huang',
-      foundedYear: '1993년',
-      listingDate: '1999년 1월 22일',
-    );
+    // companyId에 해당하는 데이터를 company_data.dart에서 조회
+    _companyInfo = getCompanyData(companyId);
+
+    // 데이터가 없으면 에러 설정
+    if (_companyInfo == null) {
+      _error = '해당 기업($companyId) 정보를 찾을 수 없습니다.\ncompany_data.dart에 데이터를 추가해주세요.';
+    }
   }
 
   /// 데이터 새로고침

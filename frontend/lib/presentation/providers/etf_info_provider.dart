@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../data/models/etf_model.dart';
 import '../../data/repositories/etf_repository.dart';
+import '../../core/constants/etf_data.dart';
 
 /// ETF 설명 화면의 상태와 비즈니스 로직을 관리하는 Provider
 class EtfInfoProvider with ChangeNotifier {
@@ -53,26 +54,15 @@ class EtfInfoProvider with ChangeNotifier {
     }
   }
 
-  /// 임시 더미 데이터 (API 연결 전)
+  /// etf_data.dart에서 가져오기
   void _useDummyData() {
-    _etfInfo = EtfInfo(
-      id: etfId,
-      name: 'QQQ',
-      description:
-          'AI와 테크 산업의 흐름을 반영하는 대표 ETF. 클라우드·반도체·플랫폼 등 혁신 성장주 중심으로 구성됩니다.',
-      logoUrl: null,
-      lastUpdateDate: '2025-10-31',
-      top10HoldingsRatio: '45.2%',
-      othersRatio: '54.8%',
-      totalStocks: '102개',
-      topHoldings: [
-        EtfHolding(companyName: 'NVIDIA Corporation', ratio: '7.94%'),
-        EtfHolding(companyName: 'Apple Inc.', ratio: '7.50%'),
-        EtfHolding(companyName: 'Microsoft Corporation', ratio: '7.20%'),
-        EtfHolding(companyName: 'Amazon.com Inc.', ratio: '6.80%'),
-        EtfHolding(companyName: 'Meta Platforms Inc.', ratio: '5.10%'),
-      ],
-    );
+    // etfId에 해당하는 데이터를 etf_data.dart에서 조회
+    _etfInfo = getEtfData(etfId);
+
+    // 데이터가 없으면 에러 설정
+    if (_etfInfo == null) {
+      _error = '해당 ETF($etfId) 정보를 찾을 수 없습니다.\netf_data.dart에 데이터를 추가해주세요.';
+    }
   }
 
   /// 데이터 새로고침
