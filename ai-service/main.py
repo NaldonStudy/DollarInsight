@@ -398,7 +398,7 @@ def run_autogen_discussion(
                     ai_response_queue.put(
                         {
                             "speaker": to_english_name(speaker.name),
-                            "text": ai_response,
+                            "content": ai_response,
                             "turn": turn + 1,
                         }
                     )
@@ -633,7 +633,7 @@ async def sse_generator(request: Request, session_id: str):
                 payload = {
                     "session_id": s.session_id,
                     "speaker": result.get("speaker", "unknown"),
-                    "text": result.get("text", ""),
+                    "content": result.get("content", ""),
                     "turn": result.get("turn", 0),
                     "ts_ms": int(time.time() * 1000),
                 }
