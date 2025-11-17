@@ -451,7 +451,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
 
   void _onChatTap(BuildContext context, SessionItem session) {
     // 채팅 화면으로 이동
-    context.go('/chat/${session.sessionUuid}');
+    context.push('/chat/${session.sessionUuid}');
   }
 
   void _onMenuSelected(BuildContext context, SessionItem session, String value) {
