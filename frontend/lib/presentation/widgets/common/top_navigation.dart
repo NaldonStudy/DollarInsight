@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 class TopNavigation extends StatelessWidget {
   final double w;
@@ -29,7 +30,10 @@ class TopNavigation extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Image.asset("assets/images/logomini.webp", width: w * 0.1),
+          GestureDetector(
+            onTap: () => context.go('/main'),
+            child: Image.asset("assets/images/logomini.webp", width: w * 0.1),
+          ),
 
           // 토글
           SizedBox(
