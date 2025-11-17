@@ -160,12 +160,21 @@ public class ChatServiceImpl implements ChatService {
         replayMissedMessages(emitter, sessionUuid, lastEventId);
         final Disposable keepAlive = startKeepAlive(emitter);
 
+        log.info("[ChatSvc-Stream] FastAPI SSE 스트림 구독 시작: sessionId={}", sessionUuid);
+        
         final Disposable sub = gateway.stream(sessionUuid.toString())
                 .doOnError(err -> {
+                    log.error("[ChatSvc-Stream] ❌ FastAPI 스트림 에러: sessionId={}, error={}", 
+                            sessionUuid, err.getMessage(), err);
                     try { emitter.completeWithError(err); } catch (Exception ignored) {}
                 })
                 .doOnComplete(() -> {
+                    log.info("[ChatSvc-Stream] ✅ FastAPI 스트림 정상 완료: sessionId={}", sessionUuid);
                     try { emitter.complete(); } catch (Exception ignored) {}
+                })
+                .doOnNext(sse -> {
+                    log.debug("[ChatSvc-Stream] 📥 SSE 이벤트 수신: event={}, data={}", 
+                            sse.event(), sse.data() != null ? sse.data().substring(0, Math.min(50, sse.data().length())) : "null");
                 })
                 .subscribe((ServerSentEvent<String> sse) -> {
                     try {

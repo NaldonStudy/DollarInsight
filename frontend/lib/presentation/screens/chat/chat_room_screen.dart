@@ -247,15 +247,16 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
     _scrollToBottom();
 
     try {
-      // 1. 먼저 SSE 스트림을 연결합니다.
-      debugPrint('🔌 SSE 스트림 연결 시작...');
+      // 1. 먼저 SSE 스트림을 연결합니다 (응답 받을 통로 생성)
+      debugPrint('🔌 SSE 스트림 연결 시작 (통로 생성)...');
       await _connectToSSEStream();
-      debugPrint('✅ SSE 스트림 연결 완료');
-
-      // 2. 스트림 연결 성공 후, 메시지를 보냅니다.
+      debugPrint('✅ SSE 스트림 연결 완료 (통로 준비됨)');
+      
+      // 2. 통로가 준비된 후 메시지를 보냅니다 (백엔드가 FastAPI /start를 호출)
       debugPrint('🌐 sendMessage API 호출 시작...');
-      await _chatRepository.sendMessage(widget.sessionId, messageText);
-      debugPrint('✅ sendMessage API 성공');
+      final response = await _chatRepository.sendMessage(widget.sessionId, messageText);
+      debugPrint('✅ sendMessage API 성공: ${response.messageId}');
+      
     } catch (e, stackTrace) {
       debugPrint('❌ 메시지 전송 또는 SSE 연결 실패: $e');
       debugPrint('📍 스택 트레이스: $stackTrace');
