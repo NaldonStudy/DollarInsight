@@ -23,7 +23,7 @@ class ChatRoomScreen extends StatefulWidget {
   State<ChatRoomScreen> createState() => _ChatRoomScreenState();
 }
 
-class _ChatRoomScreenState extends State<ChatRoomScreen> {
+class _ChatRoomScreenState extends State<ChatRoomScreen> with WidgetsBindingObserver {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   late final ChatRepository _chatRepository;
@@ -37,20 +37,66 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
 
   StreamSubscription<SSEMessage>? _sseSubscription;
   bool _isStreaming = false;
+  bool _shouldKeepConnection = false; // SSE 연결 유지 플래그
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _chatRepository = context.read<ChatProvider>().chatRepository;
     _initializeChatRoom();
   }
 
   @override
   void dispose() {
-    _stopSSEStreamSafely();
+    WidgetsBinding.instance.removeObserver(this);
+    // dispose 시에는 SSE 연결을 끊지 않음
+    // 사용자가 명시적으로 나갈 때만 끊음
     _controller.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    
+    switch (state) {
+      case AppLifecycleState.paused:
+        // 앱이 백그라운드로 가면 연결 유지 (배터리 고려)
+        debugPrint('📱 앱 백그라운드 - SSE 연결 유지');
+        break;
+      case AppLifecycleState.resumed:
+        // 앱이 포그라운드로 돌아오면 연결 확인
+        debugPrint('📱 앱 포그라운드 복귀 - SSE 연결 상태 확인');
+        if (_shouldKeepConnection && _sseSubscription == null && !_isStreaming) {
+          // 연결이 끊겼다면 재연결 시도
+          debugPrint('🔄 SSE 재연결 시도');
+          _reconnectSSEStream();
+        }
+        break;
+      case AppLifecycleState.detached:
+        // 앱이 완전히 종료되면 연결 종료
+        debugPrint('📱 앱 종료 - SSE 연결 종료');
+        _stopSSEStreamSafely();
+        break;
+      default:
+        break;
+    }
+  }
+
+  Future<void> _reconnectSSEStream() async {
+    try {
+      if (_isStreaming || _sseSubscription != null) {
+        debugPrint('⚠️ 이미 연결 중이므로 재연결 스킵');
+        return;
+      }
+      
+      debugPrint('🔄 SSE 스트림 재연결 시작');
+      await _connectToSSEStream();
+    } catch (e) {
+      debugPrint('❌ SSE 재연결 실패: $e');
+    }
   }
 
   Future<void> _stopSSEStreamSafely() async {
@@ -199,21 +245,24 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     _scrollToBottom();
 
     try {
-      debugPrint('🌐 sendMessage API 호출 시작...');
-      final response = await _chatRepository.sendMessage(widget.sessionId, messageText);
-      debugPrint('✅ sendMessage API 성공: ${response.messageId}');
-      
+      // 1. 먼저 SSE 스트림을 연결합니다.
       debugPrint('🔌 SSE 스트림 연결 시작...');
       await _connectToSSEStream();
       debugPrint('✅ SSE 스트림 연결 완료');
+
+      // 2. 스트림 연결 성공 후, 메시지를 보냅니다.
+      debugPrint('🌐 sendMessage API 호출 시작...');
+      await _chatRepository.sendMessage(widget.sessionId, messageText);
+      debugPrint('✅ sendMessage API 성공');
+
     } catch (e, stackTrace) {
-      debugPrint('❌ 메시지 전송 실패: $e');
+      debugPrint('❌ 메시지 전송 또는 SSE 연결 실패: $e');
       debugPrint('📍 스택 트레이스: $stackTrace');
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('메시지 전송 실패: $e'),
+            content: Text('메시지 전송에 실패했습니다: $e'),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 5),
           ),
@@ -227,10 +276,15 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
 
   Future<void> _connectToSSEStream() async {
     try {
-      await _stopSSEStreamSafely();
+      // 기존 연결이 있으면 정리 (재연결이 아닌 경우에만)
+      if (_sseSubscription != null) {
+        await _sseSubscription!.cancel();
+        _sseSubscription = null;
+      }
 
       setState(() {
         _isStreaming = true;
+        _shouldKeepConnection = true; // 연결 유지 플래그 설정
       });
 
       final sseStream = await _chatRepository.connectToSSEStream(widget.sessionId);
@@ -273,6 +327,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                     _messages[_messages.length - 1] = currentAIMessage!.finishStreaming();
                     _isStreaming = false;
                     _isSending = false;
+                    _shouldKeepConnection = false; // 스트리밍 완료 시 플래그 해제
                   });
                 }
                 break;
@@ -300,6 +355,15 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
               _isStreaming = false;
               _isSending = false;
             });
+            // 에러 발생 시 자동 재연결 시도 (최대 3번)
+            if (_shouldKeepConnection) {
+              Future.delayed(const Duration(seconds: 2), () {
+                if (mounted && _shouldKeepConnection) {
+                  debugPrint('🔄 에러 후 재연결 시도');
+                  _reconnectSSEStream();
+                }
+              });
+            }
           }
         },
         onDone: () {
@@ -349,6 +413,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       canPop: true,
       onPopInvoked: (didPop) async {
         if (didPop) {
+          // 뒤로가기 시 명시적으로 연결 종료
+          _shouldKeepConnection = false;
           await _stopSSEStreamSafely();
         }
       },
@@ -360,6 +426,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
           leading: CustomBackButton(
             iconColor: Colors.black87,
             onPressed: () async {
+              // 백 버튼 클릭 시 명시적으로 연결 종료
+              _shouldKeepConnection = false;
               await _stopSSEStreamSafely();
               Navigator.of(context).pop();
             },
@@ -702,7 +770,10 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
             if (_isStreaming)
               IconButton(
                 icon: const Icon(Icons.stop, color: Colors.red),
-                onPressed: _stopSSEStreamSafely,
+                onPressed: () async {
+                  _shouldKeepConnection = false;
+                  await _stopSSEStreamSafely();
+                },
                 tooltip: '스트림 중단',
               )
             else

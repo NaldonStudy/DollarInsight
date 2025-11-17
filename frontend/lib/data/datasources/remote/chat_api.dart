@@ -223,14 +223,14 @@ class ChatApi {
         'Connection': 'keep-alive',
       });
 
-      // 인터셉터 추가 (필요시)
-      dio.interceptors.add(LogInterceptor(
-        requestBody: false,
-        responseBody: false,
-        requestHeader: true,
-        responseHeader: false,
-        error: true,
-      ));
+      // SSE 스트림 연결에서는 LogInterceptor를 제거하여 잠재적인 간섭을 방지합니다.
+      // dio.interceptors.add(LogInterceptor(
+      //   requestBody: false,
+      //   responseBody: false,
+      //   requestHeader: true,
+      //   responseHeader: false,
+      //   error: true,
+      // ));
 
       return dio;
     } catch (e) {
