@@ -24,6 +24,10 @@ public class UserPersona {
     @Column(nullable = false)
     private boolean enabled = true;
 
+    public void changeEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
+
     public static UserPersona of(Integer userId, Integer personaId, boolean enabled) {
         UserPersona up = new UserPersona();
         up.userId = userId;

@@ -224,6 +224,107 @@ class ApiError {
   Map<String, dynamic> toJson() => _$ApiErrorToJson(this);
 }
 
+/// 세션 목록 아이템
+@JsonSerializable()
+class SessionItem {
+  final String sessionUuid;
+  final TopicType topicType;
+  final String title;
+  final String? ticker;
+  final int? companyNewsId;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  SessionItem({
+    required this.sessionUuid,
+    required this.topicType,
+    required this.title,
+    this.ticker,
+    this.companyNewsId,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  factory SessionItem.fromJson(Map<String, dynamic> json) =>
+      _$SessionItemFromJson(json);
+
+  Map<String, dynamic> toJson() => _$SessionItemToJson(this);
+}
+
+/// 세션 목록 응답
+@JsonSerializable()
+class SessionListResponse {
+  final List<SessionItem> items;
+  final int page;
+  final int size;
+  final int totalElements;
+  final int totalPages;
+  final bool hasNext;
+
+  SessionListResponse({
+    required this.items,
+    required this.page,
+    required this.size,
+    required this.totalElements,
+    required this.totalPages,
+    required this.hasNext,
+  });
+
+  factory SessionListResponse.fromJson(Map<String, dynamic> json) =>
+      _$SessionListResponseFromJson(json);
+
+  Map<String, dynamic> toJson() => _$SessionListResponseToJson(this);
+}
+
+/// 세션 응답 (Auth Session API 기반)
+@JsonSerializable()
+class SessionResponse {
+  final String sessionUuid;
+  final String deviceUuid;
+  final String deviceLabel;
+  final DateTime issuedAt;
+  final DateTime expiresAt;
+  final DateTime? revokedAt;
+  final bool pushEnabled;
+
+  SessionResponse({
+    required this.sessionUuid,
+    required this.deviceUuid,
+    required this.deviceLabel,
+    required this.issuedAt,
+    required this.expiresAt,
+    this.revokedAt,
+    required this.pushEnabled,
+  });
+
+  factory SessionResponse.fromJson(Map<String, dynamic> json) =>
+      _$SessionResponseFromJson(json);
+
+  Map<String, dynamic> toJson() => _$SessionResponseToJson(this);
+
+  /// SessionItem으로 변환 (세션 아이디가 있을 경우)
+  SessionItem? toSessionItem({
+    TopicType? topicType,
+    String? title,
+    String? ticker,
+    int? companyNewsId,
+  }) {
+    // 세션이 활성 상태이고 만료되지 않았을 때만 변환
+    if (revokedAt == null && DateTime.now().isBefore(expiresAt)) {
+      return SessionItem(
+        sessionUuid: sessionUuid,
+        topicType: topicType ?? TopicType.custom,
+        title: title ?? '채팅',
+        ticker: ticker,
+        companyNewsId: companyNewsId,
+        createdAt: issuedAt,
+        updatedAt: issuedAt,
+      );
+    }
+    return null;
+  }
+}
+
 /// Chat API 관련 예외 클래스
 class ChatApiException implements Exception {
   final String message;

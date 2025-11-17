@@ -165,6 +165,41 @@ class ChatApi {
     }
   }
 
+  /// 채팅 세션 목록 조회
+  /// GET /api/chat/sessions
+  Future<SessionListResponse> getChatSessions({
+    int page = 0,
+    int size = 20,
+  }) async {
+    try {
+      final response = await _apiClient.get(
+        '/api/chat/sessions',
+        queryParameters: {
+          'page': page,
+          'size': size,
+        },
+      );
+
+      // 응답 구조 확인하고 data 래퍼 처리
+      if (response is Map<String, dynamic>) {
+        // data 래퍼가 있는 경우
+        if (response.containsKey('data') && response['ok'] == true) {
+          return SessionListResponse.fromJson(response['data']);
+        }
+        // data 래퍼가 없는 경우 (직접 응답)
+        else if (response.containsKey('items')) {
+          return SessionListResponse.fromJson(response);
+        }
+      }
+
+      throw ChatApiException('Unexpected response structure: $response');
+    } on DioException catch (e) {
+      throw _handleDioException(e, 'Failed to get chat sessions');
+    } catch (e) {
+      throw ChatApiException('Unexpected error while getting chat sessions: $e');
+    }
+  }
+
   /// SSE 스트림 연결을 위한 Dio 인스턴스 생성
   /// GET /api/chat/sessions/{sid}/stream
   ///
