@@ -100,8 +100,7 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
                     onTapCompany: () => setState(() => isCompany = true),
                     onTapChat: () => setState(() => isCompany = false),
                     onProfileTap: () {
-                      // TODO: 마이페이지로 이동
-                      // context.push('/mypage');
+                      context.push('/mypage');
                     },
                   ),
 
