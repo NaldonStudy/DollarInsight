@@ -38,9 +38,6 @@ class CompanyDetailProvider with ChangeNotifier {
   String? _currentPriceUsd;
   String? get currentPriceUsd => _currentPriceUsd;
 
-  String? _logoUrl;
-  String? get logoUrl => _logoUrl;
-
   Map<String, String>? _indicators;
   Map<String, String>? get indicators => _indicators;
 
@@ -102,7 +99,6 @@ class CompanyDetailProvider with ChangeNotifier {
   void _mapResponseToState(CompanyDetailResponse response) {
     // 기본 정보
     _companyName = response.basicInfo.name;
-    _logoUrl = null; // TODO: 로고 URL이 API에 추가되면 매핑
 
     // 가격 정보
     final priceFormatter = NumberFormat('#,###');

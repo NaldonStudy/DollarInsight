@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
+import 'package:intl/intl.dart';
 import '../../../data/models/dashboard_model.dart';
 
 class IndexSection extends StatefulWidget {
@@ -98,6 +99,7 @@ class _IndexSectionState extends State<IndexSection> {
               },
               itemBuilder: (context, index) {
                 final majorIndex = widget.majorIndices[index];
+                final numberFormatter = NumberFormat('#,##0.00');
                 return Container(
                   decoration: BoxDecoration(
                     color: Colors.white,
@@ -112,10 +114,7 @@ class _IndexSectionState extends State<IndexSection> {
                       ),
                       const SizedBox(width: 10),
                       Text(
-                        "${majorIndex.changePct >= 0 ? '▲' : '▼'} ${majorIndex
-                            .close.toStringAsFixed(2)}  ${majorIndex
-                            .changePct >= 0 ? '+' :
-                        ''}${majorIndex.changePct.toStringAsFixed(2)}%",
+                        "${majorIndex.changePct >= 0 ? '▲' : '▼'} ${numberFormatter.format(majorIndex.close)}  ${majorIndex.changePct >= 0 ? '+' : ''}${majorIndex.changePct.toStringAsFixed(2)}%",
                         style: TextStyle(
                           color: majorIndex.changePct >= 0
                               ? const Color(0xFFFF171B)

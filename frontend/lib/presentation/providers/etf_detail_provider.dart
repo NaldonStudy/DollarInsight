@@ -39,9 +39,6 @@ class ETFDetailProvider with ChangeNotifier {
   String? _currentPriceUsd;
   String? get currentPriceUsd => _currentPriceUsd;
 
-  String? _logoUrl;
-  String? get logoUrl => _logoUrl;
-
   // ETF 투자지표 (시가총액, 배당수익률, 운용자산, 순자산가치, 괴리율, 운용보수)
   Map<String, String>? _etfIndicators;
   Map<String, String>? get etfIndicators => _etfIndicators;
@@ -94,7 +91,6 @@ class ETFDetailProvider with ChangeNotifier {
   void _mapResponseToState(CompanyDetailResponse response) {
     // 기본 정보
     _etfName = response.basicInfo.name;
-    _logoUrl = null; // TODO: 로고 URL이 API에 추가되면 매핑
 
     // 가격 정보
     final priceFormatter = NumberFormat('#,###');
