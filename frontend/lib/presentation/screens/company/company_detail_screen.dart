@@ -283,13 +283,26 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
           WatchButton(
             isWatching: provider.isWatching,
             onTap: () async {
+              final wasWatching = provider.isWatching;
               try {
                 await provider.toggleWatchlist();
+                // 성공 메시지 표시
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(wasWatching ? '관심종목에서 제거되었습니다' : '관심종목에 추가되었습니다'),
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                }
               } catch (e) {
                 // Provider에서 에러를 던지면 여기서 처리
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('관심종목 설정에 실패했습니다: $e')),
+                    SnackBar(
+                      content: Text('관심종목 설정에 실패했습니다: $e'),
+                      duration: const Duration(seconds: 2),
+                    ),
                   );
                 }
               }

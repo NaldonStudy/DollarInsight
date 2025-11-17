@@ -174,6 +174,24 @@ class ApiClient {
     }
   }
 
+  Future<dynamic> patch(
+      String endpoint, {
+        Map<String, String>? headers,
+        Map<String, dynamic>? body,
+      }) async {
+    try {
+      final response = await _dio.patch(
+        endpoint,
+        data: body,
+        options: Options(headers: headers),
+      );
+
+      return _handleResponse(response);
+    } catch (e) {
+      throw Exception('PATCH 요청 실패: $e');
+    }
+  }
+
   /// DELETE 요청
   Future<dynamic> delete(
     String endpoint, {

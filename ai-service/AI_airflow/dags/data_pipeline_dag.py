@@ -18,8 +18,9 @@ utils_dir = os.path.join(airflow_dir, "utils")
 if utils_dir not in sys.path:
     sys.path.insert(0, utils_dir)
 
-from raw_data_pipeline import run_pipeline as run_raw_data_pipeline
-from metrics_scores_pipeline import run_pipeline as run_metrics_scores_pipeline
+# Lazy import: 무거운 라이브러리는 함수 내부에서 import하여 DAG 파싱 시 CPU/메모리 사용량 감소
+# from raw_data_pipeline import run_pipeline as run_raw_data_pipeline
+# from metrics_scores_pipeline import run_pipeline as run_metrics_scores_pipeline
 
 
 # 기본 인자 설정
@@ -51,6 +52,8 @@ dag = DAG(
 
 def run_raw_data(**context):
     """Raw data pipeline 실행"""
+    # Lazy import: 무거운 라이브러리는 함수 내부에서 import하여 DAG 파싱 시 CPU/메모리 사용량 감소
+    from raw_data_pipeline import run_pipeline as run_raw_data_pipeline
     from datetime import datetime
 
     execution_date = context.get("execution_date") or context.get("data_interval_start")
@@ -79,6 +82,8 @@ def run_raw_data(**context):
 
 def run_metrics_scores(**context):
     """Metrics & scores pipeline 실행"""
+    # Lazy import: 무거운 라이브러리는 함수 내부에서 import하여 DAG 파싱 시 CPU/메모리 사용량 감소
+    from metrics_scores_pipeline import run_pipeline as run_metrics_scores_pipeline
     from datetime import datetime
 
     execution_date = context.get("execution_date") or context.get("data_interval_start")

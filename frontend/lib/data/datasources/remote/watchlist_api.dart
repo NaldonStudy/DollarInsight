@@ -1,4 +1,4 @@
-import '../../models/watchlist_models.dart';
+import '../../models/watchlist_model.dart';
 import 'api_client.dart';
 
 /// 관심종목 관리 API 클래스
@@ -19,13 +19,15 @@ class WatchlistApi {
     try {
       final dynamic response = await _apiClient.get('/api/watchlist');
 
-      // API 문서에 따르면 직접 List<WatchlistItemResponse>가 반환됨
-      if (response is List) {
-        return response
+      // API 응답이 { ok, data, timestamp } 구조로 래핑되어 있음
+      final data = response['data'];
+
+      if (data is List) {
+        return data
             .map((item) => WatchlistItem.fromJson(item as Map<String, dynamic>))
             .toList();
       } else {
-        throw Exception('예상치 못한 응답 구조: ${response.runtimeType}');
+        throw Exception('예상치 못한 응답 구조: ${data.runtimeType}');
       }
     } catch (e) {
       throw Exception('관심종목 목록 조회 실패: $e');

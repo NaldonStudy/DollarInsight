@@ -29,9 +29,10 @@ pipelines_dir = os.path.join(utils_dir, "pipelines")
 if pipelines_dir not in sys.path:
     sys.path.insert(0, pipelines_dir)
 
-from prediction_system.pipelines.training_pipeline import (
-    run_pipeline as run_training_pipeline,
-)
+# Lazy import: 무거운 라이브러리는 함수 내부에서 import하여 DAG 파싱 시 CPU/메모리 사용량 감소
+# from prediction_system.pipelines.training_pipeline import (
+#     run_pipeline as run_training_pipeline,
+# )
 
 
 # 기본 인자 설정
@@ -62,6 +63,10 @@ dag = DAG(
 
 def run_training(**context):
     """모델 학습 파이프라인 실행"""
+    # Lazy import: 무거운 라이브러리는 함수 내부에서 import하여 DAG 파싱 시 CPU/메모리 사용량 감소
+    from prediction_system.pipelines.training_pipeline import (
+        run_pipeline as run_training_pipeline,
+    )
     from datetime import datetime
 
     execution_date = context.get("execution_date") or context.get("data_interval_start")

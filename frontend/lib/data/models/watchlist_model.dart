@@ -53,11 +53,10 @@ class WatchlistItem {
       nameEng: json['nameEng'] as String?,
       exchange: json['exchange'] as String,
       addedAt: DateTime.parse(json['addedAt'] as String),
-      // API 문서에 따라 필드명 확인 필요
-      lastPriceDate: json['priceDate'] != null  // 또는 'lastPriceDate'
-          ? DateTime.parse(json['priceDate'] as String)
+      lastPriceDate: json['lastPriceDate'] != null
+          ? DateTime.parse(json['lastPriceDate'] as String)
           : null,
-      lastPrice: json['close']?.toDouble() ?? json['lastPrice']?.toDouble(), // 'close' 또는 'lastPrice'
+      lastPrice: json['lastPrice']?.toDouble(),
       changePct: json['changePct']?.toDouble(),
     );
   }

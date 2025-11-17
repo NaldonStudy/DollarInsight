@@ -263,12 +263,25 @@ class _ETFDetailScreenState extends State<ETFDetailScreen>
           WatchButton(
             isWatching: provider.isWatching,
             onTap: () async {
+              final wasWatching = provider.isWatching;
               try {
                 await provider.toggleWatchlist();
+                // 성공 메시지 표시
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(wasWatching ? '관심종목에서 제거되었습니다' : '관심종목에 추가되었습니다'),
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                }
               } catch (e) {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('관심종목 설정에 실패했습니다: $e')),
+                    SnackBar(
+                      content: Text('관심종목 설정에 실패했습니다: $e'),
+                      duration: const Duration(seconds: 2),
+                    ),
                   );
                 }
               }

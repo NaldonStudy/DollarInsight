@@ -1,17 +1,23 @@
 import 'package:flutter/material.dart';
 import '../../data/repositories/company_repository.dart';
 import '../../data/models/company_detail_model.dart';
+import '../../data/repositories/watchlist_repository.dart';
+import '../../data/datasources/remote/api_client.dart';
+import '../../data/datasources/remote/watchlist_api.dart';
 import 'package:intl/intl.dart';
 
 /// 기업 상세 화면의 상태와 비즈니스 로직을 관리하는 Provider
 class CompanyDetailProvider with ChangeNotifier {
   final String companyId;
   final CompanyRepository _companyRepository;
+  final WatchlistRepository _watchlistRepository;
 
   CompanyDetailProvider({
     required this.companyId,
     CompanyRepository? companyRepository,
-  }) : _companyRepository = companyRepository ?? CompanyRepository() {
+    WatchlistRepository? watchlistRepository,
+  }) : _companyRepository = companyRepository ?? CompanyRepository(),
+       _watchlistRepository = watchlistRepository ?? WatchlistRepository(WatchlistApi(ApiClient())) {
     _loadCompanyData();
   }
 
@@ -183,36 +189,24 @@ class CompanyDetailProvider with ChangeNotifier {
 
   /// 관심종목 상태 확인 API 호출
   Future<void> _checkWatchlistStatus() async {
-    // TODO: API 연결
-    // final response = await userRepository.checkWatchlist(companyId);
-    // _isWatching = response.isWatching;
-
-    // 임시 더미 데이터 (API 연결 후 삭제)
-    await Future.delayed(const Duration(milliseconds: 300));
-    _isWatching = false;
+    try {
+      final status = await _watchlistRepository.isWatching(companyId);
+      _isWatching = status;
+    } catch (e) {
+      _isWatching = false;
+    }
   }
 
-  /// 데이터 새로고침
-  Future<void> refresh() async {
-    await _loadCompanyData();
-  }
-
-  /// 관심종목 추가/삭제 (API 연결 지점)
+  /// 관심종목 추가/삭제 (API 연결)
   Future<void> toggleWatchlist() async {
     try {
-      // TODO: 백엔드 API 연결
-      // if (_isWatching) {
-      //   await userRepository.removeFromWatchlist(companyId);
-      // } else {
-      //   await userRepository.addToWatchlist(companyId);
-      // }
-
+      await _watchlistRepository.toggleWatchlist(companyId);
       _isWatching = !_isWatching;
       notifyListeners();
     } catch (e) {
       _error = '관심종목 설정에 실패했습니다: $e';
       notifyListeners();
-      rethrow; // UI에서 에러 처리를 위해 다시 throw
+      rethrow;
     }
   }
 

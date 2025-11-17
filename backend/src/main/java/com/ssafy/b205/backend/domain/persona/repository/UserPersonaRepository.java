@@ -6,6 +6,8 @@ import org.springframework.data.jpa.repository.Query;
 
 public interface UserPersonaRepository extends JpaRepository<UserPersona, Integer> {
 
+    java.util.List<UserPersona> findByUserId(Integer userId);
+
     @Query("""
         select (count(up) > 0)
           from UserPersona up

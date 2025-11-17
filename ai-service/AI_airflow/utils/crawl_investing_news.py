@@ -100,7 +100,7 @@ class InvestingNewsCrawler:
 
         return "\n".join(cleaned).strip()
 
-    def parse_article(self, page, article_url: str):
+    def parse_article(self, page, article_url: str, wait_for_content: bool = True):
         """개별 기사 페이지에서 제목, 본문, 날짜 추출"""
         try:
             # 타임아웃을 60초로 증가 (DOM 로드 완료 대기)
@@ -111,7 +111,32 @@ class InvestingNewsCrawler:
                 page.evaluate("window.scrollBy(0, 800);")
                 time.sleep(0.1)
 
-            time.sleep(1)
+            # 봇 감지 페이지인지 확인하고 실제 콘텐츠가 로드될 때까지 대기
+            if wait_for_content:
+                max_wait_time = 30  # 최대 30초 대기
+                wait_interval = 2  # 2초마다 확인
+                waited = 0
+                
+                while waited < max_wait_time:
+                    time.sleep(wait_interval)
+                    waited += wait_interval
+                    
+                    # 페이지 내용 확인
+                    page_title = (page.locator("h1").first.text_content() or page.title() or "").strip()
+                    page_content = page.content()
+                    
+                    # 봇 감지 페이지가 아닌지 확인
+                    if "Verifying you are human" not in page_content and page_title != "kr.investing.com":
+                        # 실제 콘텐츠가 있는지 확인
+                        content = self.get_content(page)
+                        if content and len(content) > 50:
+                            break
+                    
+                    # 진행 상황 출력
+                    if waited % 6 == 0:  # 6초마다 출력
+                        print(f"    ⏳ 봇 감지 페이지 대기 중... ({waited}초)")
+            else:
+                time.sleep(1)
 
             title = (page.locator("h1").first.text_content() or page.title() or "").strip()
             date = self.get_date(page)
@@ -142,6 +167,16 @@ class InvestingNewsCrawler:
             if entry.get("link")
         ]
 
+        import random
+        
+        # 랜덤 User-Agent 목록 (봇 감지 회피)
+        user_agents = [
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:131.0) Gecko/20100101 Firefox/131.0",
+        ]
+        
         with sync_playwright() as p:
             browser = p.chromium.launch(
                 headless=True, 
@@ -150,28 +185,34 @@ class InvestingNewsCrawler:
                     "--disable-gpu",
                     "--no-sandbox",
                     "--disable-dev-shm-usage",
-                    "--disable-setuid-sandbox"
+                    "--disable-setuid-sandbox",
+                    "--disable-web-security",
                 ]
             )
             context = browser.new_context(
                 viewport={"width": 1920, "height": 1080},
-                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+                user_agent=random.choice(user_agents),  # 랜덤 User-Agent 사용
                 ignore_https_errors=True,
+                storage_state=None,  # 쿠키/세션 초기화
             )
             page = context.new_page()
             
             # 페이지 타임아웃 설정
             page.set_default_timeout(60000)  # 60초
 
-            # webdriver 속성 숨기기
-            page.add_init_script(
-                "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
-            )
+            # webdriver 속성 숨기기 (강화된 봇 감지 회피)
+            page.add_init_script("""
+                Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
+                Object.defineProperty(navigator, 'plugins', {get: () => [1, 2, 3, 4, 5]});
+                Object.defineProperty(navigator, 'languages', {get: () => ['ko-KR', 'ko', 'en-US', 'en']});
+                window.chrome = {runtime: {}};
+            """)
 
             for idx, url in enumerate(article_urls, 1):
                 try:
                     print(f"[{idx}/{len(article_urls)}] 처리 중: {url[:60]}...")
-                    article_data = self.parse_article(page, url)
+                    # 첫 시도에서는 봇 감지 페이지 대기 활성화
+                    article_data = self.parse_article(page, url, wait_for_content=True)
 
                     if article_data and article_data.get("content"):
                         results.append(article_data)
@@ -181,7 +222,9 @@ class InvestingNewsCrawler:
                     else:
                         print(f"  ✗ 본문 없음 (건너뜀)")
 
-                    time.sleep(1)
+                    # 요청 간 랜덤 대기 (봇 감지 회피)
+                    wait_time = random.uniform(1.0, 3.0)
+                    time.sleep(wait_time)
                 except Exception as e:
                     print(f"  ❌ 기사 처리 실패 ({type(e).__name__}): {str(e)[:100]}")
                     # 에러가 발생해도 다음 기사 계속 처리

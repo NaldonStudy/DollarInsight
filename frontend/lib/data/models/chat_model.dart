@@ -2,7 +2,6 @@
 // 채팅 관련 모델 클래스들
 
 import 'package:json_annotation/json_annotation.dart';
-
 part 'chat_model.g.dart';
 
 /// 토픽 타입 열거형
