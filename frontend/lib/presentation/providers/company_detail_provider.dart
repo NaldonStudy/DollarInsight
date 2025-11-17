@@ -111,8 +111,9 @@ class CompanyDetailProvider with ChangeNotifier {
 
     // 투자지표 (STOCK 타입일 때)
     if (response.stockIndicators != null) {
+      final marketCapInTrillions = response.stockIndicators!.marketCap / 1000000000000;
       _indicators = {
-        '시가총액': '${priceFormatter.format(response.stockIndicators!.marketCap)}억원',
+        '시가총액': '${marketCapInTrillions.toStringAsFixed(1)} 조원',
         '배당수익률': '${response.stockIndicators!.dividendYield.toStringAsFixed(2)}%',
         'PBR': '${response.stockIndicators!.pbr.toStringAsFixed(1)}배',
         'PER': '${response.stockIndicators!.per.toStringAsFixed(1)}배',
@@ -121,10 +122,12 @@ class CompanyDetailProvider with ChangeNotifier {
       };
     } else if (response.etfIndicators != null) {
       // ETF 지표
+      final marketCapInTrillions = response.etfIndicators!.marketCap / 1000000000000;
+      final totalAssetsInTrillions = response.etfIndicators!.totalAssets / 1000000000000;
       _indicators = {
-        '시가총액': '${priceFormatter.format(response.etfIndicators!.marketCap)}억원',
+        '시가총액': '${marketCapInTrillions.toStringAsFixed(1)} 조원',
         '배당수익률': '${response.etfIndicators!.dividendYield.toStringAsFixed(2)}%',
-        '총자산': '${priceFormatter.format(response.etfIndicators!.totalAssets)}억원',
+        '총자산': '${totalAssetsInTrillions.toStringAsFixed(1)} 조원',
         'NAV': '${response.etfIndicators!.nav.toStringAsFixed(2)}',
         '프리미엄': '${response.etfIndicators!.premiumDiscount.toStringAsFixed(2)}%',
         '운용비용': '${response.etfIndicators!.expenseRatio.toStringAsFixed(2)}%',

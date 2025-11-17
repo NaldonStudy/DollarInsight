@@ -249,98 +249,150 @@ class _ChatListScreenState extends State<ChatListScreen> {
   }
 
   Widget _buildChatListItem(BuildContext context, SessionItem session) {
-    return Card(
+    /// 화면 크기 비율 가져오기
+    final w = MediaQuery.of(context).size.width;
+    final h = MediaQuery.of(context).size.height;
+
+    return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      elevation: 2,
-      color: Colors.white, // 흰색 배경 설정
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE5E8EB)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          )
+        ],
       ),
       child: InkWell(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         onTap: () => _onChatTap(context, session),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      session.title,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF212121),
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  _buildTopicTypeChip(session.topicType),
-                ],
-              ),
-              const SizedBox(height: 8),
-              if (session.ticker != null) ...[
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.trending_up,
-                      size: 16,
-                      color: Colors.green,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      session.ticker!,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.green,
-                      ),
-                    ),
-                  ],
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            /// ------------------------
+            /// 왼쪽 기업 로고 (원형)
+            /// ------------------------
+            Container(
+              width: w * 0.13,  // 반응형: 52 → 화면 비율
+              height: w * 0.13,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.blue.shade100,
+                image: DecorationImage(
+                  image: AssetImage(session.resolvedLogoAsset),
+                  fit: BoxFit.cover,
                 ),
-                const SizedBox(height: 8),
-              ],
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              ),
+            ),
+
+            SizedBox(width: w * 0.04), // 반응형 간격
+
+            /// ------------------------
+            /// 오른쪽 텍스트 영역
+            /// ------------------------
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    _formatDateTime(session.updatedAt),
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Color(0xFF757575),
-                    ),
-                  ),
-                  PopupMenuButton<String>(
-                    icon: const Icon(
-                      Icons.more_vert,
-                      size: 18,
-                      color: Color(0xFF757575),
-                    ),
-                    onSelected: (value) => _onMenuSelected(context, session, value),
-                    itemBuilder: (context) => [
-                      const PopupMenuItem(
-                        value: 'delete',
-                        child: Row(
-                          children: [
-                            Icon(Icons.delete_outline, size: 18),
-                            SizedBox(width: 8),
-                            Text('삭제'),
-                          ],
+
+                  /// --------------------------
+                  /// 1줄: Chip + 제목 + 티커
+                  /// --------------------------
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      _buildTopicTypeChip(session.topicType),
+
+                      SizedBox(width: w * 0.015),
+
+                      /// ✔ 제목
+                      Expanded(
+                        child: Text(
+                          session.title,
+                          style: TextStyle(
+                            fontSize: w * 0.042, // 반응형 텍스트
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF1F1F1F),
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
+
+                      /// ✔ 티커 (오른쪽 정렬)
+                      if (session.ticker != null)
+                        Row(
+                          children: [
+                            SizedBox(width: w * 0.015),
+
+                            Icon(
+                              Icons.trending_up,
+                              size: w * 0.04,
+                              color: Colors.green,
+                            ),
+
+                            SizedBox(width: w * 0.01),
+
+                            Text(
+                              session.ticker!,
+                              style: TextStyle(
+                                fontSize: w * 0.038,
+                                color: Colors.green,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
                     ],
+                  ),
+
+                  SizedBox(height: h * 0.007),
+
+                  /// --------------------------
+                  /// 2줄: 날짜
+                  /// --------------------------
+                  Text(
+                    _formatDateTime(session.updatedAt),
+                    style: TextStyle(
+                      fontSize: w * 0.032,
+                      color: const Color(0xFF9BA1A6),
+                    ),
                   ),
                 ],
               ),
-            ],
-          ),
+            ),
+
+
+            /// ------------------------
+            /// 메뉴 버튼
+            /// ------------------------
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert, size: 20),
+              onSelected: (value) =>
+                  _onMenuSelected(context, session, value),
+              itemBuilder: (context) => [
+                const PopupMenuItem(
+                  value: 'delete',
+                  child: Row(
+                    children: [
+                      Icon(Icons.delete_outline, size: 18),
+                      SizedBox(width: 8),
+                      Text('삭제'),
+                    ],
+                  ),
+                ),
+              ],
+            )
+          ],
         ),
       ),
     );
   }
+
 
   Widget _buildTopicTypeChip(TopicType topicType) {
     Color chipColor;
@@ -351,10 +403,12 @@ class _ChatListScreenState extends State<ChatListScreen> {
         chipColor = Colors.blue;
         label = '기업';
         break;
+
       case TopicType.news:
-        chipColor = Colors.orange;
+        chipColor = const Color(0xFF60A4DA);   // 🔥 뉴스만 지정한 색상
         label = '뉴스';
         break;
+
       case TopicType.custom:
         chipColor = Colors.purple;
         label = '일반';
@@ -364,9 +418,9 @@ class _ChatListScreenState extends State<ChatListScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: chipColor.withOpacity(0.1),
+        color: chipColor.withOpacity(0.1),  // 배경
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: chipColor.withOpacity(0.3)),
+        // 테두리 제거했으면 border 삭제됨
       ),
       child: Text(
         label,
@@ -378,6 +432,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
       ),
     );
   }
+
 
   String _formatDateTime(DateTime dateTime) {
     final now = DateTime.now();
@@ -396,7 +451,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
 
   void _onChatTap(BuildContext context, SessionItem session) {
     // 채팅 화면으로 이동
-    context.go('/chat/${session.sessionUuid}');
+    context.push('/chat/${session.sessionUuid}');
   }
 
   void _onMenuSelected(BuildContext context, SessionItem session, String value) {
@@ -546,7 +601,7 @@ class _CreateChatDialogState extends State<_CreateChatDialog> {
     if (response != null && mounted) {
       Navigator.of(context).pop();
       // 채팅방으로 이동
-      context.go('/chat/${response.sessionUuid}');
+      context.push('/chat/${response.sessionUuid}');
     }
 
     if (mounted) {

@@ -23,7 +23,8 @@ class ChatRoomScreen extends StatefulWidget {
   State<ChatRoomScreen> createState() => _ChatRoomScreenState();
 }
 
-class _ChatRoomScreenState extends State<ChatRoomScreen> with WidgetsBindingObserver {
+class _ChatRoomScreenState extends State<ChatRoomScreen>
+    with WidgetsBindingObserver {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   late final ChatRepository _chatRepository;
@@ -60,7 +61,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with WidgetsBindingObse
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
-    
+
     switch (state) {
       case AppLifecycleState.paused:
         // 앱이 백그라운드로 가면 연결 유지 (배터리 고려)
@@ -69,7 +70,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with WidgetsBindingObse
       case AppLifecycleState.resumed:
         // 앱이 포그라운드로 돌아오면 연결 확인
         debugPrint('📱 앱 포그라운드 복귀 - SSE 연결 상태 확인');
-        if (_shouldKeepConnection && _sseSubscription == null && !_isStreaming) {
+        if (_shouldKeepConnection &&
+            _sseSubscription == null &&
+            !_isStreaming) {
           // 연결이 끊겼다면 재연결 시도
           debugPrint('🔄 SSE 재연결 시도');
           _reconnectSSEStream();
@@ -91,7 +94,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with WidgetsBindingObse
         debugPrint('⚠️ 이미 연결 중이므로 재연결 스킵');
         return;
       }
-      
+
       debugPrint('🔄 SSE 스트림 재연결 시작');
       await _connectToSSEStream();
     } catch (e) {
@@ -128,7 +131,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with WidgetsBindingObse
 
       final chatProvider = context.read<ChatProvider>();
       _sessionInfo = chatProvider.sessions.firstWhere(
-            (session) => session.sessionUuid == widget.sessionId,
+        (session) => session.sessionUuid == widget.sessionId,
         orElse: () => SessionItem(
           sessionUuid: widget.sessionId,
           topicType: TopicType.custom,
@@ -153,7 +156,6 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with WidgetsBindingObse
           }
         });
       }
-
     } catch (e) {
       setState(() {
         _error = '채팅방을 불러오는데 실패했습니다: $e';
@@ -212,16 +214,16 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with WidgetsBindingObse
 
   Future<void> _sendMessage({String? autoMessage}) async {
     final messageText = autoMessage ?? _controller.text.trim();
-    
+
     debugPrint('🔵 _sendMessage 호출됨');
     debugPrint('📝 메시지 내용: "$messageText"');
     debugPrint('📊 현재 _isSending 상태: $_isSending');
-    
+
     if (messageText.isEmpty) {
       debugPrint('⚠️ 메시지가 비어있어 전송 취소');
       return;
     }
-    
+
     if (_isSending) {
       debugPrint('⚠️ 이미 전송 중이므로 취소');
       return;
@@ -258,7 +260,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with WidgetsBindingObse
     } catch (e, stackTrace) {
       debugPrint('❌ 메시지 전송 또는 SSE 연결 실패: $e');
       debugPrint('📍 스택 트레이스: $stackTrace');
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -287,12 +289,14 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with WidgetsBindingObse
         _shouldKeepConnection = true; // 연결 유지 플래그 설정
       });
 
-      final sseStream = await _chatRepository.connectToSSEStream(widget.sessionId);
+      final sseStream = await _chatRepository.connectToSSEStream(
+        widget.sessionId,
+      );
 
       ChatMessage? currentAIMessage;
 
       _sseSubscription = sseStream.listen(
-            (sseMessage) {
+        (sseMessage) {
           if (!mounted) return;
           try {
             switch (sseMessage.type) {
@@ -311,7 +315,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with WidgetsBindingObse
                     });
                   }
                 } else {
-                  currentAIMessage = currentAIMessage!.appendContent(sseMessage.data);
+                  currentAIMessage = currentAIMessage!.appendContent(
+                    sseMessage.data,
+                  );
                   if (mounted) {
                     setState(() {
                       _messages[_messages.length - 1] = currentAIMessage!;
@@ -324,7 +330,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with WidgetsBindingObse
               case SSEEventType.done:
                 if (currentAIMessage != null && mounted) {
                   setState(() {
-                    _messages[_messages.length - 1] = currentAIMessage!.finishStreaming();
+                    _messages[_messages.length - 1] = currentAIMessage!
+                        .finishStreaming();
                     _isStreaming = false;
                     _isSending = false;
                     _shouldKeepConnection = false; // 스트리밍 완료 시 플래그 해제
@@ -411,13 +418,18 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with WidgetsBindingObse
   Widget build(BuildContext context) {
     return PopScope(
       canPop: true,
-      onPopInvoked: (didPop) async {
+      onPopInvoked: (didPop) {
         if (didPop) {
-          // 뒤로가기 시 명시적으로 연결 종료
+          // pop 과정에서는 비동기 없이 flag만 변경z
           _shouldKeepConnection = false;
-          await _stopSSEStreamSafely();
+
+          // SSE 종료는 pop 끝난 뒤에 호출되도록 스케줄링
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _stopSSEStreamSafely();
+          });
         }
       },
+
       child: Scaffold(
         backgroundColor: const Color(0xFFF7F8FB),
         appBar: AppBar(
@@ -462,20 +474,14 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with WidgetsBindingObse
             if (_isStreaming)
               const Padding(
                 padding: EdgeInsets.only(right: 16),
-                child: Icon(
-                  Icons.circle,
-                  color: Colors.green,
-                  size: 12,
-                ),
+                child: Icon(Icons.circle, color: Colors.green, size: 12),
               ),
           ],
         ),
         body: SafeArea(
           child: Column(
             children: [
-              Expanded(
-                child: _buildChatArea(),
-              ),
+              Expanded(child: _buildChatArea()),
               _buildMessageInput(),
             ],
           ),
@@ -657,11 +663,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with WidgetsBindingObse
               color: Colors.blue.withOpacity(0.1),
               borderRadius: BorderRadius.circular(18),
             ),
-            child: const Icon(
-              Icons.smart_toy,
-              color: Colors.blue,
-              size: 20,
-            ),
+            child: const Icon(Icons.smart_toy, color: Colors.blue, size: 20),
           ),
           const SizedBox(width: 8),
           Expanded(
@@ -714,7 +716,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with WidgetsBindingObse
                               height: 12,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Colors.blue,
+                                ),
                               ),
                             ),
                           ],

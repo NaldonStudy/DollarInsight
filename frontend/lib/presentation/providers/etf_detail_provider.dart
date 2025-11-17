@@ -103,10 +103,12 @@ class ETFDetailProvider with ChangeNotifier {
 
     // ETF 투자지표
     if (response.etfIndicators != null) {
+      final marketCapInTrillions = response.etfIndicators!.marketCap / 1000000000000;
+      final totalAssetsInTrillions = response.etfIndicators!.totalAssets / 1000000000000;
       _etfIndicators = {
-        '시가총액': '${priceFormatter.format(response.etfIndicators!.marketCap)}억원',
+        '시가총액': '${marketCapInTrillions.toStringAsFixed(1)} 조원',
         '배당수익률': '${response.etfIndicators!.dividendYield.toStringAsFixed(2)}%',
-        '운용자산': '${priceFormatter.format(response.etfIndicators!.totalAssets)}억원',
+        '운용자산': '${totalAssetsInTrillions.toStringAsFixed(1)} 조원',
         '순자산가치': '${response.etfIndicators!.nav.toStringAsFixed(2)}원',
         '괴리율': '${response.etfIndicators!.premiumDiscount.toStringAsFixed(2)}%',
         '운용보수(연)': '${response.etfIndicators!.expenseRatio.toStringAsFixed(2)}%',
