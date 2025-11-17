@@ -224,6 +224,7 @@ def run_autogen_discussion(
     session: Session, ai_response_queue: queue.Queue, user_input_queue: queue.Queue
 ):
     """별도 스레드에서 AutoGen 토론 실행"""
+    print(f"🎬 AI 토론 스레드 시작: {session.session_id}")
     try:
         from autogen_forum import (
             MAX_ROUNDS,
@@ -400,13 +401,13 @@ def run_autogen_discussion(
                     )
 
                     # AI 응답을 큐에 전송 (speaker 이름을 영문으로 변환)
-                    ai_response_queue.put(
-                        {
-                            "speaker": to_english_name(speaker.name),
-                            "content": ai_response,
-                            "turn": turn + 1,
-                        }
-                    )
+                    response_data = {
+                        "speaker": to_english_name(speaker.name),
+                        "content": ai_response,
+                        "turn": turn + 1,
+                    }
+                    ai_response_queue.put(response_data)
+                    print(f"✅ AI 응답 큐에 추가: turn={turn+1}, speaker={speaker.name}, content_len={len(ai_response)}, queue_size={ai_response_queue.qsize()}")
             except Exception as e:
                 print(f"❌ AI 발언 에러: {e}")
                 break
@@ -611,9 +612,11 @@ async def input_message(request: Request):
 # ===== SSE 스트림 =====
 async def sse_generator(request: Request, session_id: str):
     """SSE 스트림 생성기"""
+    print(f"🔌 SSE 스트림 시작: session_id={session_id}")
+    
     # 응답 시작 전에 세션 확인 (재시도 포함)
     # 백엔드가 /start를 호출하기 전에 /stream이 올 수 있으므로 재시도 필요
-    max_retries = 10
+    max_retries = 30  # 30번 재시도 (6초)
     retry_delay = 0.2  # 200ms
     s = None
 
@@ -622,41 +625,54 @@ async def sse_generator(request: Request, session_id: str):
             s = SESSIONS.get(session_id)
             if s is not None:
                 s.mark_used()
+                print(f"✅ 세션 발견: {session_id} (재시도 {i+1}회)")
                 break
 
         # 세션을 찾지 못했고 아직 재시도 가능하면 대기
         if s is None and i < max_retries - 1:
+            if i == 0:
+                print(f"⏳ 세션 대기 중: {session_id} (최대 {max_retries * retry_delay}초)")
             await asyncio.sleep(retry_delay)
 
     # 세션을 찾지 못한 경우 에러 이벤트 전송 후 종료
     if s is None:
+        print(f"❌ 세션을 찾을 수 없음: {session_id} ({max_retries * retry_delay}초 대기 후)")
         error_payload = json.dumps(
-            {"detail": "Session not found. Please call /start first."},
+            {"detail": "Session not found after waiting. Please call /start first."},
             ensure_ascii=False,
         )
         yield f"event: error\ndata: {error_payload}\n\n"
         return
 
     # 세션을 찾았으므로 이제 응답 시작
+    print(f"🚀 SSE 스트림 준비 완료: {session_id}")
     yield "retry: 2000\n\n"
 
     HEARTBEAT_SECS = 20
-    hb_last = time.time()
+    start_time = time.time()
+    hb_last = start_time
 
     if not hasattr(s, "ai_response_queue"):
         s.ai_response_queue = queue.Queue()
+        print(f"📦 AI 응답 큐 생성: {session_id}")
 
     while True:
         if await request.is_disconnected():
+            print(f"❌ 클라이언트 연결 끊김: {session_id}")
             break
         if s.closed:
+            print(f"⛔ 세션 종료됨: {session_id}")
             break
 
         # 하트비트
         now = time.time()
         if now - hb_last >= HEARTBEAT_SECS:
-            yield ":\n\n"
+            heartbeat_msg = ":ping\n\n"
+            yield heartbeat_msg
             hb_last = now
+            elapsed = int(now - start_time)
+            print(f"💓 하트비트 전송 [{elapsed}초 경과]: {session_id}, running={s.running.is_set()}, closed={s.closed}")
+
 
         # 실행 상태 대기
         await s.running.wait()
@@ -680,6 +696,7 @@ async def sse_generator(request: Request, session_id: str):
                     f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
                 )
                 yield frame
+                print(f"📤 메시지 전송: {session_id} (turn {result.get('turn')}, speaker {result.get('speaker')})")
                 s.idx += 1
                 s.mark_used()
 
@@ -687,13 +704,14 @@ async def sse_generator(request: Request, session_id: str):
             await asyncio.sleep(0.1)
             continue
         except Exception as e:
-            print(f"SSE 생성기 에러: {e}")
+            print(f"❌ SSE 생성기 에러: {e}")
             break
 
         # 페이싱
         await asyncio.sleep(s.pace_ms / 1000.0)
 
     # 종료 신호
+    print(f"🏁 SSE 스트림 종료: {session_id}")
     yield f"id: {s.idx}\nevent: close\ndata: {{}}\n\n"
 
 
