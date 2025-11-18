@@ -37,6 +37,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
 
   StreamSubscription<SSEMessage>? _sseSubscription;
   bool _isStreaming = false;
+  ChatMessage? _currentAIMessage; // 각 페르소나 발언을 별도 메시지로 처리하기 위한 멤버 변수
 
   @override
   void initState() {
@@ -247,44 +248,36 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
 
       final sseStream = await _chatRepository.connectToSSEStream(widget.sessionId);
 
-      ChatMessage? currentAIMessage;
-
       _sseSubscription = sseStream.listen(
             (sseMessage) {
           if (!mounted) return;
           try {
             switch (sseMessage.type) {
               case SSEEventType.message:
-                if (currentAIMessage == null) {
-                  currentAIMessage = ChatMessage.assistant(
-                    content: sseMessage.data,
-                    timestamp: DateTime.now(),
-                    personaCode: 'AI',
-                    personaName: 'AI 어시스턴트',
-                    isStreaming: true,
-                  );
-                  if (mounted) {
-                    setState(() {
-                      _messages.add(currentAIMessage!);
-                    });
-                  }
-                } else {
-                  currentAIMessage = currentAIMessage!.appendContent(sseMessage.data);
-                  if (mounted) {
-                    setState(() {
-                      _messages[_messages.length - 1] = currentAIMessage!;
-                    });
-                  }
+                // 각 페르소나의 발언을 별도의 메시지로 처리
+                // 백엔드에서 이미 content만 추출해서 보내므로, 각 메시지는 완성된 발언임
+                final aiMessage = ChatMessage.assistant(
+                  content: sseMessage.data,
+                  timestamp: DateTime.now(),
+                  personaCode: 'AI',
+                  personaName: 'AI 어시스턴트',
+                  isStreaming: false, // 이미 완성된 메시지이므로 스트리밍 아님
+                );
+                if (mounted) {
+                  setState(() {
+                    _messages.add(aiMessage);
+                  });
                 }
                 _scrollToBottom();
                 break;
 
               case SSEEventType.done:
-                if (currentAIMessage != null && mounted) {
+                // done 이벤트는 스트림 종료를 의미하므로 상태만 업데이트
+                if (mounted) {
                   setState(() {
-                    _messages[_messages.length - 1] = currentAIMessage!.finishStreaming();
                     _isStreaming = false;
                     _isSending = false;
+                    _currentAIMessage = null;
                   });
                 }
                 break;
@@ -297,6 +290,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                   setState(() {
                     _isStreaming = false;
                     _isSending = false;
+                    _currentAIMessage = null;
                   });
                 }
                 break;
@@ -311,6 +305,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
             setState(() {
               _isStreaming = false;
               _isSending = false;
+              _currentAIMessage = null;
             });
           }
         },
@@ -320,6 +315,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
             setState(() {
               _isStreaming = false;
               _isSending = false;
+              _currentAIMessage = null;
             });
           }
         },
@@ -330,6 +326,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
         setState(() {
           _isStreaming = false;
           _isSending = false;
+          _currentAIMessage = null;
         });
       }
     }
@@ -594,7 +591,6 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 왼쪽 아바타
           Container(
             width: 36,
             height: 36,
@@ -608,15 +604,11 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
               size: 20,
             ),
           ),
-
           const SizedBox(width: 8),
-
-          // 오른쪽 전체 영역
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 이름
                 Text(
                   name,
                   style: const TextStyle(
@@ -625,29 +617,31 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                   ),
                 ),
                 const SizedBox(height: 4),
-
-                // 말풍선 + 시간
-                Container(
-                  padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
-                  constraints: BoxConstraints(
-                    maxWidth: MediaQuery.of(context).size.width * 0.7,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Color(0xFF9BA9B0), width: 0.5),
-                  ),
-
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // 텍스트
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.end,
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Container(
+                      constraints: BoxConstraints(
+                        maxWidth: MediaQuery.of(context).size.width * 0.7,
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 12,
+                        horizontal: 16,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: const Color(0xFF9BA9B0),
+                          width: 0.5,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          Expanded(
+                          Flexible(
                             child: Text(
-                              text.isEmpty ? "..." : text,
+                              text.isEmpty ? '...' : text,
                               style: const TextStyle(
                                 fontSize: 15,
                                 color: Color(0xFF21272A),
@@ -667,19 +661,18 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                           ],
                         ],
                       ),
-
-                      const SizedBox(height: 4),
-
-                      // ⬅ 시간 왼쪽 아래
+                    ),
+                    if (time.isNotEmpty) ...[
+                      const SizedBox(width: 6),
                       Text(
                         time,
                         style: const TextStyle(
-                          fontSize: 11,
+                          fontSize: 12,
                           color: Color(0xFFBBBBBB),
                         ),
                       ),
                     ],
-                  ),
+                  ],
                 ),
               ],
             ),
@@ -688,7 +681,6 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       ),
     );
   }
-
 
   Widget _buildMessageInput() {
     return Container(

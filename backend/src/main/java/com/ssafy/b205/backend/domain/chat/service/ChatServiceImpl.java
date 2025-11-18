@@ -34,6 +34,8 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import org.bson.types.ObjectId;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -42,11 +44,16 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class ChatServiceImpl implements ChatService {
+    private static final ObjectMapper objectMapper = new ObjectMapper();
+    private static final Executor asyncExecutor = Executors.newFixedThreadPool(5);
 
     private static final String E_OWNER = "[ChatSvc-E01] 세션 소유자 불일치";
     private static final String E_NOTF  = "[ChatSvc-E02] 세션을 찾을 수 없습니다.";
@@ -160,21 +167,12 @@ public class ChatServiceImpl implements ChatService {
         replayMissedMessages(emitter, sessionUuid, lastEventId);
         final Disposable keepAlive = startKeepAlive(emitter);
 
-        log.info("[ChatSvc-Stream] FastAPI SSE 스트림 구독 시작: sessionId={}", sessionUuid);
-        
         final Disposable sub = gateway.stream(sessionUuid.toString())
                 .doOnError(err -> {
-                    log.error("[ChatSvc-Stream] ❌ FastAPI 스트림 에러: sessionId={}, error={}", 
-                            sessionUuid, err.getMessage(), err);
                     try { emitter.completeWithError(err); } catch (Exception ignored) {}
                 })
                 .doOnComplete(() -> {
-                    log.info("[ChatSvc-Stream] ✅ FastAPI 스트림 정상 완료: sessionId={}", sessionUuid);
                     try { emitter.complete(); } catch (Exception ignored) {}
-                })
-                .doOnNext(sse -> {
-                    log.debug("[ChatSvc-Stream] 📥 SSE 이벤트 수신: event={}, data={}", 
-                            sse.event(), sse.data() != null ? sse.data().substring(0, Math.min(50, sse.data().length())) : "null");
                 })
                 .subscribe((ServerSentEvent<String> sse) -> {
                     try {
@@ -189,19 +187,48 @@ public class ChatServiceImpl implements ChatService {
 
                         // 메시지 이벤트는 Mongo에 저장 (token chunk가 아니라 완성 텍스트 기준이면 게이트웨이 쪽에서 제어)
                         if ("message".equals(eventName) && data != null && !data.isBlank()) {
-                            final ChatMessageDoc saved = msgRepo.save(ChatMessageDoc.builder()
-                                    .sessionUuid(sessionUuid)
-                                    .role("assistant")
-                                    .content(data)
-                                    .ts(Instant.now())
-                                    .build());
-                            new TransactionTemplate(transactionManager).executeWithoutResult(status ->
-                                    sessionRepo.touchUpdatedAt(sessionDbId, OffsetDateTime.now())
-                            );
+                            // AI 서비스가 보낸 JSON에서 content 필드만 추출
+                            String content = data;
+                            try {
+                                JsonNode jsonNode = objectMapper.readTree(data);
+                                if (jsonNode.has("content") && jsonNode.get("content").isTextual()) {
+                                    content = jsonNode.get("content").asText();
+                                }
+                            } catch (Exception e) {
+                                // JSON 파싱 실패 시 원본 데이터 사용
+                                log.debug("[ChatSvc-Stream] JSON 파싱 실패, 원본 데이터 사용: {}", e.getMessage());
+                            }
+                            
+                            // 프론트엔드로 즉시 전달 (버퍼링 방지)
+                            final String finalContent = content;
+                            final UUID finalSessionUuid = sessionUuid;
+                            final int finalSessionDbId = sessionDbId;
+                            
+                            // 임시 ID 생성 (MongoDB 저장 전에 전달)
+                            final String tempId = "temp-" + System.currentTimeMillis();
                             emitter.send(SseEmitter.event()
-                                    .id(saved.getId())
+                                    .id(tempId)
                                     .name(eventName)
-                                    .data(data));
+                                    .data(finalContent));
+                            
+                            // MongoDB 저장은 비동기로 처리 (프론트엔드 전달을 블로킹하지 않음)
+                            CompletableFuture.runAsync(() -> {
+                                try {
+                                    final ChatMessageDoc saved = msgRepo.save(ChatMessageDoc.builder()
+                                            .sessionUuid(finalSessionUuid)
+                                            .role("assistant")
+                                            .content(finalContent)
+                                            .ts(Instant.now())
+                                            .build());
+                                    new TransactionTemplate(transactionManager).executeWithoutResult(status ->
+                                            sessionRepo.touchUpdatedAt(finalSessionDbId, OffsetDateTime.now())
+                                    );
+                                    log.debug("[ChatSvc-Stream] 메시지 저장 완료: {}", saved.getId());
+                                } catch (Exception e) {
+                                    log.warn("[ChatSvc-Stream] 메시지 저장 실패: {}", e.getMessage());
+                                }
+                            }, asyncExecutor);
+                            
                             return;
                         }
 
