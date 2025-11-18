@@ -252,11 +252,14 @@ public class ChatServiceImpl implements ChatService {
 
                         // 메시지 이벤트는 Mongo에 저장 (token chunk가 아니라 완성 텍스트 기준이면 게이트웨이 쪽에서 제어)
                         if ("message".equals(eventName) && data != null && !data.isBlank()) {
-                            String parsedContent = extractContent(data);
-                            final String payload = buildPayload(eventName, eventId, data, parsedContent);
+                            final AiPayload aiPayload = parseAiPayload(data);
+                            final String payload = buildPayload(eventName, eventId, data, aiPayload);
                             emitter.send(buildEvent(eventName, eventId, payload));
 
-                            final String finalContent = parsedContent != null ? parsedContent : data;
+                            final String finalContent = (aiPayload != null && aiPayload.getContent() != null)
+                                    ? aiPayload.getContent()
+                                    : data;
+                            final Long seq = parseSeq(eventId);
                             final UUID finalSessionUuid = sessionUuid;
                             final int finalSessionDbId = sessionDbId;
                             // MongoDB 저장은 비동기로 처리 (프론트엔드 전달을 블로킹하지 않음)
@@ -266,7 +269,12 @@ public class ChatServiceImpl implements ChatService {
                                             .sessionUuid(finalSessionUuid)
                                             .role("assistant")
                                             .content(finalContent)
+                                            .speaker(aiPayload != null ? aiPayload.getSpeaker() : null)
+                                            .turn(aiPayload != null ? aiPayload.getTurn() : null)
+                                            .aiTsMs(aiPayload != null ? aiPayload.getTsMs() : null)
+                                            .rawPayload(data)
                                             .ts(Instant.now())
+                                            .seq(seq)
                                             .build());
                                     new TransactionTemplate(transactionManager).executeWithoutResult(status ->
                                             sessionRepo.touchUpdatedAt(finalSessionDbId, OffsetDateTime.now())
@@ -398,7 +406,7 @@ public class ChatServiceImpl implements ChatService {
         gateway.control(sessionUuid.toString(), "CHANGE_PACE", paceMs);
     }
 
-    private String buildPayload(String eventName, String eventId, String rawData, String parsedContent) {
+    private String buildPayload(String eventName, String eventId, String rawData, AiPayload parsed) {
         try {
             final ObjectNode node = objectMapper.createObjectNode();
             node.put("event", eventName);
@@ -408,8 +416,22 @@ public class ChatServiceImpl implements ChatService {
             if (rawData != null) {
                 node.put("raw", rawData);
             }
-            if (parsedContent != null) {
-                node.put("content", parsedContent);
+            if (parsed != null) {
+                if (parsed.getContent() != null) {
+                    node.put("content", parsed.getContent());
+                }
+                if (parsed.getSpeaker() != null) {
+                    node.put("speaker", parsed.getSpeaker());
+                }
+                if (parsed.getTurn() != null) {
+                    node.put("turn", parsed.getTurn());
+                }
+                if (parsed.getTsMs() != null) {
+                    node.put("tsMs", parsed.getTsMs());
+                }
+                if (parsed.getSessionId() != null) {
+                    node.put("sessionId", parsed.getSessionId());
+                }
             }
             return objectMapper.writeValueAsString(node);
         } catch (Exception e) {
@@ -428,19 +450,30 @@ public class ChatServiceImpl implements ChatService {
         return builder;
     }
 
-    private String extractContent(String data) {
+    private AiPayload parseAiPayload(String data) {
         if (data == null || data.isBlank()) {
             return null;
         }
         try {
-            JsonNode jsonNode = objectMapper.readTree(data);
-            if (jsonNode.has("content") && jsonNode.get("content").isTextual()) {
-                return jsonNode.get("content").asText();
+            JsonNode node = objectMapper.readTree(data);
+            final JsonNode contentNode = node.get("content");
+            final JsonNode speakerNode = node.get("speaker");
+            final JsonNode sessionNode = node.get("session_id");
+            final JsonNode turnNode = node.get("turn");
+            final JsonNode tsNode = node.get("ts_ms");
+            final String content = contentNode != null && contentNode.isTextual() ? contentNode.asText() : null;
+            final String speaker = speakerNode != null && speakerNode.isTextual() ? speakerNode.asText() : null;
+            final String sessionId = sessionNode != null && sessionNode.isTextual() ? sessionNode.asText() : null;
+            final Integer turn = turnNode != null && turnNode.isNumber() ? turnNode.intValue() : null;
+            final Long tsMs = tsNode != null && tsNode.isNumber() ? tsNode.longValue() : null;
+            if (content == null && speaker == null && turn == null && tsMs == null && sessionId == null) {
+                return null; // 빈 json일 때는 굳이 객체 생성하지 않음
             }
+            return new AiPayload(content, speaker, turn, tsMs, sessionId);
         } catch (Exception e) {
-            log.debug("[ChatSvc-Stream] 콘텐츠 파싱 실패: {}", e.getMessage());
+            log.debug("[ChatSvc-Stream] AI payload 파싱 실패: {}", e.getMessage());
+            return null;
         }
-        return null;
     }
 
     private void replayMissedMessages(SseEmitter emitter, UUID sessionUuid, String lastEventId) {
@@ -481,6 +514,17 @@ public class ChatServiceImpl implements ChatService {
                 });
     }
 
+    private Long parseSeq(String eventId) {
+        if (eventId == null || eventId.isBlank()) {
+            return null;
+        }
+        try {
+            return Long.parseLong(eventId);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
     private ChatSession loadOwnedSession(Integer userId, UUID sessionUuid) {
         final ChatSession s = sessionRepo.findByUuidAndDeletedAtIsNull(sessionUuid)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, E_NOTF));
@@ -488,5 +532,41 @@ public class ChatServiceImpl implements ChatService {
             throw new AppException(ErrorCode.FORBIDDEN, E_OWNER);
         }
         return s;
+    }
+
+    private static class AiPayload {
+        private final String content;
+        private final String speaker;
+        private final Integer turn;
+        private final Long tsMs;
+        private final String sessionId;
+
+        private AiPayload(String content, String speaker, Integer turn, Long tsMs, String sessionId) {
+            this.content = content;
+            this.speaker = speaker;
+            this.turn = turn;
+            this.tsMs = tsMs;
+            this.sessionId = sessionId;
+        }
+
+        public String getContent() {
+            return content;
+        }
+
+        public String getSpeaker() {
+            return speaker;
+        }
+
+        public Integer getTurn() {
+            return turn;
+        }
+
+        public Long getTsMs() {
+            return tsMs;
+        }
+
+        public String getSessionId() {
+            return sessionId;
+        }
     }
 }

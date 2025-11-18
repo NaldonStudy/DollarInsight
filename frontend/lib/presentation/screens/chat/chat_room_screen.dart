@@ -297,6 +297,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
           debugPrint('  - sessionId: ${sseMessage.sessionId}');
           debugPrint('  - raw: ${sseMessage.raw}');
 
+          print('🔥 [SSE RAW] type=${sseMessage.type}, data=${sseMessage.data}');
           try {
             switch (sseMessage.type) {
               case SSEEventType.message:
@@ -690,6 +691,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // AI 아이콘
           Container(
             width: 36,
             height: 36,
@@ -719,10 +721,13 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
             ),
           ),
           const SizedBox(width: 8),
+
+          // 이름 + 말풍선 + 시간
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // 이름
                 Text(
                   name,
                   style: const TextStyle(
@@ -731,62 +736,61 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                   ),
                 ),
                 const SizedBox(height: 4),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Container(
-                      constraints: BoxConstraints(
-                        maxWidth: MediaQuery.of(context).size.width * 0.7,
-                      ),
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 12,
-                        horizontal: 16,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: const Color(0xFF9BA9B0),
-                          width: 0.5,
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Flexible(
-                            child: Text(
-                              text.isEmpty ? '...' : text,
-                              style: const TextStyle(
-                                fontSize: 15,
-                                color: Color(0xFF21272A),
-                              ),
-                            ),
-                          ),
-                          if (isStreaming) ...[
-                            const SizedBox(width: 8),
-                            const SizedBox(
-                              width: 12,
-                              height: 12,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
+
+                // 말풍선
+                Container(
+                  constraints: BoxConstraints(
+                    maxWidth: MediaQuery.of(context).size.width * 0.7,
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 12,
+                    horizontal: 16,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: const Color(0xFF9BA9B0),
+                      width: 0.5,
                     ),
-                    if (time.isNotEmpty) ...[
-                      const SizedBox(width: 6),
-                      Text(
-                        time,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Color(0xFFBBBBBB),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Flexible(
+                        child: Text(
+                          text.isEmpty ? '...' : text,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            color: Color(0xFF21272A),
+                          ),
                         ),
                       ),
+                      if (isStreaming) ...[
+                        const SizedBox(width: 8),
+                        const SizedBox(
+                          width: 12,
+                          height: 12,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor:
+                            AlwaysStoppedAnimation<Color>(Colors.blue),
+                          ),
+                        ),
+                      ],
                     ],
-                  ],
+                  ),
+                ),
+
+                const SizedBox(height: 4),
+
+                // 시간 (아래 왼쪽)
+                Text(
+                  time,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFFBBBBBB),
+                  ),
                 ),
               ],
             ),
@@ -795,6 +799,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       ),
     );
   }
+
 
   Widget _buildMessageInput() {
     return Container(
