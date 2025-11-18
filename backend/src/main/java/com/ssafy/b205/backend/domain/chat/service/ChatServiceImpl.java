@@ -159,7 +159,7 @@ public class ChatServiceImpl implements ChatService {
                 log.info("[ChatSvc-Message] ✅ AI 세션 시작 완료 sessionUuid={}", finalSessionUuid);
             } catch (Exception e) {
                 log.error("[ChatSvc-Message] ❌ AI 세션 시작 실패 sessionUuid={}, error={}", finalSessionUuid, e.getMessage());
-                throw new AppException(ErrorCode.INTERNAL, "AI 서비스 세션 시작 실패: " + e.getMessage());
+                throw new AppException(ErrorCode.INTERNAL_ERROR, "AI 서비스 세션 시작 실패: " + e.getMessage());
             }
         } else {
             // /input 호출도 동기로 처리
@@ -169,7 +169,7 @@ public class ChatServiceImpl implements ChatService {
                 log.info("[ChatSvc-Message] ✅ 사용자 입력 전달 완료 sessionUuid={}", finalSessionUuid);
             } catch (Exception e) {
                 log.error("[ChatSvc-Message] ❌ 사용자 입력 전달 실패 sessionUuid={}, error={}", finalSessionUuid, e.getMessage());
-                throw new AppException(ErrorCode.INTERNAL, "AI 서비스 입력 전달 실패: " + e.getMessage());
+                throw new AppException(ErrorCode.INTERNAL_ERROR, "AI 서비스 입력 전달 실패: " + e.getMessage());
             }
         }
 
