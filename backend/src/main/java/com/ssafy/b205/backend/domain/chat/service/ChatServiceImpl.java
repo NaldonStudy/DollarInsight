@@ -36,6 +36,7 @@ import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -52,8 +53,8 @@ import java.util.concurrent.Executors;
 @Service
 @RequiredArgsConstructor
 public class ChatServiceImpl implements ChatService {
-    private static final ObjectMapper objectMapper = new ObjectMapper();
     private static final Executor asyncExecutor = Executors.newFixedThreadPool(5);
+    private static final ObjectMapper objectMapper = new ObjectMapper();
 
     private static final String E_OWNER = "[ChatSvc-E01] 세션 소유자 불일치";
     private static final String E_NOTF  = "[ChatSvc-E02] 세션을 찾을 수 없습니다.";
@@ -224,17 +225,15 @@ public class ChatServiceImpl implements ChatService {
                     try {
                         final String eventName = (sse.event() != null ? sse.event() : "message");
                         final String data = sse.data();
+                        final String eventId = sse.id();
+                        final String defaultPayload = buildPayload(eventName, eventId, data, null);
 
                         // ready 이벤트 처리: AI 서비스가 세션과 스트림 준비 완료를 알릴 때
                         if ("ready".equals(eventName)) {
                             log.info("[ChatSvc-Stream] ✅ AI 서비스 ready 이벤트 수신 (세션 및 스트림 준비 완료)");
                             readyReceived.set(true);
                             readyLatch.countDown(); // 준비 완료 신호
-                            // 프론트엔드에 ready 이벤트 전달
-                            emitter.send(SseEmitter.event()
-                                    .id("ready-0")
-                                    .name("ready")
-                                    .data(data));
+                            emitter.send(buildEvent(eventName, eventId, defaultPayload));
                             return;
                         }
 
@@ -253,30 +252,13 @@ public class ChatServiceImpl implements ChatService {
 
                         // 메시지 이벤트는 Mongo에 저장 (token chunk가 아니라 완성 텍스트 기준이면 게이트웨이 쪽에서 제어)
                         if ("message".equals(eventName) && data != null && !data.isBlank()) {
-                            // AI 서비스가 보낸 JSON에서 content 필드만 추출
-                            String content = data;
-                            try {
-                                JsonNode jsonNode = objectMapper.readTree(data);
-                                if (jsonNode.has("content") && jsonNode.get("content").isTextual()) {
-                                    content = jsonNode.get("content").asText();
-                                }
-                            } catch (Exception e) {
-                                // JSON 파싱 실패 시 원본 데이터 사용
-                                log.debug("[ChatSvc-Stream] JSON 파싱 실패, 원본 데이터 사용: {}", e.getMessage());
-                            }
-                            
-                            // 프론트엔드로 즉시 전달 (버퍼링 방지)
-                            final String finalContent = content;
+                            String parsedContent = extractContent(data);
+                            final String payload = buildPayload(eventName, eventId, data, parsedContent);
+                            emitter.send(buildEvent(eventName, eventId, payload));
+
+                            final String finalContent = parsedContent != null ? parsedContent : data;
                             final UUID finalSessionUuid = sessionUuid;
                             final int finalSessionDbId = sessionDbId;
-                            
-                            // 임시 ID 생성 (MongoDB 저장 전에 전달)
-                            final String tempId = "temp-" + System.currentTimeMillis();
-                            emitter.send(SseEmitter.event()
-                                    .id(tempId)
-                                    .name(eventName)
-                                    .data(finalContent));
-                            
                             // MongoDB 저장은 비동기로 처리 (프론트엔드 전달을 블로킹하지 않음)
                             CompletableFuture.runAsync(() -> {
                                 try {
@@ -298,9 +280,7 @@ public class ChatServiceImpl implements ChatService {
                             return;
                         }
 
-                        emitter.send(SseEmitter.event()
-                                .name(eventName)
-                                .data(data));
+                        emitter.send(buildEvent(eventName, eventId, defaultPayload));
                     } catch (Exception e) {
                         log.warn("[ChatSvc-Stream] SSE send error: {}", e.getMessage());
                     }
@@ -416,6 +396,51 @@ public class ChatServiceImpl implements ChatService {
         final int userId = toUserId(userUuid);
         loadOwnedSession(userId, sessionUuid);
         gateway.control(sessionUuid.toString(), "CHANGE_PACE", paceMs);
+    }
+
+    private String buildPayload(String eventName, String eventId, String rawData, String parsedContent) {
+        try {
+            final ObjectNode node = objectMapper.createObjectNode();
+            node.put("event", eventName);
+            if (eventId != null) {
+                node.put("eventId", eventId);
+            }
+            if (rawData != null) {
+                node.put("raw", rawData);
+            }
+            if (parsedContent != null) {
+                node.put("content", parsedContent);
+            }
+            return objectMapper.writeValueAsString(node);
+        } catch (Exception e) {
+            log.debug("[ChatSvc-Stream] payload 직렬화 실패: {}", e.getMessage());
+            return rawData != null ? rawData : "";
+        }
+    }
+
+    private SseEmitter.SseEventBuilder buildEvent(String eventName, String eventId, String payload) {
+        SseEmitter.SseEventBuilder builder = SseEmitter.event()
+                .name(eventName)
+                .data(payload);
+        if (eventId != null) {
+            builder = builder.id(eventId);
+        }
+        return builder;
+    }
+
+    private String extractContent(String data) {
+        if (data == null || data.isBlank()) {
+            return null;
+        }
+        try {
+            JsonNode jsonNode = objectMapper.readTree(data);
+            if (jsonNode.has("content") && jsonNode.get("content").isTextual()) {
+                return jsonNode.get("content").asText();
+            }
+        } catch (Exception e) {
+            log.debug("[ChatSvc-Stream] 콘텐츠 파싱 실패: {}", e.getMessage());
+        }
+        return null;
     }
 
     private void replayMissedMessages(SseEmitter emitter, UUID sessionUuid, String lastEventId) {
