@@ -106,7 +106,7 @@ class _StockPriceChartState extends State<StockPriceChart> {
           ),
         ),
         Text(
-          '${price.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}',
+          '\$${price.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}',
           style: TextStyle(
             color: color,
             fontSize: 12,
@@ -147,7 +147,7 @@ class _StockPriceChartState extends State<StockPriceChart> {
               }
 
               return LineTooltipItem(
-                '$dateString\n₩$price',
+                '$dateString\n\$$price',
                 const TextStyle(
                   color: Colors.white,
                   fontSize: 12,

@@ -244,10 +244,10 @@ class _ETFDetailScreenState extends State<ETFDetailScreen>
           ),
           // + 버튼 (ETF 설명)
           IconButton(
-            icon: Image.asset(
-              'assets/images/plusicon.webp',
-              width: 24,
-              height: 24,
+            icon: const Icon(
+              Icons.add_circle_outline,
+              color: Color(0xFF757575),
+              size: 24,
             ),
             onPressed: () {
               Navigator.push(
@@ -363,7 +363,7 @@ class _ETFDetailScreenState extends State<ETFDetailScreen>
               height: 1.87,
             ),
           ),
-          SizedBox(height: AppSpacing.small(context)),
+          SizedBox(height: AppSpacing.bottomLarge(context)),
           Expanded(child: _buildETFIndicatorGrid(provider)),
         ],
       ),
@@ -404,20 +404,20 @@ class _ETFDetailScreenState extends State<ETFDetailScreen>
   /// 개별 투자지표 카드
   Widget _buildIndicatorCard(String label, String value) {
     return Container(
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: const Color(0xFFD9E2EA),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Text(
             label,
             style: const TextStyle(
               color: Color(0xFF595959),
-              fontSize: 10,
+              fontSize: 12,
               fontFamily: 'Pretendard',
               fontWeight: FontWeight.w600,
               height: 1.40,
@@ -429,10 +429,10 @@ class _ETFDetailScreenState extends State<ETFDetailScreen>
             value,
             style: const TextStyle(
               color: Colors.black,
-              fontSize: 13,
+              fontSize: 15,
               fontFamily: 'Pretendard',
               fontWeight: FontWeight.w700,
-              height: 2.15,
+              height: 1.5,
             ),
           ),
         ],

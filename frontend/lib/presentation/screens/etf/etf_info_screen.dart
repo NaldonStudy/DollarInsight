@@ -103,9 +103,9 @@ class _ETFInfoScreenState extends State<ETFInfoScreen> {
         return SingleChildScrollView(
           child: Column(
             children: [
-              SizedBox(height: AppSpacing.medium(context)),
+              SizedBox(height: AppSpacing.big(context)),
               _buildETFHeader(w, etfInfo),
-              SizedBox(height: AppSpacing.section(context)),
+              SizedBox(height: AppSpacing.bottomLarge(context)),
               // 섹션 1: ETF 설명 + 통계 (1-3)
               _buildETFInfoSection(w, h, etfInfo),
               SizedBox(height: AppSpacing.medium(context)),
@@ -195,7 +195,7 @@ class _ETFInfoScreenState extends State<ETFInfoScreen> {
             width: double.infinity,
             padding: EdgeInsets.symmetric(
               horizontal: AppSpacing.horizontal(context),
-              vertical: h * 0.075, // 3배 더 큰 높이
+              vertical: h * 0.06, // 3배 더 큰 높이
             ),
             decoration: const BoxDecoration(
               border: Border(
@@ -207,6 +207,8 @@ class _ETFInfoScreenState extends State<ETFInfoScreen> {
             ),
             child: Text(
               etfInfo.description,
+              softWrap: true,
+              overflow: TextOverflow.visible,
               style: const TextStyle(
                 color: Colors.black,
                 fontSize: 16,
@@ -303,7 +305,7 @@ class _ETFInfoScreenState extends State<ETFInfoScreen> {
     return Container(
       width: double.infinity,
       padding: EdgeInsets.symmetric(
-        horizontal: w * 0.04,
+        horizontal: AppSpacing.horizontal(context),
         vertical: h * 0.018,
       ),
       decoration: const BoxDecoration(
@@ -334,7 +336,7 @@ class _ETFInfoScreenState extends State<ETFInfoScreen> {
                 color: Colors.black,
                 fontSize: 16,
                 fontFamily: 'Pretendard',
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.w700,
               ),
             ),
         ],
@@ -354,8 +356,8 @@ class _ETFInfoScreenState extends State<ETFInfoScreen> {
     return Container(
       width: double.infinity,
       padding: EdgeInsets.symmetric(
-        horizontal: w * 0.04,
-        vertical: h * 0.015,
+        horizontal: AppSpacing.horizontal(context),
+        vertical: h * 0.018,
       ),
       decoration: const BoxDecoration(
         border: Border(
@@ -372,7 +374,7 @@ class _ETFInfoScreenState extends State<ETFInfoScreen> {
               companyName,
               style: const TextStyle(
                 color: Colors.black,
-                fontSize: 14,
+                fontSize: 16,
                 fontFamily: 'Pretendard',
                 fontWeight: FontWeight.w500,
               ),
@@ -382,9 +384,9 @@ class _ETFInfoScreenState extends State<ETFInfoScreen> {
             ratio,
             style: const TextStyle(
               color: Colors.black,
-              fontSize: 14,
+              fontSize: 16,
               fontFamily: 'Roboto',
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w700,
             ),
           ),
         ],
