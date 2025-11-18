@@ -29,6 +29,10 @@ public final class ChatMessageDoc {
 
     private final String role;        // "user" | "assistant" | "system"
     private final String content;
+    private final String speaker;     // AI 발화자 (assistant 전용)
+    private final Integer turn;       // AI 발화 순번
+    private final Long aiTsMs;        // AI 서비스가 내려준 timestamp(ms)
+    private final String rawPayload;  // AI 원본 JSON (assistant 전용)
 
     @Indexed
     private final Instant ts;         // 타임라인 정렬/페이징 기준
@@ -36,11 +40,26 @@ public final class ChatMessageDoc {
     private final Long seq;           // SSE 내 순서 표기(옵션) — 조회 정렬엔 사용 안 함
 
     @Builder
-    public ChatMessageDoc(String id, UUID sessionUuid, String role, String content, Instant ts, Long seq) {
+    public ChatMessageDoc(
+            String id,
+            UUID sessionUuid,
+            String role,
+            String content,
+            String speaker,
+            Integer turn,
+            Long aiTsMs,
+            String rawPayload,
+            Instant ts,
+            Long seq
+    ) {
         this.id = id;
         this.sessionUuid = sessionUuid;
         this.role = role;
         this.content = content;
+        this.speaker = speaker;
+        this.turn = turn;
+        this.aiTsMs = aiTsMs;
+        this.rawPayload = rawPayload;
         this.ts = ts;
         this.seq = seq;
     }
