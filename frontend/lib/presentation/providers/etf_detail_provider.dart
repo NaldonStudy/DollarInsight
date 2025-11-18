@@ -1,10 +1,24 @@
 import 'package:flutter/material.dart';
+import '../../data/repositories/company_repository.dart';
+import '../../data/repositories/watchlist_repository.dart';
+import '../../data/models/company_detail_model.dart';
+import '../../data/datasources/remote/watchlist_api.dart';
+import '../../data/datasources/remote/api_client.dart';
+import 'package:intl/intl.dart';
 
 /// ETF 상세 화면의 상태와 비즈니스 로직을 관리하는 Provider
+/// Company API를 재사용 (백엔드에서 ticker 기반으로 STOCK/ETF 구분)
 class ETFDetailProvider with ChangeNotifier {
   final String etfId;
+  final CompanyRepository _companyRepository;
+  final WatchlistRepository _watchlistRepository;
 
-  ETFDetailProvider({required this.etfId}) {
+  ETFDetailProvider({
+    required this.etfId,
+    CompanyRepository? companyRepository,
+    WatchlistRepository? watchlistRepository,
+  }) : _companyRepository = companyRepository ?? CompanyRepository(),
+       _watchlistRepository = watchlistRepository ?? WatchlistRepository(WatchlistApi(ApiClient())) {
     _loadETFData();
   }
 
@@ -25,12 +39,19 @@ class ETFDetailProvider with ChangeNotifier {
   String? _currentPriceUsd;
   String? get currentPriceUsd => _currentPriceUsd;
 
-  String? _logoUrl;
-  String? get logoUrl => _logoUrl;
-
   // ETF 투자지표 (시가총액, 배당수익률, 운용자산, 순자산가치, 괴리율, 운용보수)
   Map<String, String>? _etfIndicators;
   Map<String, String>? get etfIndicators => _etfIndicators;
+
+  // 차트 데이터 (일봉, 주봉, 월봉)
+  List<PriceDataPoint> _dailyPriceData = [];
+  List<PriceDataPoint> get dailyPriceData => _dailyPriceData;
+
+  List<PriceDataPoint> _weeklyPriceData = [];
+  List<PriceDataPoint> get weeklyPriceData => _weeklyPriceData;
+
+  List<PriceDataPoint> _monthlyPriceData = [];
+  List<PriceDataPoint> get monthlyPriceData => _monthlyPriceData;
 
   List<Map<String, String>> _newsList = [];
   List<Map<String, String>> get newsList => _newsList;
@@ -47,17 +68,14 @@ class ETFDetailProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      // ============= API 연결 지점 =============
-      // 1. ETF 기본 정보 API 호출
-      await _fetchETFInfo();
+      // ============= 실제 API 호출 =============
+      // Company API를 재사용 (백엔드에서 assetType으로 ETF 구분)
+      final response = await _companyRepository.getCompanyDetail(etfId);
 
-      // 2. ETF 투자지표 API 호출
-      await _fetchETFIndicators();
+      // 응답 데이터를 각 상태 변수에 매핑
+      _mapResponseToState(response);
 
-      // 3. ETF 뉴스 API 호출 (최대 5개)
-      await _fetchETFNews();
-
-      // 4. 관심종목 상태 확인
+      // 관심종목 상태 확인 (별도 API가 필요할 경우)
       await _checkWatchlistStatus();
 
       _isLoading = false;
@@ -69,94 +87,66 @@ class ETFDetailProvider with ChangeNotifier {
     }
   }
 
-  /// ETF 기본 정보 API 호출
-  Future<void> _fetchETFInfo() async {
-    // TODO: API 연결
-    // final response = await etfRepository.getETFInfo(etfId);
-    // _etfName = response.name;
-    // _currentPrice = response.currentPrice;
-    // _currentPriceUsd = response.currentPriceUsd;
-    // _logoUrl = response.logoUrl;
+  /// API 응답을 Provider 상태로 매핑
+  void _mapResponseToState(CompanyDetailResponse response) {
+    // 기본 정보
+    _etfName = response.basicInfo.name;
 
-    // 임시 더미 데이터 (API 연결 후 삭제)
-    await Future.delayed(const Duration(milliseconds: 300));
-    _etfName = 'TIGER 미국S&P500';
-    _currentPrice = '15,320원';
-    _currentPriceUsd = '\$10.68';
-    _logoUrl = null;
+    // 가격 정보
+    final priceFormatter = NumberFormat('#,###');
+    _currentPrice = '${priceFormatter.format(response.priceOverview.latestCloseKrw)}원';
+    _currentPriceUsd = '\$${response.priceOverview.latestCloseUsd.toStringAsFixed(2)}';
+
+    // ETF 투자지표
+    if (response.etfIndicators != null) {
+      final marketCapInTrillions = response.etfIndicators!.marketCap / 1000000000000;
+      final totalAssetsInTrillions = response.etfIndicators!.totalAssets / 1000000000000;
+      _etfIndicators = {
+        '시가총액': '${marketCapInTrillions.toStringAsFixed(1)} 조원',
+        '배당수익률': '${response.etfIndicators!.dividendYield.toStringAsFixed(2)}%',
+        '운용자산': '${totalAssetsInTrillions.toStringAsFixed(1)} 조원',
+        '순자산가치': '${response.etfIndicators!.nav.toStringAsFixed(2)}원',
+        '괴리율': '${response.etfIndicators!.premiumDiscount.toStringAsFixed(2)}%',
+        '운용보수(연)': '${response.etfIndicators!.expenseRatio.toStringAsFixed(2)}%',
+      };
+    }
+
+    // 차트 데이터 (날짜 정렬 후 최신 30개)
+    final dailyList = response.priceSeries.dailyRange.toList();
+    dailyList.sort((a, b) => a.priceDate.compareTo(b.priceDate));
+    _dailyPriceData = dailyList.length > 30
+        ? dailyList.sublist(dailyList.length - 30)
+        : dailyList;
+
+    final weeklyList = response.priceSeries.weeklyRange.toList();
+    weeklyList.sort((a, b) => a.priceDate.compareTo(b.priceDate));
+    _weeklyPriceData = weeklyList.length > 30
+        ? weeklyList.sublist(weeklyList.length - 30)
+        : weeklyList;
+
+    final monthlyList = response.priceSeries.monthlyRange.toList();
+    monthlyList.sort((a, b) => a.priceDate.compareTo(b.priceDate));
+    _monthlyPriceData = monthlyList.length > 30
+        ? monthlyList.sublist(monthlyList.length - 30)
+        : monthlyList;
+
+    // 뉴스 (최대 5개)
+    _newsList = response.latestNews.take(5).map((news) => {
+      'id': news.id,
+      'title': news.title,
+      'url': news.url,
+    }).toList();
   }
 
-  /// ETF 투자지표 API 호출
-  Future<void> _fetchETFIndicators() async {
-    // TODO: API 연결
-    // final response = await etfRepository.getETFIndicators(etfId);
-    // _etfIndicators = response.indicators;
-
-    // 임시 더미 데이터 (API 연결 후 삭제)
-    await Future.delayed(const Duration(milliseconds: 300));
-    _etfIndicators = {
-      '시가총액': '3조 2000억원',
-      '배당수익률': '1.5%',
-      '운용자산': '3조 1500억원',
-      '순자산가치': '15,310원',
-      '괴리율': '0.07%',
-      '운용보수(연)': '0.07%',
-    };
-  }
-
-  /// ETF 뉴스 API 호출 (최대 5개)
-  Future<void> _fetchETFNews() async {
-    // TODO: API 연결
-    // final response = await newsRepository.getETFNews(
-    //   etfId: etfId,
-    //   limit: 5,
-    // );
-    // _newsList = response.newsList.map((news) => {
-    //   'id': news.id,
-    //   'title': news.title,
-    //   'url': news.url,
-    // }).toList();
-
-    // 임시 더미 데이터 (API 연결 후 삭제)
-    await Future.delayed(const Duration(milliseconds: 300));
-    _newsList = [
-      {
-        'id': '1',
-        'title': 'S&P500 지수, 신기록 경신...미국 증시 강세 지속',
-        'url': 'https://example.com/news/1'
-      },
-      {
-        'id': '2',
-        'title': 'TIGER 미국S&P500, 순자산 3조원 돌파',
-        'url': 'https://example.com/news/2'
-      },
-      {
-        'id': '3',
-        'title': '해외 ETF 투자자 급증...S&P500 ETF 인기',
-        'url': 'https://example.com/news/3'
-      },
-      {
-        'id': '4',
-        'title': '미국 증시 전망, 금리 인하 기대감에 상승세',
-        'url': 'https://example.com/news/4'
-      },
-      {
-        'id': '5',
-        'title': 'ETF 시장 규모 10조원 돌파...S&P500 ETF가 주도',
-        'url': 'https://example.com/news/5'
-      },
-    ];
-  }
 
   /// 관심종목 상태 확인 API 호출
   Future<void> _checkWatchlistStatus() async {
-    // TODO: API 연결
-    // final response = await userRepository.checkWatchlist(etfId);
-    // _isWatching = response.isWatching;
-
-    // 임시 더미 데이터 (API 연결 후 삭제)
-    await Future.delayed(const Duration(milliseconds: 300));
-    _isWatching = false;
+    try {
+      final status = await _watchlistRepository.isWatching(etfId);
+      _isWatching = status;
+    } catch (e) {
+      _isWatching = false;
+    }
   }
 
   /// 데이터 새로고침
@@ -164,22 +154,16 @@ class ETFDetailProvider with ChangeNotifier {
     await _loadETFData();
   }
 
-  /// 관심종목 추가/삭제 (API 연결 지점)
+  /// 관심종목 추가/삭제 (API 연결)
   Future<void> toggleWatchlist() async {
     try {
-      // TODO: 백엔드 API 연결
-      // if (_isWatching) {
-      //   await userRepository.removeFromWatchlist(etfId);
-      // } else {
-      //   await userRepository.addToWatchlist(etfId);
-      // }
-
+      await _watchlistRepository.toggleWatchlist(etfId);
       _isWatching = !_isWatching;
       notifyListeners();
     } catch (e) {
       _error = '관심종목 설정에 실패했습니다: $e';
       notifyListeners();
-      rethrow; // UI에서 에러 처리를 위해 다시 throw
+      rethrow;
     }
   }
 

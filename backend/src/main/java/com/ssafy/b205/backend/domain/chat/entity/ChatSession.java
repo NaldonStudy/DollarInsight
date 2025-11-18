@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Entity
@@ -40,6 +41,9 @@ public class ChatSession extends AuditableBase {
     @Column(name = "company_news_id")
     private Long companyNewsId;
 
+    @Column(name = "deleted_at")
+    private OffsetDateTime deletedAt;
+
     // 생성 팩토리
     public static ChatSession create(Integer userId,
                                      ChatTopicType topicType,
@@ -60,5 +64,9 @@ public class ChatSession extends AuditableBase {
         if (uuid == null) {
             uuid = UUID.randomUUID();
         }
+    }
+
+    public void markDeleted() {
+        this.deletedAt = OffsetDateTime.now();
     }
 }

@@ -3,6 +3,7 @@ package com.ssafy.b205.backend.domain.chat.service;
 import com.ssafy.b205.backend.domain.chat.dto.request.AppendMessageRequest;
 import com.ssafy.b205.backend.domain.chat.dto.request.CreateSessionRequest;
 import com.ssafy.b205.backend.domain.chat.dto.response.AppendMessageResponse;
+import com.ssafy.b205.backend.domain.chat.dto.response.ChatSessionSummaryResponse;
 import com.ssafy.b205.backend.domain.chat.dto.response.CreateSessionResponse;
 import com.ssafy.b205.backend.domain.chat.dto.response.HistoryResponse;
 import com.ssafy.b205.backend.domain.chat.entity.ChatSession;
@@ -19,27 +20,40 @@ import com.ssafy.b205.backend.infra.mongo.chat.ChatMessageRepository;
 import com.ssafy.b205.backend.infra.sse.SseEmitterRegistry;
 import com.ssafy.b205.backend.support.error.AppException;
 import com.ssafy.b205.backend.support.error.ErrorCode;
+import com.ssafy.b205.backend.support.response.PageResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import org.bson.types.ObjectId;
 import reactor.core.Disposable;
+import reactor.core.publisher.Flux;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
+import java.time.Duration;
 import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class ChatServiceImpl implements ChatService {
+    private static final ObjectMapper objectMapper = new ObjectMapper();
+    private static final Executor asyncExecutor = Executors.newFixedThreadPool(5);
 
     private static final String E_OWNER = "[ChatSvc-E01] 세션 소유자 불일치";
     private static final String E_NOTF  = "[ChatSvc-E02] 세션을 찾을 수 없습니다.";
@@ -52,6 +66,7 @@ public class ChatServiceImpl implements ChatService {
     private final UserRepository userRepository;
     private final FastAiGateway gateway;
     private final SseEmitterRegistry emitterRegistry;
+    private final PlatformTransactionManager transactionManager;
 
     /** UUID → 내부 int id */
     private int toUserId(String userUuid) {
@@ -89,6 +104,27 @@ public class ChatServiceImpl implements ChatService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public PageResponse<ChatSessionSummaryResponse> listSessions(String userUuid, int page, int size) {
+        final int userId = toUserId(userUuid);
+        final int safePage = Math.max(0, page);
+        final int safeSize = Math.max(1, Math.min(100, size));
+        final var pageable = PageRequest.of(safePage, safeSize, Sort.by(Sort.Direction.DESC, "updatedAt"));
+        return PageResponse.of(
+                sessionRepo.findByUserIdAndDeletedAtIsNull(userId, pageable)
+                        .map(ChatSessionSummaryResponse::from)
+        );
+    }
+
+    @Override
+    @Transactional
+    public void deleteSession(String userUuid, UUID sessionUuid) {
+        final int userId = toUserId(userUuid);
+        final ChatSession session = loadOwnedSession(userId, sessionUuid);
+        session.markDeleted();
+    }
+
+    @Override
     @Transactional
     public AppendMessageResponse appendUserMessage(String userUuid, UUID sessionUuid, AppendMessageRequest req) {
         final int userId = toUserId(userUuid);
@@ -98,22 +134,46 @@ public class ChatServiceImpl implements ChatService {
                 .sessionUuid(sessionUuid)
                 .role("user")
                 .content(req.getContent())
-                .seq(System.nanoTime()) // 최초 메시지 트리거 판단은 count로 하므로 OK
                 .ts(Instant.now())
                 .build());
 
         final long userMsgCount = msgRepo.countBySessionUuidAndRole(sessionUuid, "user");
 
+        // AI 서비스 호출을 비동기로 처리하여 응답 지연 방지
+        final UUID finalSessionUuid = sessionUuid;
+        final String finalContent = req.getContent();
+        
         if (userMsgCount <= 1) {
             final var personaIds = cspRepo.findPersonaIdsBySessionId(session.getId());
             if (personaIds.isEmpty()) {
                 throw new AppException(ErrorCode.BAD_REQUEST, "세션의 페르소나 매핑이 없습니다.");
             }
             final var personas = personaRepo.findAllById(personaIds).stream().map(Persona::getCode).toList();
-            gateway.start(sessionUuid.toString(), req.getContent(), 3000, personas);
+            
+            // /start 호출을 비동기로 처리 (프론트엔드 응답을 블로킹하지 않음)
+            CompletableFuture.runAsync(() -> {
+                try {
+                    log.info("[ChatSvc-Message] 🚀 AI 세션 시작 (비동기) sessionUuid={}, personas={}", finalSessionUuid, personas);
+                    gateway.start(finalSessionUuid.toString(), finalContent, 3000, personas);
+                    log.info("[ChatSvc-Message] ✅ AI 세션 시작 완료 sessionUuid={}", finalSessionUuid);
+                } catch (Exception e) {
+                    log.error("[ChatSvc-Message] ❌ AI 세션 시작 실패 sessionUuid={}, error={}", finalSessionUuid, e.getMessage());
+                }
+            }, asyncExecutor);
         } else {
-            gateway.sendUserInput(sessionUuid.toString(), req.getContent());
+            // /input 호출도 비동기로 처리
+            CompletableFuture.runAsync(() -> {
+                try {
+                    log.info("[ChatSvc-Message] 📤 사용자 입력 전달 (비동기) sessionUuid={}", finalSessionUuid);
+                    gateway.sendUserInput(finalSessionUuid.toString(), finalContent);
+                    log.info("[ChatSvc-Message] ✅ 사용자 입력 전달 완료 sessionUuid={}", finalSessionUuid);
+                } catch (Exception e) {
+                    log.error("[ChatSvc-Message] ❌ 사용자 입력 전달 실패 sessionUuid={}, error={}", finalSessionUuid, e.getMessage());
+                }
+            }, asyncExecutor);
         }
+
+        sessionRepo.touchUpdatedAt(session.getId(), OffsetDateTime.now());
         return new AppendMessageResponse(saved.getId());
     }
 
@@ -123,10 +183,12 @@ public class ChatServiceImpl implements ChatService {
     @Transactional(readOnly = true)
     public SseEmitter streamAssistant(String userUuid, UUID sessionUuid, String deviceId, String lastEventId) {
         final int userId = toUserId(userUuid);
-        loadOwnedSession(userId, sessionUuid); // 소유권 검증
+        final ChatSession session = loadOwnedSession(userId, sessionUuid); // 소유권 검증
+        final int sessionDbId = session.getId();
 
         final SseEmitter emitter = emitterRegistry.create(sessionUuid, deviceId, lastEventId);
-        final AtomicLong seq = new AtomicLong(1);
+        replayMissedMessages(emitter, sessionUuid, lastEventId);
+        final Disposable keepAlive = startKeepAlive(emitter);
 
         final Disposable sub = gateway.stream(sessionUuid.toString())
                 .doOnError(err -> {
@@ -148,17 +210,52 @@ public class ChatServiceImpl implements ChatService {
 
                         // 메시지 이벤트는 Mongo에 저장 (token chunk가 아니라 완성 텍스트 기준이면 게이트웨이 쪽에서 제어)
                         if ("message".equals(eventName) && data != null && !data.isBlank()) {
-                            msgRepo.save(ChatMessageDoc.builder()
-                                    .sessionUuid(sessionUuid)
-                                    .role("assistant")
-                                    .content(data)
-                                    .seq(seq.get())
-                                    .ts(Instant.now())
-                                    .build());
+                            // AI 서비스가 보낸 JSON에서 content 필드만 추출
+                            String content = data;
+                            try {
+                                JsonNode jsonNode = objectMapper.readTree(data);
+                                if (jsonNode.has("content") && jsonNode.get("content").isTextual()) {
+                                    content = jsonNode.get("content").asText();
+                                }
+                            } catch (Exception e) {
+                                // JSON 파싱 실패 시 원본 데이터 사용
+                                log.debug("[ChatSvc-Stream] JSON 파싱 실패, 원본 데이터 사용: {}", e.getMessage());
+                            }
+                            
+                            // 프론트엔드로 즉시 전달 (버퍼링 방지)
+                            final String finalContent = content;
+                            final UUID finalSessionUuid = sessionUuid;
+                            final int finalSessionDbId = sessionDbId;
+                            
+                            // 임시 ID 생성 (MongoDB 저장 전에 전달)
+                            final String tempId = "temp-" + System.currentTimeMillis();
+                            emitter.send(SseEmitter.event()
+                                    .id(tempId)
+                                    .name(eventName)
+                                    .data(finalContent));
+                            
+                            // MongoDB 저장은 비동기로 처리 (프론트엔드 전달을 블로킹하지 않음)
+                            CompletableFuture.runAsync(() -> {
+                                try {
+                                    final ChatMessageDoc saved = msgRepo.save(ChatMessageDoc.builder()
+                                            .sessionUuid(finalSessionUuid)
+                                            .role("assistant")
+                                            .content(finalContent)
+                                            .ts(Instant.now())
+                                            .build());
+                                    new TransactionTemplate(transactionManager).executeWithoutResult(status ->
+                                            sessionRepo.touchUpdatedAt(finalSessionDbId, OffsetDateTime.now())
+                                    );
+                                    log.debug("[ChatSvc-Stream] 메시지 저장 완료: {}", saved.getId());
+                                } catch (Exception e) {
+                                    log.warn("[ChatSvc-Stream] 메시지 저장 실패: {}", e.getMessage());
+                                }
+                            }, asyncExecutor);
+                            
+                            return;
                         }
 
                         emitter.send(SseEmitter.event()
-                                .id(String.valueOf(seq.getAndIncrement()))
                                 .name(eventName)
                                 .data(data));
                     } catch (Exception e) {
@@ -166,8 +263,13 @@ public class ChatServiceImpl implements ChatService {
                     }
                 });
 
-        emitter.onCompletion(sub::dispose);
-        emitter.onTimeout(sub::dispose);
+        Runnable disposeAll = () -> {
+            sub.dispose();
+            keepAlive.dispose();
+        };
+        emitter.onCompletion(disposeAll);
+        emitter.onTimeout(disposeAll);
+        emitter.onError(e -> disposeAll.run());
         return emitter;
     }
 
@@ -206,18 +308,37 @@ public class ChatServiceImpl implements ChatService {
         final int userId = toUserId(userUuid);
         loadOwnedSession(userId, sessionUuid);
 
-        final int pageSize = Math.max(1, Math.min(100, limit)) + 1; // limit+1 조회
-        final var pageable = PageRequest.of(0, pageSize);
+        final int limitClamped = Math.max(1, Math.min(100, limit));
+        final var pageable = PageRequest.of(0, limitClamped + 1); // limit+1 조회
 
-        final List<ChatMessageDoc> docsDesc = (cursorId == null || cursorId.isBlank())
+        ObjectId cursorObjectId = null;
+        if (cursorId != null && !cursorId.isBlank()) {
+            try {
+                cursorObjectId = new ObjectId(cursorId);
+            } catch (IllegalArgumentException e) {
+                throw new AppException(ErrorCode.BAD_REQUEST, "유효하지 않은 cursor 입니다.");
+            }
+        }
+
+        final List<ChatMessageDoc> docsDesc = (cursorObjectId == null)
                 ? msgRepo.pageFirst(sessionUuid, pageable)
-                : msgRepo.pageByCursor(sessionUuid, new ObjectId(cursorId), pageable);
+                : msgRepo.pageByCursor(sessionUuid, cursorObjectId, pageable);
+
+        final boolean hasMore = docsDesc.size() > limitClamped;
+        final List<ChatMessageDoc> sliceDesc = hasMore ? docsDesc.subList(0, limitClamped) : docsDesc;
+        final String nextCursor = (hasMore && !sliceDesc.isEmpty())
+                ? sliceDesc.get(sliceDesc.size() - 1).getId()
+                : null;
 
         // _id desc → 응답은 과거→최신
-        final var orderedAsc = new ArrayList<>(docsDesc);
+        final var orderedAsc = new ArrayList<>(sliceDesc);
         Collections.reverse(orderedAsc);
 
-        return com.ssafy.b205.backend.domain.chat.dto.response.HistoryCursorResponse.of(orderedAsc, pageSize);
+        return com.ssafy.b205.backend.domain.chat.dto.response.HistoryCursorResponse.of(
+                orderedAsc,
+                nextCursor,
+                hasMore
+        );
     }
 
 
@@ -237,8 +358,46 @@ public class ChatServiceImpl implements ChatService {
         gateway.control(sessionUuid.toString(), "CHANGE_PACE", paceMs);
     }
 
+    private void replayMissedMessages(SseEmitter emitter, UUID sessionUuid, String lastEventId) {
+        if (lastEventId == null || lastEventId.isBlank()) {
+            return;
+        }
+        try {
+            final ObjectId cursor = new ObjectId(lastEventId);
+            final List<ChatMessageDoc> docs = msgRepo.findAfterId(sessionUuid, cursor);
+            for (ChatMessageDoc doc : docs) {
+                try {
+                    emitter.send(SseEmitter.event()
+                            .id(doc.getId())
+                            .name("message")
+                            .data(doc.getContent()));
+                } catch (Exception sendError) {
+                    log.debug("[ChatSvc-Stream] replay send interrupted: {}", sendError.getMessage());
+                    return;
+                }
+            }
+        } catch (IllegalArgumentException e) {
+            log.warn("[ChatSvc-Stream] lastEventId {} is not a valid ObjectId", lastEventId);
+        } catch (Exception e) {
+            log.warn("[ChatSvc-Stream] replay send error: {}", e.getMessage());
+        }
+    }
+
+    private Disposable startKeepAlive(SseEmitter emitter) {
+        return Flux.interval(Duration.ofSeconds(25))
+                .subscribe(tick -> {
+                    try {
+                        emitter.send(SseEmitter.event()
+                                .name("ping")
+                                .data("keep-alive"));
+                    } catch (Exception e) {
+                        log.debug("[ChatSvc-Stream] keep-alive send failed: {}", e.getMessage());
+                    }
+                });
+    }
+
     private ChatSession loadOwnedSession(Integer userId, UUID sessionUuid) {
-        final ChatSession s = sessionRepo.findByUuid(sessionUuid)
+        final ChatSession s = sessionRepo.findByUuidAndDeletedAtIsNull(sessionUuid)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, E_NOTF));
         if (!s.getUserId().equals(userId)) {
             throw new AppException(ErrorCode.FORBIDDEN, E_OWNER);

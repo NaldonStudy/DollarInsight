@@ -4,6 +4,7 @@ import com.ssafy.b205.backend.domain.user.entity.User;
 import com.ssafy.b205.backend.domain.user.entity.UserCredential;
 import com.ssafy.b205.backend.domain.user.repository.UserCredentialRepository;
 import com.ssafy.b205.backend.domain.user.repository.UserRepository;
+import com.ssafy.b205.backend.domain.persona.service.UserPersonaService;
 import com.ssafy.b205.backend.infra.security.TokenProvider;
 import com.ssafy.b205.backend.support.error.AppException;
 import com.ssafy.b205.backend.support.error.ErrorCode;
@@ -13,6 +14,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.UUID;
 
 import static com.ssafy.b205.backend.infra.security.DeviceIdResolver.normalize;
@@ -24,6 +26,7 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final UserCredentialRepository credentialRepository;
+    private final UserPersonaService userPersonaService;
     private final PasswordEncoder passwordEncoder;
     private final TokenProvider tokenProvider;
 
@@ -56,6 +59,8 @@ public class UserServiceImpl implements UserService {
                 .passwordHash(passwordEncoder.encode(rawPassword))
                 .build());
         log.info("[UserSvc-03] 자격증명 저장 완료 userId={}", u.getId());
+
+        userPersonaService.initializeForUser(u.getId());
 
         return u;
     }
@@ -153,6 +158,17 @@ public class UserServiceImpl implements UserService {
 
         cred.updatePassword(passwordEncoder.encode(newPassword));
         log.info("[UserSvc-61] 비밀번호 변경 완료 userId={}", user.getId());
+    }
+
+    @Override
+    @Transactional
+    public void changePersonas(String userUuid, List<String> personaCodes) {
+        User user = userRepository.findByUuidAndDeletedAtIsNull(UUID.fromString(userUuid))
+                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "[UserSvc-E05] UUID로 사용자 없음: " + userUuid));
+
+        userPersonaService.updateEnabledPersonas(user.getId(), personaCodes);
+        log.info("[UserSvc-81] 페르소나 변경 완료 userId={}, personaCount={}", user.getId(),
+                personaCodes == null ? 0 : personaCodes.size());
     }
 
     @Override

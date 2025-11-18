@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import '../../widgets/common/custom_back_button.dart';
 import '../../providers/user_provider.dart';
 import '../../../data/datasources/remote/user_api.dart';
+import '../../../data/datasources/remote/auth_api.dart';
+import '../../../data/datasources/local/token_storage.dart';
 
 class MypageScreen extends StatefulWidget {
   const MypageScreen({super.key});
@@ -117,7 +119,12 @@ class _MypageScreenState extends State<MypageScreen> {
                 ),
 
                 SizedBox(height: h * 0.04),
-
+                _menuButton(
+                  w: w,
+                  h: h,
+                  label: '닉네임 변경',
+                  onTap: () => context.push('/mypage/nickname-change'),
+                ),
                 _menuButton(
                   w: w,
                   h: h,
@@ -144,7 +151,7 @@ class _MypageScreenState extends State<MypageScreen> {
                     final status = await UserApi.logout();
 
                     if (status == 204 && context.mounted) {
-                      context.go('/login');
+                      context.go('/landing');
                     }
                   },
                 ),
@@ -153,7 +160,44 @@ class _MypageScreenState extends State<MypageScreen> {
                   w: w,
                   h: h,
                   label: '탈퇴하기',
-                  onTap: () => context.push('/withdrawal'),
+                  onTap: () async {
+                    final confirm = await showDialog<bool>(
+                      context: context,
+                      builder: (ctx) {
+                        return AlertDialog(
+                          title: const Text("정말 탈퇴하시겠습니까?"),
+                          content: const Text("회원탈퇴를 진행하면 계정이 삭제됩니다."),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.of(ctx).pop(false),
+                              child: const Text("취소"),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.of(ctx).pop(true),
+                              child: const Text(
+                                "탈퇴하기",
+                                style: TextStyle(color: Colors.red),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    );
+
+                    if (confirm == true && context.mounted) {
+                      // 🔥 탈퇴 API 실행
+                      final success = await AuthApi.deleteMe();
+
+                      if (success) {
+                        await TokenStorage.clearTokens();
+                        context.go('/withdrawal/complete');
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text("회원탈퇴에 실패했습니다.")),
+                        );
+                      }
+                    }
+                  },
                 ),
               ],
             ),

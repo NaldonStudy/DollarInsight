@@ -9,7 +9,7 @@ server:
 spring:
   docker:
     compose:
-      lifecycle-management: none  # IDE가 docker-compose 자동 기동하지 않도록
+      lifecycle-management: none # IDE가 docker-compose 자동 기동하지 않도록
 
   autoconfigure:
     exclude:
@@ -100,14 +100,19 @@ springdoc:
 app:
   jwt:
     secret: ${APP_JWT_SECRET:local-dev-secret-at-least-32-chars-1234567890abcd}
-    access-ttl-seconds: ${APP_JWT_ACCESS_TTL_SECONDS:900}
+    access-ttl-seconds: ${APP_JWT_ACCESS_TTL_SECONDS:3600}
 
   oauth:
     kakao:
       client-id: ${KAKAO_REST_API_KEY}
       client-secret: ${KAKAO_CLIENT_SECRET:}
-      default-redirect-uri: http://localhost:9090/auth/callback/kakao  # 보관용
-      allow-default-redirect: false  # 로컬은 모바일만
+      default-redirect-uri: http://localhost:9090/auth/callback/kakao # 보관용
+      allow-default-redirect: false # 로컬은 모바일만
+    google:
+      client-id: ${GOOGLE_CLIENT_ID}
+      client-secret: ${GOOGLE_CLIENT_SECRET:}
+      default-redirect-uri: http://localhost:9090/auth/callback/google
+      allow-default-redirect: false
 
 # ===== ChromaDB =====
 external:

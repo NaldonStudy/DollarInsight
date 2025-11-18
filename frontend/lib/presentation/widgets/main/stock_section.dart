@@ -1,30 +1,43 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../widgets/chat/chat_bubble.dart';
+import '../../../data/models/dashboard_model.dart';
+import '../../../core/constants/etf_data.dart';
 
 class StockSection extends StatelessWidget {
   final double w;
   final double h;
+  final List<DailyPick> dailyPicks;
 
-  const StockSection({super.key, required this.w, required this.h});
+  const StockSection({
+    super.key,
+    required this.w,
+    required this.h,
+    required this.dailyPicks,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final messages = [
-      "젠슨황 오늘 또 무대 오른다!\n엔비디아 주주들 지금 심장 쿵쾅거리는 거 들리냐ㅋㅋ",
-      "오늘 Meta 발표가 있어요.\nAI 투자와 광고 매출 회복이 관전 포인트 입니다",
-      "테슬라는 전기차를 넘어 AI·로봇·에너지까지 확장 중이에요",
-      "애플 AI 아이폰 루머에 커뮤니티 난리🔥 이번엔 혁신 각이죠ㅋㅋ",
-      "아마존, 위기 때마다 더 강해지는 기업이지.\n클라우드·AI로 또 한 번 판을 키우고 있어.",
-    ];
+    // ✅ 페르소나 코드에 따른 이미지 매핑 (백엔드 기준)
+    String _getPersonaImage(String personaCode) {
+      final code = personaCode.toLowerCase();
 
-    final images = [
-      "assets/images/Heeyule.webp",
-      "assets/images/Jiyule.webp",
-      "assets/images/Taeo.webp",
-      "assets/images/Minji.webp",
-      "assets/images/Ducksu.webp",
-    ];
+      switch (code) {
+        case 'heeyul':
+          return 'assets/images/heuyeol.webp';
+        case 'jiyul':
+          return 'assets/images/jiyul.webp';
+        case 'teo':
+          return 'assets/images/teo.webp';
+        case 'minji':
+          return 'assets/images/minji.webp';
+        case 'deoksu':
+          return 'assets/images/deoksu.webp';
+        default:
+          // 알 수 없는 페르소나 코드는 기본 이미지 사용
+          return 'assets/images/heuyeol.webp';
+      }
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -41,45 +54,8 @@ class StockSection extends StatelessWidget {
                 fontWeight: FontWeight.w700,
               ),
             ),
-
-            /// ✅ 오른쪽 "편집 · 전체보기"
-            Row(
-              children: [
-                GestureDetector(
-                  onTap: () {
-                    context.push('/mypage/ai-friend');
-                  },
-                  child: Text(
-                    "편집",
-                    style: TextStyle(
-                      fontSize: w * 0.032, // 약 12px
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFFA9A9A9),
-                    ),
-                  ),
-                ),
-
-                SizedBox(width: w * 0.02), // 편집과 전체보기 간격
-
-                GestureDetector(
-                  onTap: () {
-                    // 전체보기 페이지 이동 처리
-                  },
-                  child: Text(
-                    "전체보기",
-                    style: TextStyle(
-                      fontSize: w * 0.032, // 약 12px
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFFA9A9A9),
-                    ),
-                  ),
-                ),
-              ],
-            ),
           ],
         ),
-
-        SizedBox(height: h * 0.012),
 
         /// ✅ 데일리픽 리스트 카드
         Container(
@@ -99,20 +75,44 @@ class StockSection extends StatelessWidget {
               ),
             ],
           ),
-
-          child: Column(
-            children: [
-              for (int i = 0; i < messages.length; i++) ...[
-                ChatBubble(
-                  text: messages[i],
-                  imagePath: images[i],
-                  w: w,
-                  h: h,
+          child: dailyPicks.isEmpty
+              ? const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(20.0),
+                    child: Text(
+                      "데일리 픽이 없습니다",
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  ),
+                )
+              : Column(
+                  children: [
+                    for (int i = 0; i < dailyPicks.length; i++) ...[
+                      GestureDetector(
+                        onTap: () {
+                          final ticker = dailyPicks[i].ticker;
+                          // ✅ ETF인지 확인 후 적절한 경로로 이동
+                          final isEtf = etfDataMap.containsKey(ticker.toUpperCase());
+                          if (isEtf) {
+                            context.push('/etf/$ticker');
+                          } else {
+                            context.push('/company/$ticker');
+                          }
+                        },
+                        child: ChatBubble(
+                          text: dailyPicks[i].personaComment.comment,
+                          imagePath: _getPersonaImage(
+                            dailyPicks[i].personaComment.personaCode,
+                          ),
+                          w: w,
+                          h: h,
+                        ),
+                      ),
+                      if (i < dailyPicks.length - 1)
+                        SizedBox(height: h * 0.016),
+                    ]
+                  ],
                 ),
-                SizedBox(height: h * 0.016),
-              ]
-            ],
-          ),
         ),
       ],
     );

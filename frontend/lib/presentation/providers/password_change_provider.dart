@@ -1,106 +1,118 @@
 import 'package:flutter/material.dart';
-import '../../data/models/signup_form_state.dart';
+import 'package:dio/dio.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import '../../core/utils/device_id_manager.dart';
+import '../../data/datasources/local/token_storage.dart'; // ✅ TokenStorage 사용
 
 class PasswordChangeProvider extends ChangeNotifier {
-  // ✅ 회원가입 구조를 그대로 유지
-  SignupFormState _state = SignupFormState.initial();
+  final passwordController = TextEditingController();
+  final passwordConfirmController = TextEditingController();
 
-  SignupFormState get state => _state;
-
-  final TextEditingController passwordController = TextEditingController();
-  final TextEditingController passwordConfirmController = TextEditingController();
-
-  @override
-  void dispose() {
-    passwordController.dispose();
-    passwordConfirmController.dispose();
-    super.dispose();
+  /// ✅ BASE_URL 환경변수에서 읽기
+  String get baseUrl {
+    final url = dotenv.env['BASE_URL'];
+    if (url == null || url.isEmpty) {
+      throw Exception('BASE_URL이 .env 파일에 설정되지 않았습니다.');
+    }
+    return url;
   }
 
-  /// 비밀번호 규칙 (Signup과 동일)
-  bool _isValidPassword(String password) {
-    if (password.length < 8) return false;
+  late final Dio _dio = Dio(
+    BaseOptions(
+      baseUrl: baseUrl,
+      contentType: 'application/json',
+    ),
+  );
 
-    bool hasLetter = RegExp(r'[a-zA-Z]').hasMatch(password);
-    bool hasNumber = RegExp(r'[0-9]').hasMatch(password);
-    bool hasSpecial =
-    RegExp(r'[!@#$%^&*(),.?":{}|<>]').hasMatch(password);
+  bool isLoading = false;
+  String? passwordError;
+  String? passwordConfirmError;
 
-    return hasLetter && hasNumber && hasSpecial;
-  }
-
-  /// ✅ 새 비밀번호 유효성 검증
+  /// ✅ 비밀번호 유효성 검사
   void validatePassword(String value) {
     if (value.isEmpty) {
-      _state = _state.copyWith(
-        password: FieldValidationState(
-          errorMessage: '비밀번호를 입력해주세요',
-          isValid: false,
-          hasBeenTouched: true,
-        ),
-      );
-    } else if (!_isValidPassword(value)) {
-      _state = _state.copyWith(
-        password: FieldValidationState(
-          errorMessage: '숫자/영어/특수문자를 필수로 넣어야 합니다',
-          isValid: false,
-          hasBeenTouched: true,
-        ),
-      );
+      passwordError = "비밀번호를 입력해주세요.";
+    } else if (value.length < 8) {
+      passwordError = "비밀번호는 8자 이상이어야 합니다.";
+    } else if (!RegExp(r'[A-Za-z]').hasMatch(value) ||
+        !RegExp(r'\d').hasMatch(value) ||
+        !RegExp(r'[!@#\$%^&*(),.?":{}|<>]').hasMatch(value)) {
+      passwordError = "영문, 숫자, 특수문자를 모두 포함해야 합니다.";
     } else {
-      _state = _state.copyWith(
-        password: FieldValidationState(
-          errorMessage: null,
-          isValid: true,
-          hasBeenTouched: true,
-        ),
-      );
+      passwordError = null;
     }
 
-    // ✅ 비밀번호 확인란도 자동 검증
+    // 비밀번호 확인도 다시 검증
     if (passwordConfirmController.text.isNotEmpty) {
       validatePasswordConfirm(passwordConfirmController.text);
     }
-
     notifyListeners();
   }
 
-  /// ✅ 새 비밀번호 확인 검증
+  /// ✅ 비밀번호 확인 유효성 검사
   void validatePasswordConfirm(String value) {
     if (value.isEmpty) {
-      _state = _state.copyWith(
-        passwordConfirm: FieldValidationState(
-          errorMessage: '비밀번호 확인을 입력해주세요',
-          isValid: false,
-          hasBeenTouched: true,
-        ),
-      );
+      passwordConfirmError = "비밀번호 확인을 입력해주세요.";
     } else if (value != passwordController.text) {
-      _state = _state.copyWith(
-        passwordConfirm: FieldValidationState(
-          errorMessage: '비밀번호가 일치하지 않습니다',
-          isValid: false,
-          hasBeenTouched: true,
-        ),
-      );
+      passwordConfirmError = "비밀번호가 일치하지 않습니다.";
     } else {
-      _state = _state.copyWith(
-        passwordConfirm: FieldValidationState(
-          errorMessage: null,
-          isValid: true,
-          hasBeenTouched: true,
-        ),
-      );
+      passwordConfirmError = null;
     }
-
     notifyListeners();
   }
 
-  /// ✅ 모든 필드 유효성 체크 (Signup과 동일 구조)
+  /// ✅ 전체 유효성 검사
   bool validateAll() {
     validatePassword(passwordController.text);
     validatePasswordConfirm(passwordConfirmController.text);
+    return passwordError == null && passwordConfirmError == null;
+  }
 
-    return _state.password.isValid && _state.passwordConfirm.isValid;
+  /// ✅ 비밀번호 변경 API 요청 (PATCH /api/users/me/password)
+  Future<void> changePassword(String oldPassword, String newPassword) async {
+    try {
+      isLoading = true;
+      notifyListeners();
+
+      // ✅ TokenStorage에서 accessToken 불러오기
+      final token = await TokenStorage.getAccessToken();
+      if (token == null || token.isEmpty) {
+        throw Exception('Access token이 존재하지 않습니다. 다시 로그인해주세요.');
+      }
+
+      final bearerToken = token.startsWith('Bearer ') ? token : 'Bearer $token';
+      final deviceId = await DeviceIdManager.getDeviceId();
+
+      debugPrint('🔑 access token: $bearerToken');
+      debugPrint('📱 deviceId: $deviceId');
+
+      // ✅ 비밀번호 변경 요청
+      final response = await _dio.patch(
+        '/api/users/me/password',
+        options: Options(
+          headers: {
+            'Authorization': bearerToken,
+            'X-Device-Id': deviceId,
+            'Content-Type': 'application/json',
+          },
+        ),
+        data: {
+          'oldPassword': oldPassword,
+          'newPassword': newPassword,
+        },
+      );
+
+      if (response.statusCode == 204) {
+        debugPrint('✅ 비밀번호 변경 성공');
+      } else {
+        throw Exception('비밀번호 변경 실패 (${response.statusCode})');
+      }
+    } on DioException catch (e) {
+      debugPrint('❌ 비밀번호 변경 오류: ${e.response?.data}');
+      rethrow;
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
   }
 }

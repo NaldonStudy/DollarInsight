@@ -6,20 +6,38 @@ MongoDB 상태 확인 스크립트
 
 import os
 from dotenv import load_dotenv
+from pathlib import Path
 from pymongo import MongoClient
 from urllib.parse import quote_plus
 from datetime import datetime
 
-load_dotenv()
+# .env 파일 경로 명시적으로 지정 (Airflow 컨테이너 내부 경로 사용)
+# docker-compose에서 /opt/airflow/.env로 마운트됨
+# override=True: 기존 환경 변수를 .env 파일의 값으로 덮어씀
+env_path = Path("/opt/airflow/.env")
+if env_path.exists():
+    load_dotenv(dotenv_path=env_path, override=True)
+else:
+    # 절대 경로에서도 시도
+    env_path_abs = Path("/opt/S13P31B205/ai-service/.env")
+    if env_path_abs.exists():
+        load_dotenv(dotenv_path=env_path_abs, override=True)
+    else:
+        # 기본 경로에서도 시도
+        load_dotenv(override=True)
 
 # MongoDB 설정
-MONGODB_HOST = os.getenv("MONGODB_HOST", "mongodb")
+# MONGODB_HOST는 docker-compose에서 설정되지만, 기본값이 mongodb일 수 있음
+# 실제 컨테이너 이름은 dollar-insight-mongodb이므로 .env 파일에서 읽도록 함
+MONGODB_HOST = os.getenv("MONGODB_HOST", "dollar-insight-mongodb")
 MONGODB_PORT = int(os.getenv("MONGODB_PORT", "27017"))
 MONGODB_DB = os.getenv("MONGODB_DB", "dollar_insight")
 MONGODB_NEWS_COLLECTION = os.getenv("MONGODB_NEWS_COLLECTION", "investing_news")
 # MongoDB 인증 정보 (vectorize_news.py와 동일한 방식)
-_mongodb_user = os.getenv("MONGODB_USER", os.getenv("MONGODB_USERNAME", None))
-_mongodb_pass = os.getenv("MONGODB_PASSWORD", None)
+# .env 파일의 MONGODB_USER, MONGODB_PASSWORD 또는 MONGO_USER, MONGO_PASSWORD 사용
+# docker-compose-airflow.yml에서 MONGO_USER, MONGO_PASSWORD로 설정되므로 둘 다 확인
+_mongodb_user = os.getenv("MONGODB_USER") or os.getenv("MONGODB_USERNAME") or os.getenv("MONGO_USER")
+_mongodb_pass = os.getenv("MONGODB_PASSWORD") or os.getenv("MONGO_PASSWORD")
 MONGODB_USERNAME = _mongodb_user.strip() if _mongodb_user else None
 MONGODB_PASSWORD = _mongodb_pass.strip() if _mongodb_pass else None
 MONGODB_AUTH_SOURCE = os.getenv("MONGODB_AUTH_SOURCE", "admin").strip()

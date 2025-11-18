@@ -9,10 +9,12 @@ import '../../widgets/common/scroll_fab_button.dart';
 import '../../widgets/common/top_navigation.dart';
 import '../chat/chat_list_screen.dart';
 import '../../../core/constants/app_spacing.dart';
+import '../../../core/utils/ticker_logo_mapper.dart';
 import 'package:go_router/go_router.dart';
 import 'company_chart_screen.dart';
 import 'company_news_list_screen.dart';
 import 'company_news_detail_screen.dart';
+import 'company_info_screen.dart';
 
 /// 기업 상세 페이지
 /// Provider를 사용하여 데이터 로직과 UI 로직 분리
@@ -37,6 +39,7 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
   late TabController _tabController;
   final ScrollController _scrollController = ScrollController();
   final PageController _scorePageController = PageController(); // 종목정보 탭 내부 페이지
+  late CompanyDetailProvider _provider; // Provider를 State 변수로 관리
 
   bool showFab = false;
   bool isCompany = true; // 기업분석/채팅 토글 상태
@@ -45,6 +48,7 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
   @override
   void initState() {
     super.initState();
+    _provider = CompanyDetailProvider(companyId: widget.companyId); // Provider 한 번만 생성
     _tabController = TabController(length: 3, vsync: this); // 3개 탭 (차트, 종목정보, 주가예측)
 
     _scrollController.addListener(() {
@@ -66,6 +70,7 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
 
   @override
   void dispose() {
+    _provider.dispose(); // Provider dispose
     _tabController.dispose();
     _scrollController.dispose();
     _scorePageController.dispose();
@@ -78,44 +83,54 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
     final w = size.width;
     final h = size.height;
 
-    return ChangeNotifierProvider(
-      create: (_) => CompanyDetailProvider(companyId: widget.companyId),
+    return ChangeNotifierProvider.value(
+      value: _provider, // 이미 생성된 Provider 전달
       child: Scaffold(
         backgroundColor: const Color(0xFFF7F8FB),
-        floatingActionButton: ScrollFabButton(
-          w: w,
-          showFab: showFab,
-          onTap: () {
-            _scrollController.animateTo(
-              0,
-              duration: const Duration(milliseconds: 350),
-              curve: Curves.easeOut,
-            );
-          },
-        ),
-        floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
         body: SafeArea(
-          child: Column(
+          child: Stack(
             children: [
-              /// TopNavigation (기업분석/채팅 토글)
-              TopNavigation(
-                w: w,
-                h: h,
-                isCompany: isCompany,
-                onTapCompany: () => setState(() => isCompany = true),
-                onTapChat: () => setState(() => isCompany = false),
-                onProfileTap: () {
-                  // TODO: 마이페이지로 이동
-                  // context.push('/mypage');
-                },
-              ),
+              Column(
+                children: [
+                  /// TopNavigation (기업분석/채팅 토글)
+                  TopNavigation(
+                    w: w,
+                    h: h,
+                    isCompany: isCompany,
+                    onTapCompany: () => setState(() => isCompany = true),
+                    onTapChat: () => setState(() => isCompany = false),
+                    onProfileTap: () {
+                      context.push('/mypage');
+                    },
+                  ),
 
-              /// 화면 전환 (기업분석 / 채팅)
-              Expanded(
-                child: isCompany
-                    ? _buildCompanyAnalysisBody(w, h)
-                    : const ChatListScreen(),
+                  /// 화면 전환 (기업분석 / 채팅)
+                  Expanded(
+                    child: isCompany
+                        ? _buildCompanyAnalysisBody(w, h)
+                        : const ChatListScreen(),
+                  ),
+                ],
               ),
+              
+              /// ✅ 채팅 생성 FAB (항상 표시)
+              if (isCompany)
+                Positioned(
+                  right: w * 0.05,
+                  bottom: w * 0.05,
+                  child: Consumer<CompanyDetailProvider>(
+                    builder: (context, provider, child) {
+                      return ScrollFabButton(
+                        w: w,
+                        showFab: true, // 항상 표시
+                        actionType: FabActionType.chat,
+                        chatType: ChatContextType.company,
+                        title: provider.companyName,
+                        ticker: widget.companyId,
+                      );
+                    },
+                  ),
+                ),
             ],
           ),
         ),
@@ -158,7 +173,7 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
                 child: TabBarView(
                   controller: _tabController,
                   children: [
-                    _buildChartTab(),
+                    _buildChartTab(provider),
                     _buildScoreTabWithPages(w, h, provider),
                     _buildPredictionTab(provider),
                   ],
@@ -188,10 +203,10 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
               color: Color(0xFFD9D9D9),
               shape: BoxShape.circle,
             ),
-            child: provider.logoUrl != null
+            child: TickerLogoMapper.hasLogo(widget.companyId)
                 ? ClipOval(
-                    child: Image.network(
-                      provider.logoUrl!,
+                    child: Image.asset(
+                      TickerLogoMapper.getLogoPath(widget.companyId),
                       fit: BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) =>
                           const SizedBox(),
@@ -247,17 +262,47 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
               ],
             ),
           ),
+          // + 버튼 (기업 설명)
+          IconButton(
+            icon: Image.asset(
+              'assets/images/plusicon.webp',
+              width: 24,
+              height: 24,
+            ),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => CompanyInfoScreen(companyId: widget.companyId),
+                ),
+              );
+            },
+          ),
+          const SizedBox(width: 8),
           // 관심 버튼
           WatchButton(
             isWatching: provider.isWatching,
             onTap: () async {
+              final wasWatching = provider.isWatching;
               try {
                 await provider.toggleWatchlist();
+                // 성공 메시지 표시
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(wasWatching ? '관심종목에서 제거되었습니다' : '관심종목에 추가되었습니다'),
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                }
               } catch (e) {
                 // Provider에서 에러를 던지면 여기서 처리
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('관심종목 설정에 실패했습니다: $e')),
+                    SnackBar(
+                      content: Text('관심종목 설정에 실패했습니다: $e'),
+                      duration: const Duration(seconds: 2),
+                    ),
                   );
                 }
               }
@@ -298,12 +343,12 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
   }
 
   /// 차트 탭 (주가그래프만 표시)
-  Widget _buildChartTab() {
-    return _buildStockChartPage();
+  Widget _buildChartTab(CompanyDetailProvider provider) {
+    return _buildStockChartPage(provider);
   }
 
-  /// 주가 그래프 페이지 (일봉/주봉/월봉)
-  Widget _buildStockChartPage() {
+  /// 주가 그래프 페이지 (일봉)
+  Widget _buildStockChartPage(CompanyDetailProvider provider) {
     return Container(
       margin: EdgeInsets.symmetric(
         horizontal: AppSpacing.horizontal(context),
@@ -314,7 +359,9 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
         color: Colors.white,
         borderRadius: BorderRadius.circular(8),
       ),
-      child: const StockPriceChart(),
+      child: StockPriceChart(
+        dailyData: provider.dailyPriceData,
+      ),
     );
   }
 
@@ -507,7 +554,9 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const CompanyNewsListScreen(),
+                      builder: (context) => CompanyNewsListScreen(
+                        companyId: widget.companyId,
+                      ),
                     ),
                   );
                 },

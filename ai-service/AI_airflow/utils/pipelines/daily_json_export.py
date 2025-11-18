@@ -10,12 +10,13 @@ from pathlib import Path
 from typing import Iterable, Optional
 
 import os
+import pandas as pd
 import yfinance as yf
 from fredapi import Fred
 
 from .env_loader import load_env
 from .kis_client import KISClient, KISClientError, default_client
-from .watchlists import FRED_DAILY_SERIES, US_ETFS, US_INDICES, US_STOCKS
+from .watchlists import FRED_DAILY_SERIES, US_ETFS, US_INDICES, US_STOCKS, YF_MACRO_SERIES
 
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
@@ -464,6 +465,107 @@ def collect_fred_daily(*, date: dt.date) -> list[dict]:
     return records
 
 
+def _scale_value(value: float | None, meta: dict) -> float | None:
+    if value is None:
+        return None
+    if "scale" in meta:
+        return float(value) * float(meta["scale"])
+    if meta.get("auto_scale_percent") and abs(value) > 20:
+        return float(value) * 0.1
+    return float(value)
+
+
+def _extract_history_value(series: pd.Series, date: dt.date) -> tuple[float | None, float | None]:
+    if series is None or series.empty:
+        return None, None
+    series = series[~series.index.duplicated(keep="last")]
+    target_rows = series[series.index.date == date]
+    if target_rows.empty:
+        return None, None
+    value = float(target_rows.iloc[0])
+    prior_idx = series.index[series.index < target_rows.index[0]]
+    prev_value = float(series.loc[prior_idx[-1]]) if len(prior_idx) else None
+    return value, prev_value
+
+
+def collect_yfinance_macro(*, date: dt.date) -> list[dict]:
+    if not YF_MACRO_SERIES:
+        return []
+    history_cache: dict[str, pd.Series] = {}
+
+    def fetch_series(symbol: str) -> pd.Series:
+        if symbol in history_cache:
+            return history_cache[symbol]
+        ticker = yf.Ticker(symbol)
+        history = ticker.history(
+            start=date - dt.timedelta(days=30),
+            end=date + dt.timedelta(days=2),
+            auto_adjust=False,
+        )
+        if history.empty:
+            series = pd.Series(dtype=float)
+        else:
+            series = history["Close"]
+        history_cache[symbol] = series
+        return series
+
+    records: list[dict] = []
+    for indicator_code, meta in YF_MACRO_SERIES.items():
+        value = None
+        prev_value = None
+
+        if "symbol" in meta:
+            series = fetch_series(meta["symbol"])
+            value_raw, prev_raw = _extract_history_value(series, date)
+            value = _scale_value(value_raw, meta)
+            prev_value = _scale_value(prev_raw, meta)
+        elif "components" in meta:
+            component_values: list[float | None] = []
+            component_prev: list[float | None] = []
+            for component in meta.get("components", []):
+                series = fetch_series(component["symbol"])
+                value_raw, prev_raw = _extract_history_value(series, date)
+                component_values.append(_scale_value(value_raw, component))
+                component_prev.append(_scale_value(prev_raw, component))
+            if all(val is not None for val in component_values):
+                operation = meta.get("operation", "diff")
+                if operation == "ratio":
+                    value = (
+                        component_values[0] / component_values[1]
+                        if component_values[1] not in (None, 0)
+                        else None
+                    )
+                    prev_value = (
+                        component_prev[0] / component_prev[1]
+                        if component_prev[1] not in (None, 0)
+                        else None
+                    )
+                else:
+                    value = component_values[0] - component_values[1]
+                    if all(prev is not None for prev in component_prev):
+                        prev_value = component_prev[0] - component_prev[1]
+        if value is None:
+            continue
+        change_abs = value - prev_value if prev_value is not None else None
+        change_pct = (
+            (change_abs / prev_value) * 100
+            if change_abs is not None and prev_value not in (None, 0)
+            else None
+        )
+        record = {
+            "indicator_code": indicator_code,
+            "date": date.isoformat(),
+            "value": round(float(value), 6),
+            "unit": meta.get("unit"),
+            "change": round(float(change_abs), 6) if change_abs is not None else None,
+            "change_mom": round(float(change_pct), 6) if change_pct is not None else None,
+            "source": meta.get("source", "YFINANCE"),
+            "source_vendor": meta.get("source_vendor", "YFINANCE"),
+        }
+        records.append(_remove_none(record))
+    return records
+
+
 @dataclass
 class DailyJsonResult:
     stock_price_daily: list[dict]
@@ -475,11 +577,16 @@ class DailyJsonResult:
 def collect_all(date: dt.date) -> DailyJsonResult:
     load_env()
     client = default_client()
+    macro_records = collect_fred_daily(date=date)
+    yf_macro = collect_yfinance_macro(date=date)
+    fred_codes = {record["indicator_code"] for record in macro_records if "indicator_code" in record}
+    macro_records.extend(record for record in yf_macro if record.get("indicator_code") not in fred_codes)
+
     return DailyJsonResult(
         stock_price_daily=collect_stock_prices(date=date, client=client),
         etf_price_daily=collect_etf_prices(date=date, client=client),
         index_price_daily=collect_index_prices(date=date, client=client),
-        macro_economic_indicators=collect_fred_daily(date=date),
+        macro_economic_indicators=macro_records,
     )
 
 

@@ -11,6 +11,7 @@ import java.util.concurrent.ConcurrentHashMap;
 @Component
 public class SseEmitterRegistry {
 
+    private static final long DEFAULT_TIMEOUT_MS = 30L * 60 * 1000; // 30분
     private final Map<String, SseEmitter> emitters = new ConcurrentHashMap<>();
 
     private static String key(UUID sessionUuid, String deviceId) {
@@ -19,7 +20,7 @@ public class SseEmitterRegistry {
 
     /** 기존 단일키 등록 */
     public SseEmitter register(UUID sessionUuid) {
-        SseEmitter emitter = new SseEmitter(0L);
+        SseEmitter emitter = new SseEmitter(DEFAULT_TIMEOUT_MS);
         emitters.put(sessionUuid.toString(), emitter);
         emitter.onCompletion(() -> emitters.remove(sessionUuid.toString()));
         emitter.onTimeout(() -> emitters.remove(sessionUuid.toString()));
@@ -30,7 +31,7 @@ public class SseEmitterRegistry {
     /** ✅ 디바이스 단위 다중 등록 + (옵션) lastEventId */
     public SseEmitter create(UUID sessionUuid, String deviceId, String lastEventId) {
         String k = key(sessionUuid, deviceId);
-        SseEmitter emitter = new SseEmitter(0L);
+        SseEmitter emitter = new SseEmitter(DEFAULT_TIMEOUT_MS);
         emitters.put(k, emitter);
         emitter.onCompletion(() -> emitters.remove(k));
         emitter.onTimeout(() -> emitters.remove(k));

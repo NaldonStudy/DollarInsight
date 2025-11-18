@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
+import '../../data/datasources/remote/company_api.dart';
 
 /// 기업별 뉴스 리스트 화면의 상태와 비즈니스 로직을 관리하는 Provider
 /// 무한 스크롤, 새로고침, 페이지네이션 지원
 class CompanyNewsProvider with ChangeNotifier {
   final String companyId;
+  final CompanyApi _companyApi;
 
-  CompanyNewsProvider({required this.companyId}) {
+  CompanyNewsProvider({
+    required this.companyId,
+    CompanyApi? companyApi,
+  }) : _companyApi = companyApi ?? CompanyApi() {
     _loadInitialNews();
   }
 
@@ -29,8 +34,9 @@ class CompanyNewsProvider with ChangeNotifier {
   String? _error;
   String? get error => _error;
 
-  int _currentPage = 1;
-  final int _pageSize = 15; // 한 번에 불러올 뉴스 개수
+  int _currentPage = 0; // API는 0부터 시작
+  final int _pageSize = 20; // 한 번에 불러올 뉴스 개수
+  int _totalElements = 0;
 
   // ============= 비즈니스 로직 =============
 
@@ -38,37 +44,38 @@ class CompanyNewsProvider with ChangeNotifier {
   Future<void> _loadInitialNews() async {
     _isLoading = true;
     _error = null;
-    _currentPage = 1;
+    _currentPage = 0;
     notifyListeners();
 
     try {
-      // TODO: 백엔드 API 연결
-      // final response = await newsRepository.getCompanyNews(
-      //   companyId: companyId,
-      //   page: _currentPage,
-      //   pageSize: _pageSize,
-      // );
-      //
-      // _companyName = response.companyName;
-      // _newsList = response.newsList;
-      // _hasMore = response.hasMore;
-
-      // 임시 더미 데이터 (API 연결 후 삭제)
-      await Future.delayed(const Duration(seconds: 1));
-
-      _companyName = '엔비디아';
-      _newsList = List.generate(
-        _pageSize,
-        (i) => {
-          'id': '${i + 1}',
-          'title': _getDummyTitle(i),
-          'summary': '뉴스 요약 내용입니다. AI가 자동으로 요약한 내용이 여기에 표시됩니다.',
-          'url': 'https://example.com/news/${i + 1}',
-          'publishedAt': '2025-01-${(i % 30) + 1}',
-          'source': '뉴스 출처 ${i % 3 + 1}',
-        },
+      // ✅ 백엔드 API 연결
+      final response = await _companyApi.getNewsList(
+        ticker: companyId,
+        page: _currentPage,
+        size: _pageSize,
       );
-      _hasMore = true;
+
+      // 응답 파싱
+      final items = response['items'] as List<dynamic>? ?? [];
+      _totalElements = response['totalElements'] as int? ?? 0;
+
+      // 뉴스 리스트 변환
+      _newsList = items.map((item) {
+        return {
+          'id': item['id']?.toString() ?? '',
+          'ticker': item['ticker']?.toString() ?? '',
+          'title': item['title']?.toString() ?? '',
+          'summary': item['summary']?.toString() ?? '',
+          'url': item['url']?.toString() ?? '',
+          'publishedAt': item['publishedAt']?.toString() ?? '',
+        };
+      }).toList();
+
+      // 더 불러올 뉴스가 있는지 확인
+      _hasMore = _newsList.length < _totalElements;
+
+      // 기업명 설정 (ticker를 기업명으로 임시 사용, 필요시 별도 API 호출)
+      _companyName = companyId;
 
       _isLoading = false;
       notifyListeners();
@@ -89,37 +96,33 @@ class CompanyNewsProvider with ChangeNotifier {
     try {
       _currentPage++;
 
-      // TODO: 백엔드 API 연결
-      // final response = await newsRepository.getCompanyNews(
-      //   companyId: companyId,
-      //   page: _currentPage,
-      //   pageSize: _pageSize,
-      // );
-      //
-      // _newsList.addAll(response.newsList);
-      // _hasMore = response.hasMore;
-
-      // 임시 더미 데이터 (API 연결 후 삭제)
-      await Future.delayed(const Duration(milliseconds: 800));
-
-      final moreNews = List.generate(
-        10,
-        (i) => {
-          'id': '${_newsList.length + i + 1}',
-          'title': '추가 기업 뉴스 ${_newsList.length + i + 1}',
-          'summary': '추가 뉴스 요약 내용입니다.',
-          'url': 'https://example.com/news/${_newsList.length + i + 1}',
-          'publishedAt': '2025-01-${(_newsList.length + i) % 30 + 1}',
-          'source': '뉴스 출처 ${(_newsList.length + i) % 3 + 1}',
-        },
+      // ✅ 백엔드 API 연결
+      final response = await _companyApi.getNewsList(
+        ticker: companyId,
+        page: _currentPage,
+        size: _pageSize,
       );
+
+      // 응답 파싱
+      final items = response['items'] as List<dynamic>? ?? [];
+      _totalElements = response['totalElements'] as int? ?? 0;
+
+      // 추가 뉴스 리스트 변환
+      final moreNews = items.map((item) {
+        return {
+          'id': item['id']?.toString() ?? '',
+          'ticker': item['ticker']?.toString() ?? '',
+          'title': item['title']?.toString() ?? '',
+          'summary': item['summary']?.toString() ?? '',
+          'url': item['url']?.toString() ?? '',
+          'publishedAt': item['publishedAt']?.toString() ?? '',
+        };
+      }).toList();
 
       _newsList.addAll(moreNews);
 
-      // 더미에서는 최대 50개까지만
-      if (_newsList.length >= 50) {
-        _hasMore = false;
-      }
+      // 더 불러올 뉴스가 있는지 확인
+      _hasMore = _newsList.length < _totalElements;
 
       _isLoadingMore = false;
       notifyListeners();
@@ -141,26 +144,10 @@ class CompanyNewsProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // ============= Helper 메서드 =============
-
-  String _getDummyTitle(int index) {
-    final titles = [
-      '[GAM]스텔란티스-엔비디아-우버-폭스콘, 로보택시 공동 개발',
-      '투자자들, 연준·기술주 실적에 대비하면서 AI 낙관론에 주가 상승',
-      '트럼프, 엔비디아 \'슈퍼-듀퍼\' 블랙웰 칩에 中 시진핑과 논의할 수도',
-      '엔비디아, 美 에너지부에 AI 슈퍼컴 7대 구축… 6G 인프라 구축도 추진',
-      '[오늘의 뉴욕증시 무버] 노키아, 엔비디아 10억 달러 투자 소식에 22.85%↑',
-      '엔비디아 CEO 젠슨 황, CES 2025 기조연설 확정',
-      '엔비디아, 새로운 AI 칩 발표 임박... 주가 상승 기대감',
-      'AI 시장 성장세 속 엔비디아 실적 전망 밝아',
-      '엔비디아, 클라우드 기업들과 대규모 계약 체결',
-      '반도체 업계 1위 엔비디아, 경쟁사 AMD 제치고 독주',
-      '엔비디아 GPU 수요 폭증, 공급 부족 우려',
-      '데이터센터 시장 확대로 엔비디아 수혜 전망',
-      '엔비디아 주가, 사상 최고치 경신',
-      'AI 혁명의 선두주자 엔비디아, 미래 전망은?',
-      '엔비디아 CFO, 실적 발표 앞두고 낙관적 전망',
-    ];
-    return titles[index % titles.length];
+  /// Provider 종료
+  @override
+  void dispose() {
+    _companyApi.dispose();
+    super.dispose();
   }
 }

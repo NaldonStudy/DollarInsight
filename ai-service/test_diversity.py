@@ -37,11 +37,11 @@ def test_news_diversity():
             
             persona_analyses = result.get('persona_analyses', {})
             persona_mapping = {
-                "Heeyule": "희열",
-                "Ducksu": "덕수",
-                "Jiyule": "지율",
-                "Taeo": "테오",
-                "Minji": "민지"
+                "heuyeol": "희열",
+                "deoksu": "덕수",
+                "jiyul": "지율",
+                "teo": "테오",
+                "minji": "민지"
             }
             
             print("\n페르소나별 분석:")

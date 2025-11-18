@@ -21,7 +21,7 @@ class _PersonaIntroScreenState extends State<PersonaIntroScreen> {
       'description': '열정가득 승부사',
       'strengths': '단기 수익실현',
       'weaknesses': '과열 투자, 근거 빈약, 유행민감',
-      'image': 'assets/images/Heeyule.webp',
+      'image': 'assets/images/heuyeol.webp',
       'color': const Color(0x4CFD0000),
     },
     {
@@ -31,7 +31,7 @@ class _PersonaIntroScreenState extends State<PersonaIntroScreen> {
       'description': '거시적 관점으로 시장의 본질을 꿰뚫다',
       'strengths': '거시적 사이클 중시, 안정적 투자',
       'weaknesses': '과도한 보수성',
-      'image': 'assets/images/Ducksu.webp',
+      'image': 'assets/images/deoksu.webp',
       'color': const Color(0x4CFD6900),
     },
     {
@@ -41,7 +41,7 @@ class _PersonaIntroScreenState extends State<PersonaIntroScreen> {
       'description': '수치, 자료로 시장을 읽다',
       'strengths': '밸류에이션·현금흐름·리스크 관리',
       'weaknesses': '모멘텀 저평가, 타이밍 느림',
-      'image': 'assets/images/Jiyule.webp',
+      'image': 'assets/images/jiyul.webp',
       'color': const Color(0xFFC8E1F5),
     },
     {
@@ -51,7 +51,7 @@ class _PersonaIntroScreenState extends State<PersonaIntroScreen> {
       'description': '한발 앞서 미래 기술을 내다보다',
       'strengths': '빅데이터·미래기술 특화',
       'weaknesses': '단기 실적 둔감',
-      'image': 'assets/images/Taeo.webp',
+      'image': 'assets/images/teo.webp',
       'color': const Color(0x7C32C375),
     },
     {
@@ -61,7 +61,7 @@ class _PersonaIntroScreenState extends State<PersonaIntroScreen> {
       'description': '시장의 유행과 밈을 중계하다',
       'strengths': '밈/시장심리 급류 포착',
       'weaknesses': '본질 약함, 수명 짧음',
-      'image': 'assets/images/Minji.webp',
+      'image': 'assets/images/minji.webp',
       'color': const Color(0x4CDF00FD),
     },
   ];

@@ -5,8 +5,6 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
-
 @Entity
 @Table(name = "user_personas",
         indexes = { @Index(name = "ux_user_persona", columnList = "user_id, persona_id", unique = true) })
@@ -25,6 +23,10 @@ public class UserPersona {
 
     @Column(nullable = false)
     private boolean enabled = true;
+
+    public void changeEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
 
     public static UserPersona of(Integer userId, Integer personaId, boolean enabled) {
         UserPersona up = new UserPersona();

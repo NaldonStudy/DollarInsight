@@ -1,10 +1,23 @@
 import 'package:flutter/material.dart';
+import '../../data/repositories/company_repository.dart';
+import '../../data/models/company_detail_model.dart';
+import '../../data/repositories/watchlist_repository.dart';
+import '../../data/datasources/remote/api_client.dart';
+import '../../data/datasources/remote/watchlist_api.dart';
+import 'package:intl/intl.dart';
 
 /// 기업 상세 화면의 상태와 비즈니스 로직을 관리하는 Provider
 class CompanyDetailProvider with ChangeNotifier {
   final String companyId;
+  final CompanyRepository _companyRepository;
+  final WatchlistRepository _watchlistRepository;
 
-  CompanyDetailProvider({required this.companyId}) {
+  CompanyDetailProvider({
+    required this.companyId,
+    CompanyRepository? companyRepository,
+    WatchlistRepository? watchlistRepository,
+  }) : _companyRepository = companyRepository ?? CompanyRepository(),
+       _watchlistRepository = watchlistRepository ?? WatchlistRepository(WatchlistApi(ApiClient())) {
     _loadCompanyData();
   }
 
@@ -25,9 +38,6 @@ class CompanyDetailProvider with ChangeNotifier {
   String? _currentPriceUsd;
   String? get currentPriceUsd => _currentPriceUsd;
 
-  String? _logoUrl;
-  String? get logoUrl => _logoUrl;
-
   Map<String, String>? _indicators;
   Map<String, String>? get indicators => _indicators;
 
@@ -40,6 +50,16 @@ class CompanyDetailProvider with ChangeNotifier {
 
   Map<String, double>? _monthPrediction;
   Map<String, double>? get monthPrediction => _monthPrediction;
+
+  // 차트 데이터 (일봉, 주봉, 월봉)
+  List<PriceDataPoint> _dailyPriceData = [];
+  List<PriceDataPoint> get dailyPriceData => _dailyPriceData;
+
+  List<PriceDataPoint> _weeklyPriceData = [];
+  List<PriceDataPoint> get weeklyPriceData => _weeklyPriceData;
+
+  List<PriceDataPoint> _monthlyPriceData = [];
+  List<PriceDataPoint> get monthlyPriceData => _monthlyPriceData;
 
   List<Map<String, String>> _newsList = [];
   List<Map<String, String>> get newsList => _newsList;
@@ -56,23 +76,14 @@ class CompanyDetailProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      // ============= API 연결 지점 =============
-      // 1. 기업 기본 정보 API 호출
-      await _fetchCompanyInfo();
+      // ============= 실제 API 호출 =============
+      // 한 번의 API 호출로 모든 데이터를 가져옵니다
+      final response = await _companyRepository.getCompanyDetail(companyId);
 
-      // 2. 투자지표 API 호출
-      await _fetchIndicators();
+      // 응답 데이터를 각 상태 변수에 매핑
+      _mapResponseToState(response);
 
-      // 3. 주식 점수 API 호출
-      await _fetchStockScores();
-
-      // 4. 주가예측 API 호출
-      await _fetchPredictions();
-
-      // 5. 기업 뉴스 API 호출 (최대 5개)
-      await _fetchCompanyNews();
-
-      // 6. 관심종목 상태 확인
+      // 관심종목 상태 확인 (별도 API가 필요할 경우)
       await _checkWatchlistStatus();
 
       _isLoading = false;
@@ -84,171 +95,117 @@ class CompanyDetailProvider with ChangeNotifier {
     }
   }
 
-  /// 기업 기본 정보 API 호출
-  Future<void> _fetchCompanyInfo() async {
-    // TODO: API 연결
-    // final response = await companyRepository.getCompanyInfo(companyId);
-    // _companyName = response.name;
-    // _currentPrice = response.currentPrice;
-    // _currentPriceUsd = response.currentPriceUsd;
-    // _logoUrl = response.logoUrl;
+  /// API 응답을 Provider 상태로 매핑
+  void _mapResponseToState(CompanyDetailResponse response) {
+    // 기본 정보
+    _companyName = response.basicInfo.name;
 
-    // 임시 더미 데이터 (API 연결 후 삭제)
-    await Future.delayed(const Duration(milliseconds: 300));
-    _companyName = '엔비디아';
-    _currentPrice = '293,027원';
-    _currentPriceUsd = '\$204.32';
-    _logoUrl = null;
-  }
+    // 가격 정보
+    final priceFormatter = NumberFormat('#,###');
+    _currentPrice = '${priceFormatter.format(response.priceOverview.latestCloseKrw)}원';
+    _currentPriceUsd = '\$${response.priceOverview.latestCloseUsd.toStringAsFixed(2)}';
 
-  /// 투자지표 API 호출
-  Future<void> _fetchIndicators() async {
-    // TODO: API 연결
-    // final response = await companyRepository.getIndicators(companyId);
-    // _indicators = response.indicators;
+    // 투자지표 (STOCK 타입일 때)
+    if (response.stockIndicators != null) {
+      final marketCapInTrillions = response.stockIndicators!.marketCap / 1000000000000;
+      _indicators = {
+        '시가총액': '${marketCapInTrillions.toStringAsFixed(1)} 조원',
+        '배당수익률': '${response.stockIndicators!.dividendYield.toStringAsFixed(2)}%',
+        'PBR': '${response.stockIndicators!.pbr.toStringAsFixed(1)}배',
+        'PER': '${response.stockIndicators!.per.toStringAsFixed(1)}배',
+        'ROE': '${response.stockIndicators!.roe.toStringAsFixed(1)}%',
+        'PSR': '${response.stockIndicators!.psr.toStringAsFixed(1)}배',
+      };
+    } else if (response.etfIndicators != null) {
+      // ETF 지표
+      final marketCapInTrillions = response.etfIndicators!.marketCap / 1000000000000;
+      final totalAssetsInTrillions = response.etfIndicators!.totalAssets / 1000000000000;
+      _indicators = {
+        '시가총액': '${marketCapInTrillions.toStringAsFixed(1)} 조원',
+        '배당수익률': '${response.etfIndicators!.dividendYield.toStringAsFixed(2)}%',
+        '총자산': '${totalAssetsInTrillions.toStringAsFixed(1)} 조원',
+        'NAV': '${response.etfIndicators!.nav.toStringAsFixed(2)}',
+        '프리미엄': '${response.etfIndicators!.premiumDiscount.toStringAsFixed(2)}%',
+        '운용비용': '${response.etfIndicators!.expenseRatio.toStringAsFixed(2)}%',
+      };
+    }
 
-    // 임시 더미 데이터 (API 연결 후 삭제)
-    await Future.delayed(const Duration(milliseconds: 300));
-    _indicators = {
-      '시가총액': '7000억원',
-      '배당수익률': '0.02%',
-      'PBR': '48.8배',
-      'PER': '56.4배',
-      'ROE': '109.4%',
-      'PSR': '29.6배',
-    };
-  }
+    // 주식 점수
+    if (response.stockScores != null) {
+      _stockScores = {
+        '총점': response.stockScores!.totalScore,
+        '모멘텀': response.stockScores!.momentum,
+        '가치': response.stockScores!.valuation,
+        '성장': response.stockScores!.growth,
+        '수급': response.stockScores!.flow,
+        '위험': response.stockScores!.risk,
+      };
+    }
 
-  /// 주식 점수 API 호출
-  Future<void> _fetchStockScores() async {
-    // TODO: API 연결
-    // final response = await companyRepository.getStockScores(companyId);
-    // _stockScores = {
-    //   '총점': response.totalScore.toDouble(),
-    //   '모멘텀': response.momentumScore.toDouble(),
-    //   '가치': response.valueScore.toDouble(),
-    //   '성장': response.growthScore.toDouble(),
-    //   '수급': response.supplyDemandScore.toDouble(),
-    //   '위험': response.riskScore.toDouble(),
-    // };
+    // 주가 예측
+    final oneWeek = response.predictions.oneWeek;
+    final oneMonth = response.predictions.oneMonth;
 
-    // 임시 더미 데이터 (API 연결 후 삭제)
-    await Future.delayed(const Duration(milliseconds: 300));
-    _stockScores = {
-      '총점': 70.0,
-      '모멘텀': 80.0,
-      '가치': 55.0,
-      '성장': 75.0,
-      '수급': 90.0,
-      '위험': 75.0,
-    };
-  }
-
-  /// 주가예측 API 호출
-  Future<void> _fetchPredictions() async {
-    // TODO: API 연결
-    // final response = await companyRepository.getPredictions(companyId);
-    // _weekPrediction = {
-    //   '최저': response.weekLow.toDouble(),
-    //   '예측': response.weekExpected.toDouble(),
-    //   '최고': response.weekHigh.toDouble(),
-    // };
-    // _monthPrediction = {
-    //   '최저': response.monthLow.toDouble(),
-    //   '예측': response.monthExpected.toDouble(),
-    //   '최고': response.monthHigh.toDouble(),
-    // };
-
-    // 임시 더미 데이터 (API 연결 후 삭제)
-    await Future.delayed(const Duration(milliseconds: 300));
     _weekPrediction = {
-      '최저': -2.5, // %
-      '예상': 3.5, // %
-      '최고': 4.0, // %
+      '최저': oneWeek.lowerBound,
+      '예상': oneWeek.pointEstimate,
+      '최고': oneWeek.upperBound,
     };
+
     _monthPrediction = {
-      '최저': 3.0, // %
-      '예상': 5.0, // %
-      '최고': 6.0, // %
+      '최저': oneMonth.lowerBound,
+      '예상': oneMonth.pointEstimate,
+      '최고': oneMonth.upperBound,
     };
+
+    // 차트 데이터 (날짜 정렬 후 최신 30개)
+    final dailyList = response.priceSeries.dailyRange.toList();
+    dailyList.sort((a, b) => a.priceDate.compareTo(b.priceDate));
+    _dailyPriceData = dailyList.length > 30
+        ? dailyList.sublist(dailyList.length - 30)
+        : dailyList;
+
+    final weeklyList = response.priceSeries.weeklyRange.toList();
+    weeklyList.sort((a, b) => a.priceDate.compareTo(b.priceDate));
+    _weeklyPriceData = weeklyList.length > 30
+        ? weeklyList.sublist(weeklyList.length - 30)
+        : weeklyList;
+
+    final monthlyList = response.priceSeries.monthlyRange.toList();
+    monthlyList.sort((a, b) => a.priceDate.compareTo(b.priceDate));
+    _monthlyPriceData = monthlyList.length > 30
+        ? monthlyList.sublist(monthlyList.length - 30)
+        : monthlyList;
+
+    // 뉴스 (최대 5개)
+    _newsList = response.latestNews.take(5).map((news) => {
+      'id': news.id,
+      'title': news.title,
+      'url': news.url,
+    }).toList();
   }
 
-  /// 기업 뉴스 API 호출 (최대 5개)
-  Future<void> _fetchCompanyNews() async {
-    // TODO: API 연결
-    // final response = await newsRepository.getCompanyNews(
-    //   companyId: companyId,
-    //   limit: 5,
-    // );
-    // _newsList = response.newsList.map((news) => {
-    //   'id': news.id,
-    //   'title': news.title,
-    //   'url': news.url,
-    // }).toList();
-
-    // 임시 더미 데이터 (API 연결 후 삭제)
-    await Future.delayed(const Duration(milliseconds: 300));
-    _newsList = [
-      {
-        'id': '1',
-        'title': '[GAM]스텔란티스-엔비디아-우버-폭스콘, 로보택시 공동 개발',
-        'url': 'https://example.com/news/1'
-      },
-      {
-        'id': '2',
-        'title': '투자자들, 연준·기술주 실적에 대비하면서 AI 낙관론에 주가 상승',
-        'url': 'https://example.com/news/2'
-      },
-      {
-        'id': '3',
-        'title': '트럼프, 엔비디아 \'슈퍼-듀퍼\' 블랙웰 칩에 中 시진핑과 논의할 수도',
-        'url': 'https://example.com/news/3'
-      },
-      {
-        'id': '4',
-        'title': '엔비디아, 美 에너지부에 AI 슈퍼컴 7대 구축… 6G 인프라 구축도 추진',
-        'url': 'https://example.com/news/4'
-      },
-      {
-        'id': '5',
-        'title': '[오늘의 뉴욕증시 무버] 노키아, 엔비디아 10억 달러 투자 소식에 22.85%↑',
-        'url': 'https://example.com/news/5'
-      },
-    ];
-  }
 
   /// 관심종목 상태 확인 API 호출
   Future<void> _checkWatchlistStatus() async {
-    // TODO: API 연결
-    // final response = await userRepository.checkWatchlist(companyId);
-    // _isWatching = response.isWatching;
-
-    // 임시 더미 데이터 (API 연결 후 삭제)
-    await Future.delayed(const Duration(milliseconds: 300));
-    _isWatching = false;
+    try {
+      final status = await _watchlistRepository.isWatching(companyId);
+      _isWatching = status;
+    } catch (e) {
+      _isWatching = false;
+    }
   }
 
-  /// 데이터 새로고침
-  Future<void> refresh() async {
-    await _loadCompanyData();
-  }
-
-  /// 관심종목 추가/삭제 (API 연결 지점)
+  /// 관심종목 추가/삭제 (API 연결)
   Future<void> toggleWatchlist() async {
     try {
-      // TODO: 백엔드 API 연결
-      // if (_isWatching) {
-      //   await userRepository.removeFromWatchlist(companyId);
-      // } else {
-      //   await userRepository.addToWatchlist(companyId);
-      // }
-
+      await _watchlistRepository.toggleWatchlist(companyId);
       _isWatching = !_isWatching;
       notifyListeners();
     } catch (e) {
       _error = '관심종목 설정에 실패했습니다: $e';
       notifyListeners();
-      rethrow; // UI에서 에러 처리를 위해 다시 throw
+      rethrow;
     }
   }
 

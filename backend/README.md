@@ -174,6 +174,12 @@ docker-compose down -v
 
 전체 목록은 `.env.template` 파일 참조
 
+### OAuth 클라이언트
+
+- **Kakao**: `KAKAO_REST_API_KEY`, `KAKAO_CLIENT_SECRET`, `KAKAO_TIMEOUT_SECONDS`, `KAKAO_ALLOW_DEFAULT_REDIRECT`
+- **Google**: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_TIMEOUT_SECONDS`, `GOOGLE_ALLOW_DEFAULT_REDIRECT`
+- 두 공급자 모두 모바일 redirect URI를 사용할 경우 클라이언트에서 전달된 값을 `redirectUri`로 넘겨야 하며, 미전달 시 서버 기본값을 허용하려면 각 `ALLOW_DEFAULT_REDIRECT` 값을 `true`로 설정합니다.
+
 ## 프로파일별 설정
 
 ### local (로컬 개발)

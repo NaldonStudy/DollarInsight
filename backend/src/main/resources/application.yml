@@ -20,7 +20,7 @@ spring:
 
   docker:
     compose:
-      lifecycle-management: none  # IDE가 docker-compose 자동 기동하지 않도록
+      lifecycle-management: none # IDE가 docker-compose 자동 기동하지 않도록
 
   datasource:
     url: ${SPRING_DATASOURCE_URL}
@@ -105,23 +105,40 @@ app:
     secret-base64: ${APP_JWT_SECRET_BASE64:}
     # (선택2) 일반 문자열 시크릿
     secret: ${APP_JWT_SECRET:}
-    access-ttl-seconds: ${APP_JWT_ACCESS_TTL_SECONDS:900}
+    access-ttl-seconds: ${APP_JWT_ACCESS_TTL_SECONDS:3600}
     refresh-ttl-days: ${APP_JWT_REFRESH_TTL_DAYS:28}
     refresh-pepper: ${APP_JWT_REFRESH_PEPPER:}
 
   cors:
-    allowed-origins: http://k13b205.p.ssafy.io
+    allowed-origins: >
+      http://k13b205.p.ssafy.io,
+      https://k13b205.p.ssafy.io,
+      http://localhost,
+      http://localhost:3000,
+      http://localhost:50645,
+      http://localhost:56113,
+      http://localhost:*,
+      http://127.0.0.1:*,
+      https://localhost:*,
+      https://127.0.0.1:*
+
+  market:
+    fx:
+      usd-krw: ${APP_MARKET_FX_USD_KRW:1350.0}
 
   oauth:
     kakao:
       timeout-seconds: ${KAKAO_TIMEOUT_SECONDS:5}
-      allow-default-redirect: ${KAKAO_ALLOW_DEFAULT_REDIRECT:false}  # 기본 OFF
+      allow-default-redirect: ${KAKAO_ALLOW_DEFAULT_REDIRECT:false} # 기본 OFF
+    google:
+      timeout-seconds: ${GOOGLE_TIMEOUT_SECONDS:5}
+      allow-default-redirect: ${GOOGLE_ALLOW_DEFAULT_REDIRECT:false}
 
 external:
   chromadb:
     base-url: ${CHROMADB_BASE_URL:http://127.0.0.1:9000}
 
 fastai:
-  base-url: http://localhost:8000
+  base-url: ${FASTAI_BASE_URL:http://localhost:8000}
   connect-timeout-ms: 3000
-  read-timeout-ms: 600000  # 10분 (SSE 스트림 타임아웃)
+  read-timeout-ms: 600000 # 10분 (SSE 스트림 타임아웃)

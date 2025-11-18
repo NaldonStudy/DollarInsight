@@ -18,6 +18,7 @@ import '../presentation/screens/company/company_detail_screen.dart';
 import '../presentation/screens/company/company_chart_screen.dart';
 import '../presentation/screens/company/company_news_list_screen.dart';
 import '../presentation/screens/company/company_news_detail_screen.dart';
+import '../presentation/screens/company/all_stocks_list_screen.dart';
 import '../presentation/screens/etf/etf_detail_screen.dart';
 import '../presentation/screens/news/all_news_list_screen.dart';
 import '../presentation/screens/news/all_news_detail_screen.dart';
@@ -30,6 +31,8 @@ import '../presentation/screens/mypage/company_search_screen.dart';
 import '../presentation/screens/mypage/password_change_screen.dart';
 import '../presentation/screens/mypage/password_change_new_screen.dart';
 import '../presentation/screens/mypage/ai_friend_change_screen.dart';
+import '../presentation/screens/mypage/nickname_change.dart';
+import '../presentation/screens/test_chat_screen.dart';
 
 // Route Guards
 import 'route_guards.dart';
@@ -39,6 +42,10 @@ class AppRouter {
   static final GoRouter router = GoRouter(
     initialLocation: '/',
     routes: [
+      GoRoute(
+        path: '/test-chat',
+        builder: (context, state) => const TestChatScreen(),
+      ),
 
       // ==================== SPLASH & ONBOARDING ====================
 
@@ -120,6 +127,13 @@ class AppRouter {
         },
       ),
 
+      // 닉네임 변경
+      GoRoute(
+        path: '/mypage/nickname-change',
+        builder: (context, state) => const NicknameChangeScreen(),
+      ),
+
+
       /// 회원가입 완료
       GoRoute(
         path: '/signup/complete',
@@ -164,19 +178,25 @@ class AppRouter {
         redirect: (context, state) => RouteGuards.requireAuth(context, state),
       ),
 
-      /// 전체 뉴스 상세
+      /// 전체 뉴스 상세 (추천 뉴스 상세)
       GoRoute(
         path: '/news/:id',
         name: 'all-news-detail',
-        builder: (context, state) => const AllNewsDetailScreen(),
-        //param 데이터 주어질 때 이걸로 바꾸세요
-        // builder: (context, state) {
-        //   final id = state.pathParameters['id']!;
-        //   return AllNewsDetailScreen(newsId: id);
-        // },
+        builder: (context, state) {
+          final id = state.pathParameters['id']!;
+          return AllNewsDetailScreen(newsId: id);
+        },
         redirect: (context, state) => RouteGuards.requireAuth(context, state),
       ),
       // ==================== COMPANY ====================
+
+      /// 전체 종목 보기 (미국 주식 + ETF)
+      GoRoute(
+        path: '/stocks/all',
+        name: 'all-stocks-list',
+        builder: (context, state) => const AllStocksListScreen(),
+        redirect: (context, state) => RouteGuards.requireAuth(context, state),
+      ),
 
       /// 기업 상세 정보 (차트/종목지표/주가예측 포함)
       GoRoute(
@@ -206,12 +226,10 @@ class AppRouter {
       GoRoute(
         path: '/company/:companyId/news',
         name: 'company-news-list',
-        builder: (context, state) => const CompanyNewsListScreen(),
-        //param 데이터 주어질 때 이걸로 바꾸세요
-        // builder: (context, state) {
-        //   final companyId = state.pathParameters['companyId']!;
-        //   return CompanyNewsListScreen(companyId: companyId);
-        // },
+        builder: (context, state) {
+          final companyId = state.pathParameters['companyId']!;
+          return CompanyNewsListScreen(companyId: companyId);
+        },
         redirect: (context, state) => RouteGuards.requireAuth(context, state),
       ),
 
@@ -259,7 +277,14 @@ class AppRouter {
       GoRoute(
         path: '/chat/:id',
         name: 'chat-room',
-        builder: (context, state) => const ChatRoomScreen(),
+        builder: (context, state) {
+          final sessionId = state.pathParameters['id']!;
+          final autoMessage = state.uri.queryParameters['autoMessage'];
+          return ChatRoomScreen(
+            sessionId: sessionId,
+            autoMessage: autoMessage,
+          );
+        },
         redirect: (context, state) => RouteGuards.requireAuth(context, state),
       ),
 

@@ -7,9 +7,11 @@ import '../../widgets/common/scroll_fab_button.dart';
 import '../../widgets/common/top_navigation.dart';
 import '../chat/chat_list_screen.dart';
 import '../../../core/constants/app_spacing.dart';
+import '../../../core/utils/ticker_logo_mapper.dart';
 import 'package:go_router/go_router.dart';
 import '../company/company_news_list_screen.dart';
 import '../company/company_news_detail_screen.dart';
+import 'etf_info_screen.dart';
 
 /// ETF 상세 페이지
 /// Provid~er를 사용하여 데이터 로직과 UI 로직 분리
@@ -66,40 +68,50 @@ class _ETFDetailScreenState extends State<ETFDetailScreen>
       create: (_) => ETFDetailProvider(etfId: widget.etfId),
       child: Scaffold(
         backgroundColor: const Color(0xFFF7F8FB),
-        floatingActionButton: ScrollFabButton(
-          w: w,
-          showFab: showFab,
-          onTap: () {
-            _scrollController.animateTo(
-              0,
-              duration: const Duration(milliseconds: 350),
-              curve: Curves.easeOut,
-            );
-          },
-        ),
-        floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
         body: SafeArea(
-          child: Column(
+          child: Stack(
             children: [
-              /// TopNavigation (기업분석/채팅 토글)
-              TopNavigation(
-                w: w,
-                h: h,
-                isCompany: isCompany,
-                onTapCompany: () => setState(() => isCompany = true),
-                onTapChat: () => setState(() => isCompany = false),
-                onProfileTap: () {
-                  // TODO: 마이페이지로 이동
-                  // context.push('/mypage');
-                },
-              ),
+              Column(
+                children: [
+                  /// TopNavigation (기업분석/채팅 토글)
+                  TopNavigation(
+                    w: w,
+                    h: h,
+                    isCompany: isCompany,
+                    onTapCompany: () => setState(() => isCompany = true),
+                    onTapChat: () => setState(() => isCompany = false),
+                    onProfileTap: () {
+                      context.push('/mypage');
+                    },
+                  ),
 
-              /// 화면 전환 (ETF분석 / 채팅)
-              Expanded(
-                child: isCompany
-                    ? _buildETFAnalysisBody(w, h)
-                    : const ChatListScreen(),
+                  /// 화면 전환 (ETF분석 / 채팅)
+                  Expanded(
+                    child: isCompany
+                        ? _buildETFAnalysisBody(w, h)
+                        : const ChatListScreen(),
+                  ),
+                ],
               ),
+              
+              /// ✅ 채팅 생성 FAB (항상 표시)
+              if (isCompany)
+                Positioned(
+                  right: w * 0.05,
+                  bottom: w * 0.05,
+                  child: Consumer<ETFDetailProvider>(
+                    builder: (context, provider, child) {
+                      return ScrollFabButton(
+                        w: w,
+                        showFab: true, // 항상 표시
+                        actionType: FabActionType.chat,
+                        chatType: ChatContextType.company,
+                        title: provider.etfName,
+                        ticker: widget.etfId,
+                      );
+                    },
+                  ),
+                ),
             ],
           ),
         ),
@@ -142,7 +154,7 @@ class _ETFDetailScreenState extends State<ETFDetailScreen>
                 child: TabBarView(
                   controller: _tabController,
                   children: [
-                    _buildChartTab(),
+                    _buildChartTab(provider),
                     _buildIndicatorsTab(provider),
                   ],
                 ),
@@ -171,10 +183,10 @@ class _ETFDetailScreenState extends State<ETFDetailScreen>
               color: Color(0xFFD9D9D9),
               shape: BoxShape.circle,
             ),
-            child: provider.logoUrl != null
+            child: TickerLogoMapper.hasLogo(widget.etfId)
                 ? ClipOval(
-                    child: Image.network(
-                      provider.logoUrl!,
+                    child: Image.asset(
+                      TickerLogoMapper.getLogoPath(widget.etfId),
                       fit: BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) =>
                           const SizedBox(),
@@ -230,16 +242,46 @@ class _ETFDetailScreenState extends State<ETFDetailScreen>
               ],
             ),
           ),
+          // + 버튼 (ETF 설명)
+          IconButton(
+            icon: Image.asset(
+              'assets/images/plusicon.webp',
+              width: 24,
+              height: 24,
+            ),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ETFInfoScreen(etfId: widget.etfId),
+                ),
+              );
+            },
+          ),
+          const SizedBox(width: 8),
           // 관심 버튼
           WatchButton(
             isWatching: provider.isWatching,
             onTap: () async {
+              final wasWatching = provider.isWatching;
               try {
                 await provider.toggleWatchlist();
+                // 성공 메시지 표시
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(wasWatching ? '관심종목에서 제거되었습니다' : '관심종목에 추가되었습니다'),
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                }
               } catch (e) {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('관심종목 설정에 실패했습니다: $e')),
+                    SnackBar(
+                      content: Text('관심종목 설정에 실패했습니다: $e'),
+                      duration: const Duration(seconds: 2),
+                    ),
                   );
                 }
               }
@@ -279,7 +321,7 @@ class _ETFDetailScreenState extends State<ETFDetailScreen>
   }
 
   /// 차트 탭 (주가그래프만 표시)
-  Widget _buildChartTab() {
+  Widget _buildChartTab(ETFDetailProvider provider) {
     return Container(
       margin: EdgeInsets.symmetric(
         horizontal: AppSpacing.horizontal(context),
@@ -290,7 +332,9 @@ class _ETFDetailScreenState extends State<ETFDetailScreen>
         color: Colors.white,
         borderRadius: BorderRadius.circular(8),
       ),
-      child: const StockPriceChart(),
+      child: StockPriceChart(
+        dailyData: provider.dailyPriceData,
+      ),
     );
   }
 
@@ -423,7 +467,9 @@ class _ETFDetailScreenState extends State<ETFDetailScreen>
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const CompanyNewsListScreen(),
+                      builder: (context) => CompanyNewsListScreen(
+                        companyId: widget.etfId,
+                      ),
                     ),
                   );
                 },
