@@ -168,24 +168,46 @@ class ChatRepository {
         // 데이터가 있고, 우리가 아는 이벤트 타입일 경우에만 처리
         if (currentData != null && knownEvents.contains(eventType)) {
           String finalData = currentData;
+          String? rawData;
+          String? speaker;
+          int? turn;
+          int? tsMs;
+          String? sessionId;
+
           // 'message' 이벤트의 데이터는 JSON일 수 있으므로 파싱 시도
           if (eventType == 'message') {
             try {
               final jsonData = json.decode(currentData);
               if (jsonData is Map<String, dynamic>) {
-                // 서버 응답 필드 'text' 또는 'content'를 모두 확인
-                if (jsonData.containsKey('text')) {
-                  finalData = jsonData['text'] as String;
-                } else if (jsonData.containsKey('content')) {
+                // 백엔드 응답 필드 파싱
+                if (jsonData.containsKey('content')) {
                   finalData = jsonData['content'] as String;
+                } else if (jsonData.containsKey('text')) {
+                  finalData = jsonData['text'] as String;
                 }
+
+                // 추가 필드 파싱
+                rawData = jsonData['raw'] as String?;
+                speaker = jsonData['speaker'] as String?;
+                turn = jsonData['turn'] as int?;
+                tsMs = jsonData['tsMs'] as int?;
+                sessionId = jsonData['sessionId'] as String?;
               }
             } catch (e) {
               // JSON이 아니면 원본 데이터 사용 (단순 문자열 스트림)
               finalData = currentData;
             }
           }
-          yield SSEMessage.fromRaw(eventType, finalData, currentId);
+          yield SSEMessage.fromRaw(
+            eventType,
+            finalData,
+            currentId,
+            raw: rawData,
+            speaker: speaker,
+            turn: turn,
+            tsMs: tsMs,
+            sessionId: sessionId,
+          );
         }
 
         // 상태 초기화. ping 같은 모르는 이벤트는 여기서 조용히 무시됨.
@@ -211,24 +233,46 @@ class ChatRepository {
       const knownEvents = {'message', 'done', 'error', 'ready'};
        if (knownEvents.contains(eventType)) {
          String finalData = currentData;
+         String? rawData;
+         String? speaker;
+         int? turn;
+         int? tsMs;
+         String? sessionId;
+
           // 'message' 이벤트의 데이터는 JSON일 수 있으므로 파싱 시도
           if (eventType == 'message') {
             try {
               final jsonData = json.decode(currentData);
               if (jsonData is Map<String, dynamic>) {
-                // 서버 응답 필드 'text' 또는 'content'를 모두 확인
-                if (jsonData.containsKey('text')) {
-                  finalData = jsonData['text'] as String;
-                } else if (jsonData.containsKey('content')) {
+                // 백엔드 응답 필드 파싱
+                if (jsonData.containsKey('content')) {
                   finalData = jsonData['content'] as String;
+                } else if (jsonData.containsKey('text')) {
+                  finalData = jsonData['text'] as String;
                 }
+
+                // 추가 필드 파싱
+                rawData = jsonData['raw'] as String?;
+                speaker = jsonData['speaker'] as String?;
+                turn = jsonData['turn'] as int?;
+                tsMs = jsonData['tsMs'] as int?;
+                sessionId = jsonData['sessionId'] as String?;
               }
             } catch (e) {
               // 불완전한 JSON일 수 있으므로 오류를 무시하고 원본 데이터를 전달
               finalData = currentData;
             }
           }
-         yield SSEMessage.fromRaw(eventType, finalData, currentId);
+         yield SSEMessage.fromRaw(
+           eventType,
+           finalData,
+           currentId,
+           raw: rawData,
+           speaker: speaker,
+           turn: turn,
+           tsMs: tsMs,
+           sessionId: sessionId,
+         );
        }
     }
   }

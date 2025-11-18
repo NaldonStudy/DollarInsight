@@ -181,14 +181,33 @@ class SSEMessage {
   final SSEEventType type;
   final String data;
   final String? id;
+  final String? raw;
+  final String? speaker;
+  final int? turn;
+  final int? tsMs;
+  final String? sessionId;
 
   SSEMessage({
     required this.type,
     required this.data,
     this.id,
+    this.raw,
+    this.speaker,
+    this.turn,
+    this.tsMs,
+    this.sessionId,
   });
 
-  factory SSEMessage.fromRaw(String eventType, String data, String? id) {
+  factory SSEMessage.fromRaw(
+    String eventType,
+    String data,
+    String? id, {
+    String? raw,
+    String? speaker,
+    int? turn,
+    int? tsMs,
+    String? sessionId,
+  }) {
     final type = switch (eventType) {
       'message' => SSEEventType.message,
       'done' => SSEEventType.done,
@@ -197,12 +216,21 @@ class SSEMessage {
       _ => SSEEventType.message,
     };
 
-    return SSEMessage(type: type, data: data, id: id);
+    return SSEMessage(
+      type: type,
+      data: data,
+      id: id,
+      raw: raw,
+      speaker: speaker,
+      turn: turn,
+      tsMs: tsMs,
+      sessionId: sessionId,
+    );
   }
 
   @override
   String toString() {
-    return 'SSEMessage{type: $type, data: $data, id: $id}';
+    return 'SSEMessage{type: $type, data: $data, id: $id, speaker: $speaker, turn: $turn, raw: ${raw?.substring(0, raw!.length > 50 ? 50 : raw!.length)}...}';
   }
 }
 
