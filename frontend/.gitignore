@@ -28,11 +28,14 @@ migrate_working_dir/
 **/doc/api/
 **/ios/Flutter/.last_build_id
 .dart_tool/
+.flutter-plugins
 .flutter-plugins-dependencies
+.packages
 .pub-cache/
 .pub/
 /build/
 /coverage/
+pubspec.lock
 
 # Symbolication related
 app.*.symbols
@@ -51,14 +54,6 @@ app.*.map.json
 # JSON Serialization 자동 생성 파일들
 *.g.dart
 *.freezed.dart
-
-# Flutter build artifacts
-frontend/build/
-frontend/.dart_tool/
-frontend/.flutter-plugins
-frontend/.flutter-plugins-dependencies
-frontend/.packages
-frontend/pubspec.lock
 
 nul
 
