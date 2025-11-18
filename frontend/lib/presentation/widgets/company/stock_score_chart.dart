@@ -87,27 +87,16 @@ class _StockScoreChartState extends State<StockScoreChart> {
             final label = labels[group.x.toInt()];
             final score = _scores[label]!;
 
-            // null 값인 경우 (가치 점수가 -1)
+            // null 값인 경우 (-1로 통일, label로 구분)
             if (score < 0) {
               String message = '데이터 없음';
               if (label == '가치') {
-                message = '적자인 종목은 PER 계산이 어려워\n가치 점수가 없어요.';
+                message = '적자인 종목은\n 계산이 어려워\n 점수가 없어요.';
+              } else if (label == '성장') {
+                message = '순이익 급감으로\n0점이에요.';
               }
               return BarTooltipItem(
                 message,
-                const TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                  fontFamily: 'Pretendard',
-                  fontWeight: FontWeight.w400,
-                ),
-              );
-            }
-
-            // 성장 점수가 0인 경우
-            if (label == '성장' && score == 0) {
-              return BarTooltipItem(
-                '최근 순이익이 크게 줄어\n성장 점수를 0점으로 표시했어요.',
                 const TextStyle(
                   color: Colors.white,
                   fontSize: 12,
@@ -200,8 +189,13 @@ class _StockScoreChartState extends State<StockScoreChart> {
     final label = labels[index];
     final score = _scores[label]!;
 
-    // null 값인 경우 "–" 표시
-    final displayText = score < 0 ? '–' : '${score.toInt()}';
+    // -1일 때: 가치는 "–", 성장은 "0", 그 외: 점수 표시
+    String displayText;
+    if (score < 0) {
+      displayText = label == '성장' ? '0' : '–';
+    } else {
+      displayText = '${score.toInt()}';
+    }
 
     return SideTitleWidget(
       axisSide: meta.axisSide,
@@ -241,13 +235,17 @@ class _StockScoreChartState extends State<StockScoreChart> {
     final labels = _scores.keys.toList();
 
     return List.generate(labels.length, (index) {
-      final score = _scores[labels[index]]!;
+      final label = labels[index];
+      final score = _scores[label]!;
       final isTouched = index == touchedIndex;
+      // null인 경우 (score < 0이면 -1 또는 -2)
+      final isNull = score < 0;
 
       return _makeGroupData(
         index,
         score,
         isTouched: isTouched,
+        isNull: isNull,
       );
     });
   }
@@ -257,21 +255,39 @@ class _StockScoreChartState extends State<StockScoreChart> {
     int x,
     double y, {
     bool isTouched = false,
+    bool isNull = false,
     double width = 22,
   }) {
-    final barColor = isTouched ? const Color(0xFF60A4DA) : const Color(0xFFABCEEA);
+    // null 값인 경우 반투명 회색
+    Color barColor;
+    if (isNull) {
+      barColor = const Color(0xFFD9D9D9).withOpacity(0.5);
+    } else {
+      barColor = isTouched ? const Color(0xFF60A4DA) : const Color(0xFFABCEEA);
+    }
+
+    // null 값인 경우 터치 가능하도록 최소 높이(3) 설정
+    final displayY = isNull ? 3.0 : y;
 
     return BarChartGroupData(
       x: x,
       barRods: [
         BarChartRodData(
-          toY: y,
+          toY: displayY,
           color: barColor,
           width: width,
           borderRadius: const BorderRadius.only(
             topLeft: Radius.circular(4),
             topRight: Radius.circular(4),
           ),
+          // null 값인 경우 점선 스타일 (dashArray 사용)
+          borderDashArray: isNull ? [4, 4] : null,
+          borderSide: isNull
+              ? BorderSide(
+                  color: const Color(0xFF9E9E9E).withOpacity(0.5),
+                  width: 1.5,
+                )
+              : BorderSide.none,
           // 배경 막대 (회색, 100점까지)
           backDrawRodData: BackgroundBarChartRodData(
             show: true,

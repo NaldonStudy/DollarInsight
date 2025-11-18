@@ -111,10 +111,18 @@ class CompanyDetailProvider with ChangeNotifier {
       _indicators = {
         '시가총액': '${marketCapInTrillions.toStringAsFixed(1)} 조원',
         '배당수익률': '${response.stockIndicators!.dividendYield.toStringAsFixed(2)}%',
-        'PBR': '${response.stockIndicators!.pbr.toStringAsFixed(1)}배',
-        'PER': '${response.stockIndicators!.per.toStringAsFixed(1)}배',
-        'ROE': '${response.stockIndicators!.roe.toStringAsFixed(1)}%',
-        'PSR': '${response.stockIndicators!.psr.toStringAsFixed(1)}배',
+        'PBR': response.stockIndicators!.pbr != null
+            ? '${response.stockIndicators!.pbr!.toStringAsFixed(1)}배'
+            : '–',
+        'PER': response.stockIndicators!.per != null && response.stockIndicators!.per! > 0
+            ? '${response.stockIndicators!.per!.toStringAsFixed(1)}배'
+            : '–',
+        'ROE': response.stockIndicators!.roe != null
+            ? '${response.stockIndicators!.roe!.toStringAsFixed(1)}%'
+            : '–',
+        'PSR': response.stockIndicators!.psr != null
+            ? '${response.stockIndicators!.psr!.toStringAsFixed(1)}배'
+            : '–',
       };
     } else if (response.etfIndicators != null) {
       // ETF 지표
@@ -136,7 +144,7 @@ class CompanyDetailProvider with ChangeNotifier {
         '총점': response.stockScores!.totalScore,
         '모멘텀': response.stockScores!.momentum,
         '가치': response.stockScores!.valuation ?? -1, // null은 -1로 표시
-        '성장': response.stockScores!.growth,
+        '성장': response.stockScores!.growth == 0 ? -1 : response.stockScores!.growth, // 0점은 -1로 표시
         '수급': response.stockScores!.flow,
         '위험': response.stockScores!.risk,
       };
