@@ -132,51 +132,6 @@ def convert_personas_to_english(personas: Optional[List[str]]) -> Optional[List[
     return [to_english_name(p) for p in personas]
 
 
-# ===== 입력 분류 및 일반 챗 =====
-def classify_user_input(user_input: str) -> bool:
-    """사용자 입력을 LLM으로 분류하여 주식/투자 관련인지 판단"""
-    try:
-        client = openai.OpenAI(api_key=OPENAI_API_KEY, base_url=GMS_BASE_URL)
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {
-                    "role": "system",
-                    "content": "주식, 투자, 금융, 경제 관련이면 true, 일상 대화면 false를 JSON으로 응답하세요.",
-                },
-                {
-                    "role": "user",
-                    "content": f"입력: {user_input}\n\n{{'is_investment': true/false}}",
-                },
-            ],
-            max_tokens=20,
-            temperature=0.1,
-            response_format={"type": "json_object"},
-        )
-        result = json.loads(response.choices[0].message.content)
-        return result.get("is_investment", True)
-    except:
-        return True  # 에러 시 기본값은 투자 관련
-
-
-def generate_general_response(user_input: str) -> str:
-    """일상 대화에 대한 간단한 LLM 응답"""
-    try:
-        client = openai.OpenAI(api_key=OPENAI_API_KEY, base_url=GMS_BASE_URL)
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": "친절하고 자연스럽게 대화하세요."},
-                {"role": "user", "content": user_input},
-            ],
-            max_tokens=300,
-            temperature=0.7,
-        )
-        return response.choices[0].message.content.strip()
-    except:
-        return "죄송합니다. 일시적인 오류가 발생했습니다."
-
-
 # ===== Session 관리 =====
 class Session:
     def __init__(
@@ -591,39 +546,21 @@ async def start(req: StartReq):
 
     ai_response_queue = queue.Queue()
     user_input_queue = queue.Queue()
+    thread = threading.Thread(
+        target=run_autogen_discussion,
+        args=(s, ai_response_queue, user_input_queue),
+        daemon=True,
+    )
+    thread.start()
     s.ai_response_queue = ai_response_queue
     s.user_input_queue = user_input_queue
-
-    # 사용자 입력 분류
-    is_investment = classify_user_input(req.user_input)
-
-    if is_investment:
-        # 투자 관련: AutoGen 토론 모드
-        thread = threading.Thread(
-            target=run_autogen_discussion,
-            args=(s, ai_response_queue, user_input_queue),
-            daemon=True,
-        )
-        thread.start()
-    else:
-        # 일상 대화: 간단한 LLM 응답
-        response = generate_general_response(req.user_input)
-        ai_response_queue.put(
-            {
-                "speaker": "assistant",
-                "content": response,
-                "turn": 1,
-            }
-        )
 
     return JSONResponse(
         {
             "ok": True,
             "session_id": s.session_id,
             "pace_ms": s.pace_ms,
-            "active_agents": (
-                convert_personas_to_english(s.speakers) if is_investment else []
-            ),
+            "active_agents": convert_personas_to_english(s.speakers),
         }
     )
 
