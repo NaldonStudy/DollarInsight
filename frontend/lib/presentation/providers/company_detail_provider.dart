@@ -114,7 +114,7 @@ class CompanyDetailProvider with ChangeNotifier {
         'PBR': response.stockIndicators!.pbr != null
             ? '${response.stockIndicators!.pbr!.toStringAsFixed(1)}배'
             : '–',
-        'PER': response.stockIndicators!.per != null && response.stockIndicators!.per! > 0
+        'PER': response.stockIndicators!.per != null
             ? '${response.stockIndicators!.per!.toStringAsFixed(1)}배'
             : '–',
         'ROE': response.stockIndicators!.roe != null
