@@ -64,7 +64,9 @@ class CompanyChip extends StatelessWidget {
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 2),
                   child: Text(
-                    companyName,
+                    companyName.length > 12
+                        ? '${companyName.substring(0, 12)}...'
+                        : companyName,
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       color: Color(0xFF757575),

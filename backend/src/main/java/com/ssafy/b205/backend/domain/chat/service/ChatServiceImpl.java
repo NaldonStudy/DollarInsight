@@ -128,19 +128,21 @@ public class ChatServiceImpl implements ChatService {
     @Transactional
     public AppendMessageResponse appendUserMessage(String userUuid, UUID sessionUuid, AppendMessageRequest req) {
         final int userId = toUserId(userUuid);
-        final ChatSession session = loadOwnedSession(userId, sessionUuid);
+        // 채팅방 입장 시 이미 세션이 존재하므로, 세션 검증만 수행
+        final ChatSession session = loadOwnedSession(userId, sessionUuid); // 소유권 검증
+        final UUID actualSessionUuid = session.getUuid();
 
         final ChatMessageDoc saved = msgRepo.save(ChatMessageDoc.builder()
-                .sessionUuid(sessionUuid)
+                .sessionUuid(actualSessionUuid)
                 .role("user")
                 .content(req.getContent())
                 .ts(Instant.now())
                 .build());
 
-        final long userMsgCount = msgRepo.countBySessionUuidAndRole(sessionUuid, "user");
+        final long userMsgCount = msgRepo.countBySessionUuidAndRole(actualSessionUuid, "user");
 
         // AI 서비스 호출을 비동기로 처리하여 응답 지연 방지
-        final UUID finalSessionUuid = sessionUuid;
+        final UUID finalSessionUuid = actualSessionUuid;
         final String finalContent = req.getContent();
         
         if (userMsgCount <= 1) {
@@ -150,27 +152,25 @@ public class ChatServiceImpl implements ChatService {
             }
             final var personas = personaRepo.findAllById(personaIds).stream().map(Persona::getCode).toList();
             
-            // /start 호출을 비동기로 처리 (프론트엔드 응답을 블로킹하지 않음)
-            CompletableFuture.runAsync(() -> {
-                try {
-                    log.info("[ChatSvc-Message] 🚀 AI 세션 시작 (비동기) sessionUuid={}, personas={}", finalSessionUuid, personas);
-                    gateway.start(finalSessionUuid.toString(), finalContent, 3000, personas);
-                    log.info("[ChatSvc-Message] ✅ AI 세션 시작 완료 sessionUuid={}", finalSessionUuid);
-                } catch (Exception e) {
-                    log.error("[ChatSvc-Message] ❌ AI 세션 시작 실패 sessionUuid={}, error={}", finalSessionUuid, e.getMessage());
-                }
-            }, asyncExecutor);
+            // /start 호출을 동기로 처리 (AI 서비스 세션 생성 완료 후 응답 반환)
+            try {
+                log.info("[ChatSvc-Message] 🚀 AI 세션 시작 (동기) sessionUuid={}, personas={}", finalSessionUuid, personas);
+                gateway.start(finalSessionUuid.toString(), finalContent, 3000, personas);
+                log.info("[ChatSvc-Message] ✅ AI 세션 시작 완료 sessionUuid={}", finalSessionUuid);
+            } catch (Exception e) {
+                log.error("[ChatSvc-Message] ❌ AI 세션 시작 실패 sessionUuid={}, error={}", finalSessionUuid, e.getMessage());
+                throw new AppException(ErrorCode.INTERNAL, "AI 서비스 세션 시작 실패: " + e.getMessage());
+            }
         } else {
-            // /input 호출도 비동기로 처리
-            CompletableFuture.runAsync(() -> {
-                try {
-                    log.info("[ChatSvc-Message] 📤 사용자 입력 전달 (비동기) sessionUuid={}", finalSessionUuid);
-                    gateway.sendUserInput(finalSessionUuid.toString(), finalContent);
-                    log.info("[ChatSvc-Message] ✅ 사용자 입력 전달 완료 sessionUuid={}", finalSessionUuid);
-                } catch (Exception e) {
-                    log.error("[ChatSvc-Message] ❌ 사용자 입력 전달 실패 sessionUuid={}, error={}", finalSessionUuid, e.getMessage());
-                }
-            }, asyncExecutor);
+            // /input 호출도 동기로 처리
+            try {
+                log.info("[ChatSvc-Message] 📤 사용자 입력 전달 (동기) sessionUuid={}", finalSessionUuid);
+                gateway.sendUserInput(finalSessionUuid.toString(), finalContent);
+                log.info("[ChatSvc-Message] ✅ 사용자 입력 전달 완료 sessionUuid={}", finalSessionUuid);
+            } catch (Exception e) {
+                log.error("[ChatSvc-Message] ❌ 사용자 입력 전달 실패 sessionUuid={}, error={}", finalSessionUuid, e.getMessage());
+                throw new AppException(ErrorCode.INTERNAL, "AI 서비스 입력 전달 실패: " + e.getMessage());
+            }
         }
 
         sessionRepo.touchUpdatedAt(session.getId(), OffsetDateTime.now());
@@ -183,6 +183,7 @@ public class ChatServiceImpl implements ChatService {
     @Transactional(readOnly = true)
     public SseEmitter streamAssistant(String userUuid, UUID sessionUuid, String deviceId, String lastEventId) {
         final int userId = toUserId(userUuid);
+        // 채팅방 입장 시 이미 세션이 존재하므로, 세션 검증만 수행
         final ChatSession session = loadOwnedSession(userId, sessionUuid); // 소유권 검증
         final int sessionDbId = session.getId();
 
