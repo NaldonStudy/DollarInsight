@@ -9,6 +9,7 @@ import '../../widgets/common/scroll_fab_button.dart';
 import '../../widgets/common/top_navigation.dart';
 import '../chat/chat_list_screen.dart';
 import '../../../core/constants/app_spacing.dart';
+import '../../../core/utils/ticker_logo_mapper.dart';
 import 'package:go_router/go_router.dart';
 import 'company_chart_screen.dart';
 import 'company_news_list_screen.dart';
@@ -86,40 +87,50 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
       value: _provider, // 이미 생성된 Provider 전달
       child: Scaffold(
         backgroundColor: const Color(0xFFF7F8FB),
-        floatingActionButton: ScrollFabButton(
-          w: w,
-          showFab: showFab,
-          onTap: () {
-            _scrollController.animateTo(
-              0,
-              duration: const Duration(milliseconds: 350),
-              curve: Curves.easeOut,
-            );
-          },
-        ),
-        floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
         body: SafeArea(
-          child: Column(
+          child: Stack(
             children: [
-              /// TopNavigation (기업분석/채팅 토글)
-              TopNavigation(
-                w: w,
-                h: h,
-                isCompany: isCompany,
-                onTapCompany: () => setState(() => isCompany = true),
-                onTapChat: () => setState(() => isCompany = false),
-                onProfileTap: () {
-                  // TODO: 마이페이지로 이동
-                  // context.push('/mypage');
-                },
-              ),
+              Column(
+                children: [
+                  /// TopNavigation (기업분석/채팅 토글)
+                  TopNavigation(
+                    w: w,
+                    h: h,
+                    isCompany: isCompany,
+                    onTapCompany: () => setState(() => isCompany = true),
+                    onTapChat: () => setState(() => isCompany = false),
+                    onProfileTap: () {
+                      context.push('/mypage');
+                    },
+                  ),
 
-              /// 화면 전환 (기업분석 / 채팅)
-              Expanded(
-                child: isCompany
-                    ? _buildCompanyAnalysisBody(w, h)
-                    : const ChatListScreen(),
+                  /// 화면 전환 (기업분석 / 채팅)
+                  Expanded(
+                    child: isCompany
+                        ? _buildCompanyAnalysisBody(w, h)
+                        : const ChatListScreen(),
+                  ),
+                ],
               ),
+              
+              /// ✅ 채팅 생성 FAB (항상 표시)
+              if (isCompany)
+                Positioned(
+                  right: w * 0.05,
+                  bottom: w * 0.05,
+                  child: Consumer<CompanyDetailProvider>(
+                    builder: (context, provider, child) {
+                      return ScrollFabButton(
+                        w: w,
+                        showFab: true, // 항상 표시
+                        actionType: FabActionType.chat,
+                        chatType: ChatContextType.company,
+                        title: provider.companyName,
+                        ticker: widget.companyId,
+                      );
+                    },
+                  ),
+                ),
             ],
           ),
         ),
@@ -192,10 +203,10 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
               color: Color(0xFFD9D9D9),
               shape: BoxShape.circle,
             ),
-            child: provider.logoUrl != null
+            child: TickerLogoMapper.hasLogo(widget.companyId)
                 ? ClipOval(
-                    child: Image.network(
-                      provider.logoUrl!,
+                    child: Image.asset(
+                      TickerLogoMapper.getLogoPath(widget.companyId),
                       fit: BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) =>
                           const SizedBox(),
@@ -253,10 +264,10 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
           ),
           // + 버튼 (기업 설명)
           IconButton(
-            icon: Image.asset(
-              'assets/images/plusicon.webp',
-              width: 24,
-              height: 24,
+            icon: const Icon(
+              Icons.add_circle_outline,
+              color: Color(0xFF757575),
+              size: 24,
             ),
             onPressed: () {
               Navigator.push(
@@ -272,13 +283,26 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
           WatchButton(
             isWatching: provider.isWatching,
             onTap: () async {
+              final wasWatching = provider.isWatching;
               try {
                 await provider.toggleWatchlist();
+                // 성공 메시지 표시
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(wasWatching ? '관심종목에서 제거되었습니다' : '관심종목에 추가되었습니다'),
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                }
               } catch (e) {
                 // Provider에서 에러를 던지면 여기서 처리
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('관심종목 설정에 실패했습니다: $e')),
+                    SnackBar(
+                      content: Text('관심종목 설정에 실패했습니다: $e'),
+                      duration: const Duration(seconds: 2),
+                    ),
                   );
                 }
               }
@@ -407,7 +431,7 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
               height: 1.87,
             ),
           ),
-          SizedBox(height: AppSpacing.small(context)),
+          SizedBox(height: AppSpacing.bottomLarge(context)),
           Expanded(child: _buildIndicatorGrid(provider)),
         ],
       ),
@@ -466,20 +490,20 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
   /// 개별 투자지표 카드
   Widget _buildIndicatorCard(String label, String value) {
     return Container(
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: const Color(0xFFD9E2EA),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Text(
             label,
             style: const TextStyle(
               color: Color(0xFF595959),
-              fontSize: 10,
+              fontSize: 12,
               fontFamily: 'Pretendard',
               fontWeight: FontWeight.w600,
               height: 1.40,
@@ -491,10 +515,10 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
             value,
             style: const TextStyle(
               color: Colors.black,
-              fontSize: 13,
+              fontSize: 15,
               fontFamily: 'Pretendard',
               fontWeight: FontWeight.w700,
-              height: 2.15,
+              height: 1.5,
             ),
           ),
         ],

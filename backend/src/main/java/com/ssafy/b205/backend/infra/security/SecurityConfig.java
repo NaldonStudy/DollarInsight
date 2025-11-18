@@ -9,6 +9,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.context.RequestAttributeSecurityContextRepository;
 
 @Configuration
 @RequiredArgsConstructor
@@ -23,6 +24,9 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .cors(Customizer.withDefaults())
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .securityContext(ctx -> ctx
+                        .securityContextRepository(new RequestAttributeSecurityContextRepository())
+                )
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint(new JsonAuthenticationEntryPoint()) // 401
                         .accessDeniedHandler(new JsonAccessDeniedHandler())           // 403

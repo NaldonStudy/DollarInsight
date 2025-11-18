@@ -12,6 +12,8 @@ import '../../widgets/main/stock_section.dart';
 import '../../widgets/common/scroll_fab_button.dart';
 import '../../../data/datasources/remote/company_api.dart';
 import '../../../data/models/dashboard_model.dart';
+import 'package:provider/provider.dart';
+import '../../providers/chat_provider.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -83,44 +85,48 @@ class _MainScreenState extends State<MainScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FB),
 
-      /// ✅ 스크롤 시 나타나는 FAB 버튼
-      floatingActionButton: ScrollFabButton(
-        w: w,
-        showFab: showFab,
-        onTap: () {
-          _scrollController.animateTo(
-            0,
-            duration: const Duration(milliseconds: 350),
-            curve: Curves.easeOut,
-          );
-        },
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-
       /// ✅ MAIN BODY
       body: SafeArea(
-        child: Column(
+        child: Stack(
           children: [
-            /// ✅ Top Navigation
-            TopNavigation(
-              w: w,
-              h: h,
-              isCompany: isCompany,
-              onTapCompany: () => setState(() => isCompany = true),
-              onTapChat: () => setState(() => isCompany = false),
-              onProfileTap: () => context.push('/mypage'),
-            ),
+            Column(
+              children: [
+                /// ✅ Top Navigation
+                TopNavigation(
+                  w: w,
+                  h: h,
+                  isCompany: isCompany,
+                  onTapCompany: () => setState(() => isCompany = true),
+                  onTapChat: () => setState(() => isCompany = false),
+                  onProfileTap: () => context.push('/mypage'),
+                ),
 
-            /// ✅ 기업분석일 때만 Navigation 아래 간격 추가
+                /// ✅ 기업분석일 때만 Navigation 아래 간격 추가
+                if (isCompany)
+                  SizedBox(height: AppSpacing.section(context)),
+
+                /// ✅ 화면 스위칭 (화면 전체 전환 아님)
+                Expanded(
+                  child: isCompany
+                      ? _buildCompanyBody(context, w, h)
+                      : const ChatListScreen(),
+                ),
+              ],
+            ),
+            
+            /// ✅ 채팅 생성 FAB (항상 표시)
             if (isCompany)
-              SizedBox(height: AppSpacing.section(context)),
-
-            /// ✅ 화면 스위칭 (화면 전체 전환 아님)
-            Expanded(
-              child: isCompany
-                  ? _buildCompanyBody(context, w, h)
-                  : const ChatListScreen(),
-            ),
+              Positioned(
+                right: w * 0.05,
+                bottom: w * 0.05,
+                child: ScrollFabButton(
+                  w: w,
+                  showFab: true, // 항상 표시
+                  actionType: FabActionType.chat,
+                  chatType: ChatContextType.custom,
+                  title: '새로운 채팅',
+                ),
+              ),
           ],
         ),
       ),
@@ -178,44 +184,6 @@ class _MainScreenState extends State<MainScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          /// ✅ 임시 테스트 버튼 (기업 상세 페이지로 이동)
-          Padding(
-            padding: const EdgeInsets.only(top: 16, bottom: 8),
-            child: Center(
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  context.push('/company/NVDA');
-                },
-                icon: const Icon(Icons.business),
-                label: const Text('기업 상세 페이지 테스트 (엔비디아)'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF60A4DA),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                ),
-              ),
-            ),
-          ),
-
-          /// ✅ 임시 테스트 버튼 (ETF 상세 페이지로 이동)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 16),
-            child: Center(
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  context.push('/etf/SPY');
-                },
-                icon: const Icon(Icons.candlestick_chart),
-                label: const Text('ETF 상세 페이지 테스트 (TIGER 미국S&P500)'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFABCEEA),
-                  foregroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                ),
-              ),
-            ),
-          ),
-
           /// ✅ 실시간 채팅 박스
           LiveChatCard(w: w, h: h),
 

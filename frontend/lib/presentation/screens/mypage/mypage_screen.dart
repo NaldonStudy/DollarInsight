@@ -119,7 +119,12 @@ class _MypageScreenState extends State<MypageScreen> {
                 ),
 
                 SizedBox(height: h * 0.04),
-
+                _menuButton(
+                  w: w,
+                  h: h,
+                  label: '닉네임 변경',
+                  onTap: () => context.push('/mypage/nickname-change'),
+                ),
                 _menuButton(
                   w: w,
                   h: h,
@@ -146,7 +151,7 @@ class _MypageScreenState extends State<MypageScreen> {
                     final status = await UserApi.logout();
 
                     if (status == 204 && context.mounted) {
-                      context.go('/login');
+                      context.go('/landing');
                     }
                   },
                 ),

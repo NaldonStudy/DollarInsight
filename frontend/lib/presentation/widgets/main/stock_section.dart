@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../widgets/chat/chat_bubble.dart';
 import '../../../data/models/dashboard_model.dart';
+import '../../../core/constants/etf_data.dart';
 
 class StockSection extends StatelessWidget {
   final double w;
@@ -23,7 +24,7 @@ class StockSection extends StatelessWidget {
 
       switch (code) {
         case 'heeyul':
-          return 'assets/images/heeyul.webp';
+          return 'assets/images/heuyeol.webp';
         case 'jiyul':
           return 'assets/images/jiyul.webp';
         case 'teo':
@@ -34,7 +35,7 @@ class StockSection extends StatelessWidget {
           return 'assets/images/deoksu.webp';
         default:
           // 알 수 없는 페르소나 코드는 기본 이미지 사용
-          return 'assets/images/heeyul.webp';
+          return 'assets/images/heuyeol.webp';
       }
     }
 
@@ -53,45 +54,8 @@ class StockSection extends StatelessWidget {
                 fontWeight: FontWeight.w700,
               ),
             ),
-
-            /// ✅ 오른쪽 "편집 · 전체보기"
-            Row(
-              children: [
-                GestureDetector(
-                  onTap: () {
-                    context.push('/mypage/ai-friend');
-                  },
-                  child: Text(
-                    "편집",
-                    style: TextStyle(
-                      fontSize: w * 0.032, // 약 12px
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFFA9A9A9),
-                    ),
-                  ),
-                ),
-
-                SizedBox(width: w * 0.02), // 편집과 전체보기 간격
-
-                GestureDetector(
-                  onTap: () {
-                    // 전체보기 페이지 이동 처리
-                  },
-                  child: Text(
-                    "전체보기",
-                    style: TextStyle(
-                      fontSize: w * 0.032, // 약 12px
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFFA9A9A9),
-                    ),
-                  ),
-                ),
-              ],
-            ),
           ],
         ),
-
-        SizedBox(height: h * 0.012),
 
         /// ✅ 데일리픽 리스트 카드
         Container(
@@ -126,8 +90,14 @@ class StockSection extends StatelessWidget {
                     for (int i = 0; i < dailyPicks.length; i++) ...[
                       GestureDetector(
                         onTap: () {
-                          // ✅ 티커를 사용해 기업 상세 페이지로 이동
-                          context.push('/company/${dailyPicks[i].ticker}');
+                          final ticker = dailyPicks[i].ticker;
+                          // ✅ ETF인지 확인 후 적절한 경로로 이동
+                          final isEtf = etfDataMap.containsKey(ticker.toUpperCase());
+                          if (isEtf) {
+                            context.push('/etf/$ticker');
+                          } else {
+                            context.push('/company/$ticker');
+                          }
                         },
                         child: ChatBubble(
                           text: dailyPicks[i].personaComment.comment,

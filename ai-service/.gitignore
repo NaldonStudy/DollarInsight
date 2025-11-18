@@ -85,7 +85,7 @@ chroma_db/
 investing_news.json
 investing_news.txt
 *.csv
-*.json
+
 
 # ============================================================================
 # Model Files & Cache

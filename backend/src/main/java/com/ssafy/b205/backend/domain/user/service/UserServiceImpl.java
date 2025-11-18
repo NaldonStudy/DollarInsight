@@ -14,6 +14,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.UUID;
 
 import static com.ssafy.b205.backend.infra.security.DeviceIdResolver.normalize;
@@ -157,6 +158,17 @@ public class UserServiceImpl implements UserService {
 
         cred.updatePassword(passwordEncoder.encode(newPassword));
         log.info("[UserSvc-61] 비밀번호 변경 완료 userId={}", user.getId());
+    }
+
+    @Override
+    @Transactional
+    public void changePersonas(String userUuid, List<String> personaCodes) {
+        User user = userRepository.findByUuidAndDeletedAtIsNull(UUID.fromString(userUuid))
+                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "[UserSvc-E05] UUID로 사용자 없음: " + userUuid));
+
+        userPersonaService.updateEnabledPersonas(user.getId(), personaCodes);
+        log.info("[UserSvc-81] 페르소나 변경 완료 userId={}, personaCount={}", user.getId(),
+                personaCodes == null ? 0 : personaCodes.size());
     }
 
     @Override

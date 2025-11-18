@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../data/repositories/company_repository.dart';
+import '../../data/repositories/watchlist_repository.dart';
 import '../../data/models/company_detail_model.dart';
+import '../../data/datasources/remote/watchlist_api.dart';
+import '../../data/datasources/remote/api_client.dart';
 import 'package:intl/intl.dart';
 
 /// ETF 상세 화면의 상태와 비즈니스 로직을 관리하는 Provider
@@ -8,11 +11,14 @@ import 'package:intl/intl.dart';
 class ETFDetailProvider with ChangeNotifier {
   final String etfId;
   final CompanyRepository _companyRepository;
+  final WatchlistRepository _watchlistRepository;
 
   ETFDetailProvider({
     required this.etfId,
     CompanyRepository? companyRepository,
-  }) : _companyRepository = companyRepository ?? CompanyRepository() {
+    WatchlistRepository? watchlistRepository,
+  }) : _companyRepository = companyRepository ?? CompanyRepository(),
+       _watchlistRepository = watchlistRepository ?? WatchlistRepository(WatchlistApi(ApiClient())) {
     _loadETFData();
   }
 
@@ -32,9 +38,6 @@ class ETFDetailProvider with ChangeNotifier {
 
   String? _currentPriceUsd;
   String? get currentPriceUsd => _currentPriceUsd;
-
-  String? _logoUrl;
-  String? get logoUrl => _logoUrl;
 
   // ETF 투자지표 (시가총액, 배당수익률, 운용자산, 순자산가치, 괴리율, 운용보수)
   Map<String, String>? _etfIndicators;
@@ -88,7 +91,6 @@ class ETFDetailProvider with ChangeNotifier {
   void _mapResponseToState(CompanyDetailResponse response) {
     // 기본 정보
     _etfName = response.basicInfo.name;
-    _logoUrl = null; // TODO: 로고 URL이 API에 추가되면 매핑
 
     // 가격 정보
     final priceFormatter = NumberFormat('#,###');
@@ -97,10 +99,12 @@ class ETFDetailProvider with ChangeNotifier {
 
     // ETF 투자지표
     if (response.etfIndicators != null) {
+      final marketCapInTrillions = response.etfIndicators!.marketCap / 1000000000000;
+      final totalAssetsInTrillions = response.etfIndicators!.totalAssets / 1000000000000;
       _etfIndicators = {
-        '시가총액': '${priceFormatter.format(response.etfIndicators!.marketCap)}억원',
+        '시가총액': '${marketCapInTrillions.toStringAsFixed(1)} 조원',
         '배당수익률': '${response.etfIndicators!.dividendYield.toStringAsFixed(2)}%',
-        '운용자산': '${priceFormatter.format(response.etfIndicators!.totalAssets)}억원',
+        '운용자산': '${totalAssetsInTrillions.toStringAsFixed(1)} 조원',
         '순자산가치': '${response.etfIndicators!.nav.toStringAsFixed(2)}원',
         '괴리율': '${response.etfIndicators!.premiumDiscount.toStringAsFixed(2)}%',
         '운용보수(연)': '${response.etfIndicators!.expenseRatio.toStringAsFixed(2)}%',
@@ -137,13 +141,12 @@ class ETFDetailProvider with ChangeNotifier {
 
   /// 관심종목 상태 확인 API 호출
   Future<void> _checkWatchlistStatus() async {
-    // TODO: API 연결
-    // final response = await userRepository.checkWatchlist(etfId);
-    // _isWatching = response.isWatching;
-
-    // 임시 더미 데이터 (API 연결 후 삭제)
-    await Future.delayed(const Duration(milliseconds: 300));
-    _isWatching = false;
+    try {
+      final status = await _watchlistRepository.isWatching(etfId);
+      _isWatching = status;
+    } catch (e) {
+      _isWatching = false;
+    }
   }
 
   /// 데이터 새로고침
@@ -151,22 +154,16 @@ class ETFDetailProvider with ChangeNotifier {
     await _loadETFData();
   }
 
-  /// 관심종목 추가/삭제 (API 연결 지점)
+  /// 관심종목 추가/삭제 (API 연결)
   Future<void> toggleWatchlist() async {
     try {
-      // TODO: 백엔드 API 연결
-      // if (_isWatching) {
-      //   await userRepository.removeFromWatchlist(etfId);
-      // } else {
-      //   await userRepository.addToWatchlist(etfId);
-      // }
-
+      await _watchlistRepository.toggleWatchlist(etfId);
       _isWatching = !_isWatching;
       notifyListeners();
     } catch (e) {
       _error = '관심종목 설정에 실패했습니다: $e';
       notifyListeners();
-      rethrow; // UI에서 에러 처리를 위해 다시 throw
+      rethrow;
     }
   }
 

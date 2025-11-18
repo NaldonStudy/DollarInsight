@@ -31,6 +31,8 @@ import '../presentation/screens/mypage/company_search_screen.dart';
 import '../presentation/screens/mypage/password_change_screen.dart';
 import '../presentation/screens/mypage/password_change_new_screen.dart';
 import '../presentation/screens/mypage/ai_friend_change_screen.dart';
+import '../presentation/screens/mypage/nickname_change.dart';
+import '../presentation/screens/test_chat_screen.dart';
 
 // Route Guards
 import 'route_guards.dart';
@@ -40,6 +42,10 @@ class AppRouter {
   static final GoRouter router = GoRouter(
     initialLocation: '/',
     routes: [
+      GoRoute(
+        path: '/test-chat',
+        builder: (context, state) => const TestChatScreen(),
+      ),
 
       // ==================== SPLASH & ONBOARDING ====================
 
@@ -120,6 +126,13 @@ class AppRouter {
           );
         },
       ),
+
+      // 닉네임 변경
+      GoRoute(
+        path: '/mypage/nickname-change',
+        builder: (context, state) => const NicknameChangeScreen(),
+      ),
+
 
       /// 회원가입 완료
       GoRoute(
@@ -264,7 +277,14 @@ class AppRouter {
       GoRoute(
         path: '/chat/:id',
         name: 'chat-room',
-        builder: (context, state) => const ChatRoomScreen(),
+        builder: (context, state) {
+          final sessionId = state.pathParameters['id']!;
+          final autoMessage = state.uri.queryParameters['autoMessage'];
+          return ChatRoomScreen(
+            sessionId: sessionId,
+            autoMessage: autoMessage,
+          );
+        },
         redirect: (context, state) => RouteGuards.requireAuth(context, state),
       ),
 

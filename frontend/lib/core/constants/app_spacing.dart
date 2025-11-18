@@ -12,6 +12,11 @@ class AppSpacing {
     return MediaQuery.of(context).size.height * 0.03; // 3%
   }
 
+  /// ✅ 매우 작은 여백 (아이콘/텍스트 바로 옆)
+  static double extraSmall(BuildContext context) {
+    return MediaQuery.of(context).size.height * 0.008; // 0.8%
+  }
+
   /// ✅ 작은 여백 (텍스트/이미지 사이)
   static double small(BuildContext context) {
     return MediaQuery.of(context).size.height * 0.015; // 1.5%

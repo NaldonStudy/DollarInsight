@@ -103,12 +103,14 @@ class _ETFInfoScreenState extends State<ETFInfoScreen> {
         return SingleChildScrollView(
           child: Column(
             children: [
-              SizedBox(height: AppSpacing.medium(context)),
+              SizedBox(height: AppSpacing.big(context)),
               _buildETFHeader(w, etfInfo),
-              SizedBox(height: AppSpacing.section(context)),
-              _buildETFInfoCard(w, h, etfInfo),
+              SizedBox(height: AppSpacing.bottomLarge(context)),
+              // 섹션 1: ETF 설명 + 통계 (1-3)
+              _buildETFInfoSection(w, h, etfInfo),
               SizedBox(height: AppSpacing.medium(context)),
-              _buildTopHoldingsCard(w, h, etfInfo),
+              // 섹션 2: 상위보유기업 (4-9)
+              _buildTopHoldingsSection(w, h, etfInfo),
               SizedBox(height: AppSpacing.bottomLarge(context)),
             ],
           ),
@@ -133,7 +135,7 @@ class _ETFInfoScreenState extends State<ETFInfoScreen> {
             ),
             child: etfInfo.logoUrl != null
                 ? ClipOval(
-                    child: Image.network(
+                    child: Image.asset(
                       etfInfo.logoUrl!,
                       fit: BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) =>
@@ -177,8 +179,8 @@ class _ETFInfoScreenState extends State<ETFInfoScreen> {
     );
   }
 
-  /// ETF 정보 카드 (설명 + 통계)
-  Widget _buildETFInfoCard(double w, double h, etfInfo) {
+  /// 섹션 1: ETF 정보 (설명 + 통계)
+  Widget _buildETFInfoSection(double w, double h, etfInfo) {
     return Container(
       margin: EdgeInsets.symmetric(horizontal: AppSpacing.horizontal(context)),
       clipBehavior: Clip.antiAlias,
@@ -188,10 +190,13 @@ class _ETFInfoScreenState extends State<ETFInfoScreen> {
       ),
       child: Column(
         children: [
-          // ETF 설명
+          // ETF 설명 (3배 높이)
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(21),
+            padding: EdgeInsets.symmetric(
+              horizontal: AppSpacing.horizontal(context),
+              vertical: h * 0.06, // 3배 더 큰 높이
+            ),
             decoration: const BoxDecoration(
               border: Border(
                 bottom: BorderSide(
@@ -202,6 +207,8 @@ class _ETFInfoScreenState extends State<ETFInfoScreen> {
             ),
             child: Text(
               etfInfo.description,
+              softWrap: true,
+              overflow: TextOverflow.visible,
               style: const TextStyle(
                 color: Colors.black,
                 fontSize: 16,
@@ -217,24 +224,45 @@ class _ETFInfoScreenState extends State<ETFInfoScreen> {
               label: '상위 10개 종목 비중',
               value: etfInfo.top10HoldingsRatio!,
             ),
-          // 그 외 전체
-          if (etfInfo.othersRatio != null)
-            _buildInfoRow(
-              label: '그 외 전체',
-              value: etfInfo.othersRatio!,
-            ),
           // 총 보유 종목 수
           if (etfInfo.totalStocks != null)
             _buildInfoRow(
               label: '총 보유 종목 수',
               value: etfInfo.totalStocks!,
             ),
+        ],
+      ),
+    );
+  }
+
+  /// 섹션 2: 상위보유기업
+  Widget _buildTopHoldingsSection(double w, double h, etfInfo) {
+    if (etfInfo.topHoldings.isEmpty) {
+      return const SizedBox();
+    }
+
+    return Container(
+      margin: EdgeInsets.symmetric(horizontal: AppSpacing.horizontal(context)),
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        children: [
           // 상위보유기업 헤더
           _buildInfoRow(
             label: '상위보유기업',
             value: '',
             isHeader: true,
           ),
+          // 상위 5개 보유 종목
+          ...etfInfo.topHoldings.take(5).map((holding) {
+            return _buildHoldingRow(
+              companyName: holding.companyName,
+              ratio: holding.ratio,
+            );
+          }).toList(),
         ],
       ),
     );
@@ -270,10 +298,16 @@ class _ETFInfoScreenState extends State<ETFInfoScreen> {
     required String value,
     bool isHeader = false,
   }) {
+    final size = MediaQuery.of(context).size;
+    final w = size.width;
+    final h = size.height;
+
     return Container(
       width: double.infinity,
-      height: 50,
-      padding: const EdgeInsets.all(10),
+      padding: EdgeInsets.symmetric(
+        horizontal: AppSpacing.horizontal(context),
+        vertical: h * 0.018,
+      ),
       decoration: const BoxDecoration(
         border: Border(
           bottom: BorderSide(
@@ -302,7 +336,7 @@ class _ETFInfoScreenState extends State<ETFInfoScreen> {
                 color: Colors.black,
                 fontSize: 16,
                 fontFamily: 'Pretendard',
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.w700,
               ),
             ),
         ],
@@ -315,10 +349,16 @@ class _ETFInfoScreenState extends State<ETFInfoScreen> {
     required String companyName,
     required String ratio,
   }) {
+    final size = MediaQuery.of(context).size;
+    final w = size.width;
+    final h = size.height;
+
     return Container(
       width: double.infinity,
-      height: 40,
-      padding: const EdgeInsets.all(10),
+      padding: EdgeInsets.symmetric(
+        horizontal: AppSpacing.horizontal(context),
+        vertical: h * 0.018,
+      ),
       decoration: const BoxDecoration(
         border: Border(
           bottom: BorderSide(
@@ -334,10 +374,9 @@ class _ETFInfoScreenState extends State<ETFInfoScreen> {
               companyName,
               style: const TextStyle(
                 color: Colors.black,
-                fontSize: 13,
+                fontSize: 16,
                 fontFamily: 'Pretendard',
                 fontWeight: FontWeight.w500,
-                height: 2.15,
               ),
             ),
           ),
@@ -345,10 +384,9 @@ class _ETFInfoScreenState extends State<ETFInfoScreen> {
             ratio,
             style: const TextStyle(
               color: Colors.black,
-              fontSize: 13,
+              fontSize: 16,
               fontFamily: 'Roboto',
-              fontWeight: FontWeight.w500,
-              height: 2.15,
+              fontWeight: FontWeight.w700,
             ),
           ),
         ],

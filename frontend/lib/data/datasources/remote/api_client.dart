@@ -36,7 +36,8 @@ class ApiClient {
       BaseOptions(
         baseUrl: baseUrl,
         connectTimeout: const Duration(seconds: 10),
-        receiveTimeout: const Duration(seconds: 10),
+        // AI 응답 시간이 길 수 있으므로 수신 타임아웃을 60초로 늘림
+        receiveTimeout: const Duration(seconds: 60),
         contentType: 'application/json',
         responseType: ResponseType.json,
       ),
@@ -128,14 +129,29 @@ class ApiClient {
     Map<String, dynamic>? body,
   }) async {
     try {
+      // 디버깅용 로그 추가
+      print('🌐 POST 요청: $endpoint');
+      print('📝 요청 본문: $body');
+      print('📋 요청 헤더: ${headers ?? "기본 헤더만 사용"}');
+      
       final response = await _dio.post(
         endpoint,
         data: body,
         options: Options(headers: headers),
       );
 
+      print('✅ 응답 성공: ${response.statusCode}');
+      print('📥 응답 데이터: ${response.data}');
+      
       return _handleResponse(response);
+    } on DioException catch (dioError) {
+      print('❌ DioException 발생:');
+      print('   상태 코드: ${dioError.response?.statusCode}');
+      print('   에러 메시지: ${dioError.message}');
+      print('   응답 데이터: ${dioError.response?.data}');
+      throw Exception('POST 요청 실패: $dioError');
     } catch (e) {
+      print('❌ 일반 예외 발생: $e');
       throw Exception('POST 요청 실패: $e');
     }
   }
@@ -156,6 +172,24 @@ class ApiClient {
       return _handleResponse(response);
     } catch (e) {
       throw Exception('PUT 요청 실패: $e');
+    }
+  }
+
+  Future<dynamic> patch(
+      String endpoint, {
+        Map<String, String>? headers,
+        Map<String, dynamic>? body,
+      }) async {
+    try {
+      final response = await _dio.patch(
+        endpoint,
+        data: body,
+        options: Options(headers: headers),
+      );
+
+      return _handleResponse(response);
+    } catch (e) {
+      throw Exception('PATCH 요청 실패: $e');
     }
   }
 

@@ -1,18 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../widgets/chat/create_chat_dialog.dart';
 
 class LiveChatCard extends StatelessWidget {
   final double w;
   final double h;
 
-  const LiveChatCard({super.key, required this.w, required this.h});
+  const LiveChatCard({
+    super.key,
+    required this.w,
+    required this.h,
+  });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        // ✅ 채팅방으로 이동 (예: id = 1)
-        context.push('/chat/1');
+        showDialog(
+          context: context,
+          builder: (context) => const CreateChatDialog(),  // ← 공용 다이얼로그 사용
+        );
       },
       child: Container(
         height: h * 0.12,
@@ -39,7 +46,10 @@ class LiveChatCard extends StatelessWidget {
               top: h * 0.066,
               child: const Text(
                 "검색어를 입력해주세요",
-                style: TextStyle(fontSize: 13, color: Color(0xFF757575)),
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Color(0xFF757575),
+                ),
               ),
             ),
             Positioned(

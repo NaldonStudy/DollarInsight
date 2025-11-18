@@ -103,7 +103,7 @@ class _CompanyInfoScreenState extends State<CompanyInfoScreen> {
         return SingleChildScrollView(
           child: Column(
             children: [
-              SizedBox(height: AppSpacing.medium(context)),
+              SizedBox(height: h * 0.07),
               _buildCompanyHeader(w, companyInfo),
               SizedBox(height: AppSpacing.section(context)),
               _buildInfoCard(w, h, companyInfo),
@@ -131,7 +131,7 @@ class _CompanyInfoScreenState extends State<CompanyInfoScreen> {
             ),
             child: companyInfo.logoUrl != null
                 ? ClipOval(
-                    child: Image.network(
+                    child: Image.asset(
                       companyInfo.logoUrl!,
                       fit: BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) =>
@@ -216,9 +216,21 @@ class _CompanyInfoScreenState extends State<CompanyInfoScreen> {
     required String value,
     bool isDescription = false,
   }) {
+    final size = MediaQuery.of(context).size;
+    final w = size.width;
+    final h = size.height;
+
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(10),
+      padding: isDescription
+          ? EdgeInsets.symmetric(
+              horizontal: AppSpacing.horizontal(context),
+              vertical: h * 0.075, // 3배 더 큰 높이
+            )
+          : EdgeInsets.symmetric(
+              horizontal: AppSpacing.horizontal(context),
+              vertical: h * 0.018,
+            ),
       decoration: const BoxDecoration(
         border: Border(
           bottom: BorderSide(
@@ -230,12 +242,14 @@ class _CompanyInfoScreenState extends State<CompanyInfoScreen> {
       child: isDescription
           ? Text(
               value,
+              softWrap: true,
+              overflow: TextOverflow.visible,
               style: const TextStyle(
                 color: Colors.black,
                 fontSize: 16,
                 fontFamily: 'Pretendard',
                 fontWeight: FontWeight.w500,
-                height: 1.4,
+                height: 1.75,
               ),
             )
           : Row(
@@ -261,7 +275,7 @@ class _CompanyInfoScreenState extends State<CompanyInfoScreen> {
                       color: Colors.black,
                       fontSize: 16,
                       fontFamily: 'Pretendard',
-                      fontWeight: FontWeight.w500,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),

@@ -1,17 +1,23 @@
 import 'package:flutter/material.dart';
 import '../../data/repositories/company_repository.dart';
 import '../../data/models/company_detail_model.dart';
+import '../../data/repositories/watchlist_repository.dart';
+import '../../data/datasources/remote/api_client.dart';
+import '../../data/datasources/remote/watchlist_api.dart';
 import 'package:intl/intl.dart';
 
 /// 기업 상세 화면의 상태와 비즈니스 로직을 관리하는 Provider
 class CompanyDetailProvider with ChangeNotifier {
   final String companyId;
   final CompanyRepository _companyRepository;
+  final WatchlistRepository _watchlistRepository;
 
   CompanyDetailProvider({
     required this.companyId,
     CompanyRepository? companyRepository,
-  }) : _companyRepository = companyRepository ?? CompanyRepository() {
+    WatchlistRepository? watchlistRepository,
+  }) : _companyRepository = companyRepository ?? CompanyRepository(),
+       _watchlistRepository = watchlistRepository ?? WatchlistRepository(WatchlistApi(ApiClient())) {
     _loadCompanyData();
   }
 
@@ -31,9 +37,6 @@ class CompanyDetailProvider with ChangeNotifier {
 
   String? _currentPriceUsd;
   String? get currentPriceUsd => _currentPriceUsd;
-
-  String? _logoUrl;
-  String? get logoUrl => _logoUrl;
 
   Map<String, String>? _indicators;
   Map<String, String>? get indicators => _indicators;
@@ -96,7 +99,6 @@ class CompanyDetailProvider with ChangeNotifier {
   void _mapResponseToState(CompanyDetailResponse response) {
     // 기본 정보
     _companyName = response.basicInfo.name;
-    _logoUrl = null; // TODO: 로고 URL이 API에 추가되면 매핑
 
     // 가격 정보
     final priceFormatter = NumberFormat('#,###');
@@ -105,8 +107,9 @@ class CompanyDetailProvider with ChangeNotifier {
 
     // 투자지표 (STOCK 타입일 때)
     if (response.stockIndicators != null) {
+      final marketCapInTrillions = response.stockIndicators!.marketCap / 1000000000000;
       _indicators = {
-        '시가총액': '${priceFormatter.format(response.stockIndicators!.marketCap)}억원',
+        '시가총액': '${marketCapInTrillions.toStringAsFixed(1)} 조원',
         '배당수익률': '${response.stockIndicators!.dividendYield.toStringAsFixed(2)}%',
         'PBR': '${response.stockIndicators!.pbr.toStringAsFixed(1)}배',
         'PER': '${response.stockIndicators!.per.toStringAsFixed(1)}배',
@@ -115,10 +118,12 @@ class CompanyDetailProvider with ChangeNotifier {
       };
     } else if (response.etfIndicators != null) {
       // ETF 지표
+      final marketCapInTrillions = response.etfIndicators!.marketCap / 1000000000000;
+      final totalAssetsInTrillions = response.etfIndicators!.totalAssets / 1000000000000;
       _indicators = {
-        '시가총액': '${priceFormatter.format(response.etfIndicators!.marketCap)}억원',
+        '시가총액': '${marketCapInTrillions.toStringAsFixed(1)} 조원',
         '배당수익률': '${response.etfIndicators!.dividendYield.toStringAsFixed(2)}%',
-        '총자산': '${priceFormatter.format(response.etfIndicators!.totalAssets)}억원',
+        '총자산': '${totalAssetsInTrillions.toStringAsFixed(1)} 조원',
         'NAV': '${response.etfIndicators!.nav.toStringAsFixed(2)}',
         '프리미엄': '${response.etfIndicators!.premiumDiscount.toStringAsFixed(2)}%',
         '운용비용': '${response.etfIndicators!.expenseRatio.toStringAsFixed(2)}%',
@@ -183,36 +188,24 @@ class CompanyDetailProvider with ChangeNotifier {
 
   /// 관심종목 상태 확인 API 호출
   Future<void> _checkWatchlistStatus() async {
-    // TODO: API 연결
-    // final response = await userRepository.checkWatchlist(companyId);
-    // _isWatching = response.isWatching;
-
-    // 임시 더미 데이터 (API 연결 후 삭제)
-    await Future.delayed(const Duration(milliseconds: 300));
-    _isWatching = false;
+    try {
+      final status = await _watchlistRepository.isWatching(companyId);
+      _isWatching = status;
+    } catch (e) {
+      _isWatching = false;
+    }
   }
 
-  /// 데이터 새로고침
-  Future<void> refresh() async {
-    await _loadCompanyData();
-  }
-
-  /// 관심종목 추가/삭제 (API 연결 지점)
+  /// 관심종목 추가/삭제 (API 연결)
   Future<void> toggleWatchlist() async {
     try {
-      // TODO: 백엔드 API 연결
-      // if (_isWatching) {
-      //   await userRepository.removeFromWatchlist(companyId);
-      // } else {
-      //   await userRepository.addToWatchlist(companyId);
-      // }
-
+      await _watchlistRepository.toggleWatchlist(companyId);
       _isWatching = !_isWatching;
       notifyListeners();
     } catch (e) {
       _error = '관심종목 설정에 실패했습니다: $e';
       notifyListeners();
-      rethrow; // UI에서 에러 처리를 위해 다시 throw
+      rethrow;
     }
   }
 

@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:developer' as developer;
 
 import '../datasources/remote/watchlist_api.dart';
-import '../models/watchlist_models.dart';
+import '../models/watchlist_model.dart';
 
 /// 관심종목 Repository 예외 클래스들
 abstract class WatchlistException implements Exception {
