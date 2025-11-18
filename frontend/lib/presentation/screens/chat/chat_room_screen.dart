@@ -203,22 +203,22 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
 
     _scrollToBottom();
 
-    // 1단계: 스트림 생성 요청 (GET /stream)
-    // 백엔드에 스트림 생성 요청을 보내고 연결 완료를 기다림
-    if (!_isStreaming || _sseSubscription == null) {
-      debugPrint('🔌 1단계: SSE 스트림 생성 요청 (GET /sessions/{sid}/stream)...');
-      await _connectToSSEStream();
-      // _connectToSSEStream()이 완료되면 백엔드에서 스트림이 생성되고 연결된 상태
-      debugPrint('✅ 1단계: SSE 스트림 생성 완료 (백엔드 스트림 준비됨)');
-    } else {
-      debugPrint('🔌 기존 SSE 스트림 연결 유지');
-    }
-
-    // 2단계: 스트림 생성 완료 확인 후 메시지 전송 (POST /messages)
+    // 1단계: 메시지 전송 (POST /messages)
+    // 메시지 전송 시 AI 서비스 세션이 생성됨
     try {
-      debugPrint('📤 2단계: 메시지 전송 시작...');
+      debugPrint('📤 1단계: 메시지 전송 시작...');
       final response = await _chatRepository.sendMessage(widget.sessionId, messageText);
-      debugPrint('✅ 2단계: 메시지 전송 완료 - messageId: ${response.messageId}');
+      debugPrint('✅ 1단계: 메시지 전송 완료 - messageId: ${response.messageId}');
+      
+      // 2단계: AI 서비스 세션 생성 후 스트림 생성 요청 (GET /stream)
+      // 백엔드가 동기로 AI 서비스 세션을 생성하므로, 응답 반환 시 이미 세션이 생성됨
+      if (!_isStreaming || _sseSubscription == null) {
+        debugPrint('🔌 2단계: SSE 스트림 생성 요청 (AI 서비스 세션 생성 완료 후)...');
+        await _connectToSSEStream();
+        debugPrint('✅ 2단계: SSE 스트림 생성 완료');
+      } else {
+        debugPrint('🔌 기존 SSE 스트림 연결 유지');
+      }
     } catch (e, stackTrace) {
       debugPrint('❌ 메시지 전송 실패: $e');
       debugPrint('📍 스택 트레이스: $stackTrace');

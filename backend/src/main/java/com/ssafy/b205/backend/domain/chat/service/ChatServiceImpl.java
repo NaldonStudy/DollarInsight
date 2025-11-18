@@ -152,27 +152,25 @@ public class ChatServiceImpl implements ChatService {
             }
             final var personas = personaRepo.findAllById(personaIds).stream().map(Persona::getCode).toList();
             
-            // /start 호출을 비동기로 처리 (프론트엔드 응답을 블로킹하지 않음)
-            CompletableFuture.runAsync(() -> {
-                try {
-                    log.info("[ChatSvc-Message] 🚀 AI 세션 시작 (비동기) sessionUuid={}, personas={}", finalSessionUuid, personas);
-                    gateway.start(finalSessionUuid.toString(), finalContent, 3000, personas);
-                    log.info("[ChatSvc-Message] ✅ AI 세션 시작 완료 sessionUuid={}", finalSessionUuid);
-                } catch (Exception e) {
-                    log.error("[ChatSvc-Message] ❌ AI 세션 시작 실패 sessionUuid={}, error={}", finalSessionUuid, e.getMessage());
-                }
-            }, asyncExecutor);
+            // /start 호출을 동기로 처리 (AI 서비스 세션 생성 완료 후 응답 반환)
+            try {
+                log.info("[ChatSvc-Message] 🚀 AI 세션 시작 (동기) sessionUuid={}, personas={}", finalSessionUuid, personas);
+                gateway.start(finalSessionUuid.toString(), finalContent, 3000, personas);
+                log.info("[ChatSvc-Message] ✅ AI 세션 시작 완료 sessionUuid={}", finalSessionUuid);
+            } catch (Exception e) {
+                log.error("[ChatSvc-Message] ❌ AI 세션 시작 실패 sessionUuid={}, error={}", finalSessionUuid, e.getMessage());
+                throw new AppException(ErrorCode.INTERNAL, "AI 서비스 세션 시작 실패: " + e.getMessage());
+            }
         } else {
-            // /input 호출도 비동기로 처리
-            CompletableFuture.runAsync(() -> {
-                try {
-                    log.info("[ChatSvc-Message] 📤 사용자 입력 전달 (비동기) sessionUuid={}", finalSessionUuid);
-                    gateway.sendUserInput(finalSessionUuid.toString(), finalContent);
-                    log.info("[ChatSvc-Message] ✅ 사용자 입력 전달 완료 sessionUuid={}", finalSessionUuid);
-                } catch (Exception e) {
-                    log.error("[ChatSvc-Message] ❌ 사용자 입력 전달 실패 sessionUuid={}, error={}", finalSessionUuid, e.getMessage());
-                }
-            }, asyncExecutor);
+            // /input 호출도 동기로 처리
+            try {
+                log.info("[ChatSvc-Message] 📤 사용자 입력 전달 (동기) sessionUuid={}", finalSessionUuid);
+                gateway.sendUserInput(finalSessionUuid.toString(), finalContent);
+                log.info("[ChatSvc-Message] ✅ 사용자 입력 전달 완료 sessionUuid={}", finalSessionUuid);
+            } catch (Exception e) {
+                log.error("[ChatSvc-Message] ❌ 사용자 입력 전달 실패 sessionUuid={}, error={}", finalSessionUuid, e.getMessage());
+                throw new AppException(ErrorCode.INTERNAL, "AI 서비스 입력 전달 실패: " + e.getMessage());
+            }
         }
 
         sessionRepo.touchUpdatedAt(session.getId(), OffsetDateTime.now());
