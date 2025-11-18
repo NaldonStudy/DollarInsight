@@ -130,7 +130,7 @@ class CompanyDetailProvider with ChangeNotifier {
       _stockScores = {
         '총점': response.stockScores!.totalScore,
         '모멘텀': response.stockScores!.momentum,
-        '가치': response.stockScores!.valuation,
+        '가치': response.stockScores!.valuation ?? -1, // null은 -1로 표시
         '성장': response.stockScores!.growth,
         '수급': response.stockScores!.flow,
         '위험': response.stockScores!.risk,

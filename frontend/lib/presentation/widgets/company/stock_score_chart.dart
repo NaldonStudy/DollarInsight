@@ -57,6 +57,17 @@ class _StockScoreChartState extends State<StockScoreChart> {
             ),
           ),
         ),
+        const SizedBox(height: 8),
+        const Text(
+          '일부 지표는 적자·데이터 부족으로 표시되지 않을 수 있어요.',
+          style: TextStyle(
+            color: Color(0xFF9E9E9E),
+            fontSize: 10,
+            fontFamily: 'Pretendard',
+            fontWeight: FontWeight.w400,
+            height: 1.4,
+          ),
+        ),
       ],
     );
   }
@@ -74,7 +85,37 @@ class _StockScoreChartState extends State<StockScoreChart> {
           getTooltipItem: (group, groupIndex, rod, rodIndex) {
             final labels = _scores.keys.toList();
             final label = labels[group.x.toInt()];
-            final score = rod.toY.toInt();
+            final score = _scores[label]!;
+
+            // null 값인 경우 (가치 점수가 -1)
+            if (score < 0) {
+              String message = '데이터 없음';
+              if (label == '가치') {
+                message = '적자인 종목은 PER 계산이 어려워\n가치 점수가 없어요.';
+              }
+              return BarTooltipItem(
+                message,
+                const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontFamily: 'Pretendard',
+                  fontWeight: FontWeight.w400,
+                ),
+              );
+            }
+
+            // 성장 점수가 0인 경우
+            if (label == '성장' && score == 0) {
+              return BarTooltipItem(
+                '최근 순이익이 크게 줄어\n성장 점수를 0점으로 표시했어요.',
+                const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontFamily: 'Pretendard',
+                  fontWeight: FontWeight.w400,
+                ),
+              );
+            }
 
             return BarTooltipItem(
               '$label\n',
@@ -86,7 +127,7 @@ class _StockScoreChartState extends State<StockScoreChart> {
               ),
               children: <TextSpan>[
                 TextSpan(
-                  text: '$score점',
+                  text: '${score.toInt()}점',
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 14,
@@ -157,7 +198,10 @@ class _StockScoreChartState extends State<StockScoreChart> {
     }
 
     final label = labels[index];
-    final score = _scores[label]!.toInt();
+    final score = _scores[label]!;
+
+    // null 값인 경우 "–" 표시
+    final displayText = score < 0 ? '–' : '${score.toInt()}';
 
     return SideTitleWidget(
       axisSide: meta.axisSide,
@@ -178,7 +222,7 @@ class _StockScoreChartState extends State<StockScoreChart> {
           ),
           const SizedBox(height: 4),
           Text(
-            '$score',
+            displayText,
             textAlign: TextAlign.center,
             style: const TextStyle(
               color: Color(0xFF757575),

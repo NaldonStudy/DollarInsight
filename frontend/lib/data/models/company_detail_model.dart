@@ -306,7 +306,7 @@ class StockScores {
   final String scoreDate;
   final double totalScore;
   final double momentum;
-  final double valuation;
+  final double? valuation;
   final double growth;
   final double flow;
   final double risk;
@@ -315,7 +315,7 @@ class StockScores {
     required this.scoreDate,
     required this.totalScore,
     required this.momentum,
-    required this.valuation,
+    this.valuation,
     required this.growth,
     required this.flow,
     required this.risk,
@@ -326,7 +326,7 @@ class StockScores {
       scoreDate: json['scoreDate']?.toString() ?? '',
       totalScore: (json['totalScore'] ?? 0).toDouble(),
       momentum: (json['momentum'] ?? 0).toDouble(),
-      valuation: (json['valuation'] ?? 0).toDouble(),
+      valuation: json['valuation'] != null ? (json['valuation'] as num).toDouble() : null,
       growth: (json['growth'] ?? 0).toDouble(),
       flow: (json['flow'] ?? 0).toDouble(),
       risk: (json['risk'] ?? 0).toDouble(),
