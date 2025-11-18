@@ -139,15 +139,38 @@ public class ChatServiceImpl implements ChatService {
 
         final long userMsgCount = msgRepo.countBySessionUuidAndRole(sessionUuid, "user");
 
+        // AI 서비스 호출을 비동기로 처리하여 응답 지연 방지
+        final UUID finalSessionUuid = sessionUuid;
+        final String finalContent = req.getContent();
+        
         if (userMsgCount <= 1) {
             final var personaIds = cspRepo.findPersonaIdsBySessionId(session.getId());
             if (personaIds.isEmpty()) {
                 throw new AppException(ErrorCode.BAD_REQUEST, "세션의 페르소나 매핑이 없습니다.");
             }
             final var personas = personaRepo.findAllById(personaIds).stream().map(Persona::getCode).toList();
-            gateway.start(sessionUuid.toString(), req.getContent(), 3000, personas);
+            
+            // /start 호출을 비동기로 처리 (프론트엔드 응답을 블로킹하지 않음)
+            CompletableFuture.runAsync(() -> {
+                try {
+                    log.info("[ChatSvc-Message] 🚀 AI 세션 시작 (비동기) sessionUuid={}, personas={}", finalSessionUuid, personas);
+                    gateway.start(finalSessionUuid.toString(), finalContent, 3000, personas);
+                    log.info("[ChatSvc-Message] ✅ AI 세션 시작 완료 sessionUuid={}", finalSessionUuid);
+                } catch (Exception e) {
+                    log.error("[ChatSvc-Message] ❌ AI 세션 시작 실패 sessionUuid={}, error={}", finalSessionUuid, e.getMessage());
+                }
+            }, asyncExecutor);
         } else {
-            gateway.sendUserInput(sessionUuid.toString(), req.getContent());
+            // /input 호출도 비동기로 처리
+            CompletableFuture.runAsync(() -> {
+                try {
+                    log.info("[ChatSvc-Message] 📤 사용자 입력 전달 (비동기) sessionUuid={}", finalSessionUuid);
+                    gateway.sendUserInput(finalSessionUuid.toString(), finalContent);
+                    log.info("[ChatSvc-Message] ✅ 사용자 입력 전달 완료 sessionUuid={}", finalSessionUuid);
+                } catch (Exception e) {
+                    log.error("[ChatSvc-Message] ❌ 사용자 입력 전달 실패 sessionUuid={}, error={}", finalSessionUuid, e.getMessage());
+                }
+            }, asyncExecutor);
         }
 
         sessionRepo.touchUpdatedAt(session.getId(), OffsetDateTime.now());
