@@ -629,23 +629,45 @@ async def sse_generator(request: Request, session_id: str):
         if s is None and i < max_retries - 1:
             await asyncio.sleep(retry_delay)
 
-    # 세션을 찾지 못한 경우 에러 이벤트 전송 후 종료
-    if s is None:
-        error_payload = json.dumps(
-            {"detail": "Session not found. Please call /start first."},
-            ensure_ascii=False,
-        )
-        yield f"event: error\ndata: {error_payload}\n\n"
-        return
-
-    # 세션을 찾았으므로 이제 응답 시작
+    # 세션을 찾지 못한 경우 하트비트를 보내며 계속 대기
+    # 백엔드가 /start를 호출하기 전에 /stream이 올 수 있으므로 무한 대기
     yield "retry: 2000\n\n"
 
     HEARTBEAT_SECS = 20
     hb_last = time.time()
+    session_wait_heartbeat_secs = 2
+    session_wait_last = time.time()
+    ready_sent = False
 
+    # 세션을 찾을 때까지 하트비트를 보내며 대기
+    while s is None:
+        if await request.is_disconnected():
+            return
+
+        # 세션 재확인
+        async with SESSIONS_LOCK:
+            s = SESSIONS.get(session_id)
+            if s is not None:
+                s.mark_used()
+                print(f"[SSE] 세션 발견: {session_id}")
+                break
+
+        # 세션 대기 중 하트비트 전송
+        now = time.time()
+        if now - session_wait_last >= session_wait_heartbeat_secs:
+            yield ":\n\n"
+            session_wait_last = now
+
+        await asyncio.sleep(0.5)
+
+    # 세션을 찾았으므로 ready 이벤트 전송
     if not hasattr(s, "ai_response_queue"):
         s.ai_response_queue = queue.Queue()
+
+    if not ready_sent:
+        yield f'id: 0\nevent: ready\ndata: {{"session_id": "{session_id}", "status": "ready"}}\n\n'
+        ready_sent = True
+        print(f"[SSE] Ready 이벤트 전송: {session_id}")
 
     while True:
         if await request.is_disconnected():
