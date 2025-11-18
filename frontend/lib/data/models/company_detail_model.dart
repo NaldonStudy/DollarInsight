@@ -242,28 +242,28 @@ class Predictions {
 class StockIndicators {
   final double marketCap;
   final double dividendYield;
-  final double pbr;
-  final double per;
-  final double roe;
-  final double psr;
+  final double? pbr;
+  final double? per;
+  final double? roe;
+  final double? psr;
 
   StockIndicators({
     required this.marketCap,
     required this.dividendYield,
-    required this.pbr,
-    required this.per,
-    required this.roe,
-    required this.psr,
+    this.pbr,
+    this.per,
+    this.roe,
+    this.psr,
   });
 
   factory StockIndicators.fromJson(Map<String, dynamic> json) {
     return StockIndicators(
       marketCap: (json['marketCap'] ?? 0).toDouble(),
       dividendYield: (json['dividendYield'] ?? 0).toDouble(),
-      pbr: (json['pbr'] ?? 0).toDouble(),
-      per: (json['per'] ?? 0).toDouble(),
-      roe: (json['roe'] ?? 0).toDouble(),
-      psr: (json['psr'] ?? 0).toDouble(),
+      pbr: json['pbr'] != null ? (json['pbr'] as num).toDouble() : null,
+      per: json['per'] != null ? (json['per'] as num).toDouble() : null,
+      roe: json['roe'] != null ? (json['roe'] as num).toDouble() : null,
+      psr: json['psr'] != null ? (json['psr'] as num).toDouble() : null,
     );
   }
 }
@@ -306,7 +306,7 @@ class StockScores {
   final String scoreDate;
   final double totalScore;
   final double momentum;
-  final double valuation;
+  final double? valuation;
   final double growth;
   final double flow;
   final double risk;
@@ -315,7 +315,7 @@ class StockScores {
     required this.scoreDate,
     required this.totalScore,
     required this.momentum,
-    required this.valuation,
+    this.valuation,
     required this.growth,
     required this.flow,
     required this.risk,
@@ -326,7 +326,7 @@ class StockScores {
       scoreDate: json['scoreDate']?.toString() ?? '',
       totalScore: (json['totalScore'] ?? 0).toDouble(),
       momentum: (json['momentum'] ?? 0).toDouble(),
-      valuation: (json['valuation'] ?? 0).toDouble(),
+      valuation: json['valuation'] != null ? (json['valuation'] as num).toDouble() : null,
       growth: (json['growth'] ?? 0).toDouble(),
       flow: (json['flow'] ?? 0).toDouble(),
       risk: (json['risk'] ?? 0).toDouble(),

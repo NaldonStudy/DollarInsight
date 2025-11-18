@@ -433,6 +433,17 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
           ),
           SizedBox(height: AppSpacing.bottomLarge(context)),
           Expanded(child: _buildIndicatorGrid(provider)),
+          const SizedBox(height: 8),
+          const Text(
+            '일부 지표는 적자·데이터 부족으로 표시되지 않을 수 있어요.',
+            style: TextStyle(
+              color: Color(0xFF9E9E9E),
+              fontSize: 10,
+              fontFamily: 'Pretendard',
+              fontWeight: FontWeight.w400,
+              height: 1.4,
+            ),
+          ),
         ],
       ),
     );
@@ -489,11 +500,28 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
 
   /// 개별 투자지표 카드
   Widget _buildIndicatorCard(String label, String value) {
-    return Container(
+    // null 값인지 확인 (–로 표시된 경우)
+    final isNull = value == '–';
+
+    // 툴팁 메시지 설정
+    String? tooltipMessage;
+    if (isNull && label == 'PER') {
+      tooltipMessage = '적자인 종목은 PER 계산이 어려워\n표시되지 않아요.';
+    }
+
+    Widget cardContent = Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: const Color(0xFFD9E2EA),
+        color: isNull
+            ? const Color(0xFFF5F5F5)
+            : const Color(0xFFD9E2EA),
         borderRadius: BorderRadius.circular(6),
+        border: isNull
+            ? Border.all(
+                color: const Color(0xFFE0E0E0),
+                width: 1,
+              )
+            : null,
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -501,8 +529,8 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
         children: [
           Text(
             label,
-            style: const TextStyle(
-              color: Color(0xFF595959),
+            style: TextStyle(
+              color: isNull ? const Color(0xFF9E9E9E) : const Color(0xFF595959),
               fontSize: 12,
               fontFamily: 'Pretendard',
               fontWeight: FontWeight.w600,
@@ -513,8 +541,8 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
           const SizedBox(height: 4),
           Text(
             value,
-            style: const TextStyle(
-              color: Colors.black,
+            style: TextStyle(
+              color: isNull ? const Color(0xFF9E9E9E) : Colors.black,
               fontSize: 15,
               fontFamily: 'Pretendard',
               fontWeight: FontWeight.w700,
@@ -524,6 +552,35 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen>
         ],
       ),
     );
+
+    // 툴팁이 있는 경우 GestureDetector로 감싸기
+    if (tooltipMessage != null) {
+      final message = tooltipMessage; // null이 아님을 보장
+      return GestureDetector(
+        onTap: () {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                message,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontFamily: 'Pretendard',
+                ),
+              ),
+              backgroundColor: Colors.black87,
+              duration: const Duration(seconds: 2),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          );
+        },
+        child: cardContent,
+      );
+    }
+
+    return cardContent;
   }
 
 
