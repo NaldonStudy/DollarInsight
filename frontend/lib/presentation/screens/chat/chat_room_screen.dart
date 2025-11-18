@@ -138,19 +138,26 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
 
       final messages = historyItems.map((item) {
         String content;
+        String? speaker;
         try {
           final contentData = jsonDecode(item.content) as Map<String, dynamic>;
-          content = contentData['text'] as String;
+          // content 또는 text 필드에서 메시지 내용 추출
+          content = contentData['content'] as String? ??
+                    contentData['text'] as String? ??
+                    item.content;
+          // speaker 정보 추출
+          speaker = contentData['speaker'] as String?;
         } catch (e) {
           content = item.content;
+          speaker = null;
         }
 
         return ChatMessage(
           role: item.role == 'user' ? MessageRole.user : MessageRole.assistant,
           content: content,
           timestamp: item.ts,
-          personaCode: item.role == 'assistant' ? 'AI' : null,
-          personaName: item.role == 'assistant' ? 'AI 어시스턴트' : null,
+          personaCode: item.role == 'assistant' ? (speaker ?? 'AI') : null,
+          personaName: item.role == 'assistant' ? (speaker ?? 'AI 어시스턴트') : null,
         );
       }).toList();
 
@@ -278,6 +285,18 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       _sseSubscription = sseStream.listen(
             (sseMessage) {
           if (!mounted) return;
+
+          // 디버깅: SSE 메시지 전체 출력
+          debugPrint('📨 SSE 메시지 수신:');
+          debugPrint('  - type: ${sseMessage.type}');
+          debugPrint('  - id: ${sseMessage.id}');
+          debugPrint('  - data: ${sseMessage.data}');
+          debugPrint('  - speaker: ${sseMessage.speaker}');
+          debugPrint('  - turn: ${sseMessage.turn}');
+          debugPrint('  - tsMs: ${sseMessage.tsMs}');
+          debugPrint('  - sessionId: ${sseMessage.sessionId}');
+          debugPrint('  - raw: ${sseMessage.raw}');
+
           print('🔥 [SSE RAW] type=${sseMessage.type}, data=${sseMessage.data}');
           try {
             switch (sseMessage.type) {
@@ -287,8 +306,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                 final aiMessage = ChatMessage.assistant(
                   content: sseMessage.data,
                   timestamp: DateTime.now(),
-                  personaCode: 'AI',
-                  personaName: 'AI 어시스턴트',
+                  personaCode: sseMessage.speaker ?? 'AI',
+                  personaName: sseMessage.speaker ?? 'AI 어시스턴트',
                   isStreaming: false, // 이미 완성된 메시지이므로 스트리밍 아님
                 );
                 if (mounted) {
@@ -409,6 +428,26 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
 
   String _formatDate(DateTime date) {
     return DateFormat('yyyy년 MM월 dd일', 'ko_KR').format(date);
+  }
+
+  /// 캐릭터 이름에 따른 이미지 경로 반환
+  String _getCharacterImagePath(String? speaker) {
+    if (speaker == null) return 'assets/deoksu.webp'; // 기본값
+
+    switch (speaker) {
+      case '덕수':
+        return 'assets/deoksu.webp';
+      case '희열':
+        return 'assets/heuyeol.webp';
+      case '민지':
+        return 'assets/minji.webp';
+      case '테오':
+        return 'assets/teo.webp';
+      case '지율':
+        return 'assets/jiyul.webp';
+      default:
+        return 'assets/deoksu.webp'; // 알 수 없는 경우 기본값
+    }
   }
 
   @override
@@ -645,6 +684,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     required String time,
     bool isStreaming = false,
   }) {
+    final imagePath = _getCharacterImagePath(name);
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Row(
@@ -655,13 +696,28 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: Colors.blue.withOpacity(0.1),
               borderRadius: BorderRadius.circular(18),
             ),
-            child: const Icon(
-              Icons.smart_toy,
-              color: Colors.blue,
-              size: 20,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(18),
+              child: Image.asset(
+                imagePath,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  // 이미지 로드 실패 시 기본 아이콘 표시
+                  return Container(
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: const Icon(
+                      Icons.smart_toy,
+                      color: Colors.blue,
+                      size: 20,
+                    ),
+                  );
+                },
+              ),
             ),
           ),
           const SizedBox(width: 8),

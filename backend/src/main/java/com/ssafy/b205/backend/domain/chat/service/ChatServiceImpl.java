@@ -290,7 +290,9 @@ public class ChatServiceImpl implements ChatService {
 
                         emitter.send(buildEvent(eventName, eventId, defaultPayload));
                     } catch (Exception e) {
-                        log.warn("[ChatSvc-Stream] SSE send error: {}", e.getMessage());
+                        log.error("[ChatSvc-Stream] SSE send error (연결 종료): {}", e.getMessage(), e);
+                        emitter.completeWithError(e);
+                        throw new RuntimeException("SSE 전송 실패로 연결 종료", e);
                     }
                 });
 
@@ -502,14 +504,15 @@ public class ChatServiceImpl implements ChatService {
     }
 
     private Disposable startKeepAlive(SseEmitter emitter) {
-        return Flux.interval(Duration.ofSeconds(25))
+        return Flux.interval(Duration.ofSeconds(15))
                 .subscribe(tick -> {
                     try {
                         emitter.send(SseEmitter.event()
                                 .name("ping")
                                 .data("keep-alive"));
                     } catch (Exception e) {
-                        log.debug("[ChatSvc-Stream] keep-alive send failed: {}", e.getMessage());
+                        log.warn("[ChatSvc-Stream] keep-alive send failed, completing emitter: {}", e.getMessage());
+                        emitter.completeWithError(e);
                     }
                 });
     }
