@@ -38,6 +38,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   StreamSubscription<SSEMessage>? _sseSubscription;
   bool _isStreaming = false;
   ChatMessage? _currentAIMessage; // 각 페르소나 발언을 별도 메시지로 처리하기 위한 멤버 변수
+  Timer? _scrollDebounceTimer; // 스크롤 디바운스용 타이머
 
   @override
   void initState() {
@@ -49,6 +50,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   @override
   void dispose() {
     _stopSSEStreamSafely();
+    _scrollDebounceTimer?.cancel();
     _controller.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -95,6 +97,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
 
       await _loadChatHistory();
 
+      // 채팅방 입장 시에는 세션만 확인하고 스트림은 연결하지 않음
+      // 스트림은 사용자가 메시지를 입력할 때 생성됨
       setState(() {
         _isLoading = false;
       });
@@ -199,18 +203,22 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
 
     _scrollToBottom();
 
+    // 1단계: 스트림 생성 요청 (GET /stream)
+    // 백엔드에 스트림 생성 요청을 보내고 연결 완료를 기다림
+    if (!_isStreaming || _sseSubscription == null) {
+      debugPrint('🔌 1단계: SSE 스트림 생성 요청 (GET /sessions/{sid}/stream)...');
+      await _connectToSSEStream();
+      // _connectToSSEStream()이 완료되면 백엔드에서 스트림이 생성되고 연결된 상태
+      debugPrint('✅ 1단계: SSE 스트림 생성 완료 (백엔드 스트림 준비됨)');
+    } else {
+      debugPrint('🔌 기존 SSE 스트림 연결 유지');
+    }
+
+    // 2단계: 스트림 생성 완료 확인 후 메시지 전송 (POST /messages)
     try {
-      debugPrint('🌐 sendMessage API 호출 시작...');
+      debugPrint('📤 2단계: 메시지 전송 시작...');
       final response = await _chatRepository.sendMessage(widget.sessionId, messageText);
-      debugPrint('✅ sendMessage API 성공: ${response.messageId}');
-      
-      if (!_isStreaming || _sseSubscription == null) {
-        debugPrint('🔌 SSE 스트림 연결 시작...');
-        await _connectToSSEStream();
-        debugPrint('✅ SSE 스트림 연결 완료');
-      } else {
-        debugPrint('🔌 기존 SSE 연결 유지 (재연결 생략)');
-      }
+      debugPrint('✅ 2단계: 메시지 전송 완료 - messageId: ${response.messageId}');
     } catch (e, stackTrace) {
       debugPrint('❌ 메시지 전송 실패: $e');
       debugPrint('📍 스택 트레이스: $stackTrace');
@@ -267,8 +275,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                   setState(() {
                     _messages.add(aiMessage);
                   });
+                  _scrollToBottomDebounced();
                 }
-                _scrollToBottom();
                 break;
 
               case SSEEventType.done:
@@ -295,13 +303,31 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                 }
                 break;
             }
-          } catch (e) {
+          } catch (e, stackTrace) {
             debugPrint('SSE 메시지 처리 오류: $e');
+            debugPrint('스택 트레이스: $stackTrace');
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('메시지 처리 오류: $e'),
+                  backgroundColor: Colors.orange,
+                  duration: const Duration(seconds: 3),
+                ),
+              );
+            }
           }
         },
-        onError: (error) {
+        onError: (error, stackTrace) {
           debugPrint('SSE 스트림 에러: $error');
+          debugPrint('스택 트레이스: $stackTrace');
           if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('SSE 스트림 연결 오류: $error'),
+                backgroundColor: Colors.red,
+                duration: const Duration(seconds: 5),
+              ),
+            );
             setState(() {
               _isStreaming = false;
               _isSending = false;
@@ -341,6 +367,14 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
           curve: Curves.easeOut,
         );
       }
+    });
+  }
+
+  // 스크롤 디바운스: 메시지가 빠르게 들어올 때 성능 최적화
+  void _scrollToBottomDebounced() {
+    _scrollDebounceTimer?.cancel();
+    _scrollDebounceTimer = Timer(const Duration(milliseconds: 100), () {
+      _scrollToBottom();
     });
   }
 
