@@ -173,6 +173,7 @@ enum SSEEventType {
   message,
   done,
   error,
+  ready,
 }
 
 /// SSE 메시지 데이터
@@ -192,6 +193,7 @@ class SSEMessage {
       'message' => SSEEventType.message,
       'done' => SSEEventType.done,
       'error' => SSEEventType.error,
+      'ready' => SSEEventType.ready,
       _ => SSEEventType.message,
     };
 

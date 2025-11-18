@@ -163,7 +163,7 @@ class ChatRepository {
         final eventType = currentEvent ?? 'message';
 
         // 처리하기로 약속된 이벤트 타입들
-        const knownEvents = {'message', 'done', 'error'};
+        const knownEvents = {'message', 'done', 'error', 'ready'};
 
         // 데이터가 있고, 우리가 아는 이벤트 타입일 경우에만 처리
         if (currentData != null && knownEvents.contains(eventType)) {
@@ -208,7 +208,7 @@ class ChatRepository {
     // 스트림이 예기치 않게 종료되었을 때, 마지막으로 쌓인 데이터가 있다면 처리
     if (currentData != null) {
       final eventType = currentEvent ?? 'message';
-      const knownEvents = {'message', 'done', 'error'};
+      const knownEvents = {'message', 'done', 'error', 'ready'};
        if (knownEvents.contains(eventType)) {
          String finalData = currentData;
           // 'message' 이벤트의 데이터는 JSON일 수 있으므로 파싱 시도
