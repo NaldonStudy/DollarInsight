@@ -596,23 +596,23 @@ deploy_apk() {
     
     # Step 2: Create deployment directory if it doesn't exist
     info "Preparing deployment directory..."
-    mkdir -p "$APK_DEPLOY_DIR" || error "Failed to create APK deployment directory"
+    sudo mkdir -p "$APK_DEPLOY_DIR" || error "Failed to create APK deployment directory"
     
     # Step 3: Backup existing APK if it exists
     if [ -f "$APK_DEST" ]; then
         local timestamp=$(date +%Y%m%d_%H%M%S)
         local backup_path="${APK_DEPLOY_DIR}/app-release.apk.backup_${timestamp}"
         info "Backing up existing APK..."
-        cp "$APK_DEST" "$backup_path" || warn "Failed to backup existing APK"
+        sudo cp "$APK_DEST" "$backup_path" || warn "Failed to backup existing APK"
         log "Backup created: $backup_path"
     fi
     
-    # Step 4: Copy new APK to deployment location
+    # Step 4: Copy new APK to deployment location (using sudo)
     info "Copying APK to deployment location..."
-    cp "$APK_SOURCE" "$APK_DEST" || error "Failed to copy APK to deployment location"
+    sudo cp "$APK_SOURCE" "$APK_DEST" || error "Failed to copy APK to deployment location"
     
     # Step 5: Set appropriate permissions
-    chmod 644 "$APK_DEST" || warn "Failed to set APK permissions"
+    sudo chmod 644 "$APK_DEST" || warn "Failed to set APK permissions"
     
     # Step 6: Verify deployment
     if [ ! -f "$APK_DEST" ]; then
