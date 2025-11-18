@@ -35,21 +35,43 @@ public final class HistoryCursorResponse {
         private final String role;
         private final String content;
         private final Instant ts;
+        private final String speaker;
+        private final Integer turn;
+        private final Long tsMs;
+        private final String rawPayload;
 
-        private Item(String id, String role, String content, Instant ts) {
+        private Item(String id, String role, String content, Instant ts,
+                     String speaker, Integer turn, Long tsMs, String rawPayload) {
             this.id = id;
             this.role = role;
             this.content = content;
             this.ts = ts;
+            this.speaker = speaker;
+            this.turn = turn;
+            this.tsMs = tsMs;
+            this.rawPayload = rawPayload;
         }
 
         public String getId() { return id; }
         public String getRole() { return role; }
         public String getContent() { return content; }
         public Instant getTs() { return ts; }
+        public String getSpeaker() { return speaker; }
+        public Integer getTurn() { return turn; }
+        public Long getTsMs() { return tsMs; }
+        public String getRawPayload() { return rawPayload; }
 
         public static Item from(ChatMessageDoc d) {
-            return new Item(d.getId(), d.getRole(), d.getContent(), d.getTs());
+            return new Item(
+                    d.getId(),
+                    d.getRole(),
+                    d.getContent(),
+                    d.getTs(),
+                    d.getSpeaker(),
+                    d.getTurn(),
+                    d.getAiTsMs(),
+                    d.getRawPayload()
+            );
         }
     }
 }
