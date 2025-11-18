@@ -183,7 +183,7 @@ class UserApi {
 
       final response = await _dio.patch(
         '/api/users/me/personas',
-
+        data: {'personaCodes': personaCodes},
         options: Options(
           headers: {
             'Authorization': 'Bearer $access',
