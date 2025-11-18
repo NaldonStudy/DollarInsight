@@ -226,6 +226,7 @@ public class ChatServiceImpl implements ChatService {
                         final String eventName = (sse.event() != null ? sse.event() : "message");
                         final String data = sse.data();
                         final String eventId = sse.id();
+                        log.debug("[ChatSvc-Stream] AI 서비스 이벤트 수신 - event={}, id={}, data={}", eventName, eventId, data);
                         final String defaultPayload = buildPayload(eventName, eventId, data, null);
 
                         // ready 이벤트 처리: AI 서비스가 세션과 스트림 준비 완료를 알릴 때
