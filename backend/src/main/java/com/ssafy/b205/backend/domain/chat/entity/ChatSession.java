@@ -59,6 +59,23 @@ public class ChatSession extends AuditableBase {
         return s;
     }
 
+    // UUID를 지정하여 생성하는 팩토리
+    public static ChatSession createWithUuid(Integer userId,
+                                             UUID sessionUuid,
+                                             ChatTopicType topicType,
+                                             String title,
+                                             String ticker,
+                                             Long companyNewsId) {
+        ChatSession s = new ChatSession();
+        s.uuid = sessionUuid; // UUID를 미리 설정
+        s.userId = userId;
+        s.topicType = (topicType == null ? ChatTopicType.CUSTOM : topicType);
+        s.title = title;
+        s.ticker = ticker;
+        s.companyNewsId = companyNewsId;
+        return s;
+    }
+
     @PrePersist
     private void prePersist() {
         if (uuid == null) {
