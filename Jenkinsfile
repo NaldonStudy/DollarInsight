@@ -46,7 +46,7 @@ pipeline {
                 }
             }
         }
-        
+
         stage('Build Docker Images') {
             steps {
                 echo '=== Building Docker Images in Jenkins (Backend, AI Service & Airflow) ==='
@@ -98,17 +98,17 @@ pipeline {
                     sh """
                         ssh -i \${SSH_KEY} -o StrictHostKeyChecking=no ${DEPLOY_SERVER} '
                             cd ${DEPLOY_PATH}
-                            
-                            # Git repository 업데이트
+
+                            # Git repository 업데이트 (한 번만 수행)
                             echo "=== Updating Git repository ==="
                             git fetch origin
                             git checkout develop
                             git pull origin develop
-                            
+
                             # 배포할 이미지 버전 설정
                             export BACKEND_VERSION=${IMAGE_TAG}
                             export AI_VERSION=${IMAGE_TAG}
-                            
+
                             # Airflow 존재 여부 확인
                             if [ -d "ai-service/AI_airflow" ]; then
                                 export AIRFLOW_VERSION=${IMAGE_TAG}
@@ -116,19 +116,31 @@ pipeline {
                             else
                                 echo "=== Airflow not found, will deploy Backend & AI Service only ==="
                             fi
-                            
+
                             # deploy.sh 실행 권한 부여
                             chmod +x deploy.sh
-                            
-                            # deploy.sh를 사용한 배포
-                            echo "=== Running deployment script with version ${IMAGE_TAG} ==="
+
+                            # Docker 서비스 배포
+                            echo "=== Running Docker services deployment with version ${IMAGE_TAG} ==="
                             ./deploy.sh deploy
+
+                            # Flutter APK 빌드 및 배포 (동일한 코드 버전 사용)
+                            echo ""
+                            echo "=== Building and Deploying Flutter APK ==="
+                            ./deploy.sh build-and-deploy-apk
+
+                            # 배포 완료 메시지
+                            echo ""
+                            echo "=== 🎉 All Deployments Complete ==="
+                            echo "  - Docker Services: backend, ai-service, airflow"
+                            echo "  - Flutter APK: https://k13b205.p.ssafy.io/apk/app-release.apk"
+                            echo "  - Download Page: https://k13b205.p.ssafy.io/download"
                         '
                     """
                 }
             }
         }
-        
+
         stage('Verify Deployment') {
             steps {
                 echo '=== Verifying Deployment ==='
@@ -183,7 +195,11 @@ pipeline {
             echo "Preserved Services: postgres, mongodb, redis, chromadb, nginx, admin tools"
             echo "Deployment completed successfully"
             echo "Deployed at: ${new Date()}"
-            
+            echo ""
+            echo "=== 📱 Flutter APK Deployment ==="
+            echo "APK Download URL: https://k13b205.p.ssafy.io/apk/app-release.apk"
+            echo "Download Page: https://k13b205.p.ssafy.io/download"
+
             withCredentials([sshUserPrivateKey(credentialsId: SSH_CREDENTIAL, keyFileVariable: 'SSH_KEY')]) {
                 sh """
                     ssh -i \${SSH_KEY} -o StrictHostKeyChecking=no ${DEPLOY_SERVER} '

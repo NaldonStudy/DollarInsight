@@ -37,6 +37,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
 
   StreamSubscription<SSEMessage>? _sseSubscription;
   bool _isStreaming = false;
+  bool _isStreamReady = false; // AI 서비스 스트림 준비 완료 여부
   ChatMessage? _currentAIMessage; // 각 페르소나 발언을 별도 메시지로 처리하기 위한 멤버 변수
   Timer? _scrollDebounceTimer; // 스크롤 디바운스용 타이머
 
@@ -203,22 +204,39 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
 
     _scrollToBottom();
 
-    // 1단계: 메시지 전송 (POST /messages)
-    // 메시지 전송 시 AI 서비스 세션이 생성됨
-    try {
-      debugPrint('📤 1단계: 메시지 전송 시작...');
-      final response = await _chatRepository.sendMessage(widget.sessionId, messageText);
-      debugPrint('✅ 1단계: 메시지 전송 완료 - messageId: ${response.messageId}');
-      
-      // 2단계: AI 서비스 세션 생성 후 스트림 생성 요청 (GET /stream)
-      // 백엔드가 동기로 AI 서비스 세션을 생성하므로, 응답 반환 시 이미 세션이 생성됨
-      if (!_isStreaming || _sseSubscription == null) {
-        debugPrint('🔌 2단계: SSE 스트림 생성 요청 (AI 서비스 세션 생성 완료 후)...');
-        await _connectToSSEStream();
-        debugPrint('✅ 2단계: SSE 스트림 생성 완료');
-      } else {
-        debugPrint('🔌 기존 SSE 스트림 연결 유지');
+    // 1단계: 스트림 생성 요청 (GET /stream) - 먼저 준비
+    // 백엔드 ↔ 프론트엔드 스트림, 백엔드 ↔ AI 서비스 스트림 모두 준비
+    if (!_isStreaming || _sseSubscription == null) {
+      debugPrint('🔌 1단계: SSE 스트림 생성 요청 (GET /sessions/{sid}/stream)...');
+      await _connectToSSEStream();
+      debugPrint('✅ 1단계: SSE 스트림 생성 완료 (백엔드 ↔ 프론트, 백엔드 ↔ AI 연결 준비)');
+    } else {
+      debugPrint('🔌 기존 SSE 스트림 연결 유지');
+    }
+
+    // 1.5단계: AI 서비스 스트림 ready 이벤트 대기
+    // 모든 스트림이 준비될 때까지 대기 (최대 10초)
+    if (!_isStreamReady) {
+      debugPrint('⏳ AI 서비스 스트림 ready 이벤트 대기 중...');
+      int waitCount = 0;
+      const maxWait = 100; // 10초 (100 * 100ms)
+      while (!_isStreamReady && waitCount < maxWait) {
+        await Future.delayed(const Duration(milliseconds: 100));
+        waitCount++;
       }
+      if (!_isStreamReady) {
+        debugPrint('⚠️ AI 서비스 ready 이벤트를 10초 내에 받지 못함 (메시지 전송 계속 진행)');
+      } else {
+        debugPrint('✅ AI 서비스 스트림 ready 이벤트 확인됨');
+      }
+    }
+
+    // 2단계: 메시지 전송 (POST /messages)
+    // 모든 스트림이 준비된 후 메시지 전송 (AI 서비스 세션 생성 및 응답 수신 가능)
+    try {
+      debugPrint('📤 2단계: 메시지 전송 시작 (모든 스트림 준비 완료 후)...');
+      final response = await _chatRepository.sendMessage(widget.sessionId, messageText);
+      debugPrint('✅ 2단계: 메시지 전송 완료 - messageId: ${response.messageId}');
     } catch (e, stackTrace) {
       debugPrint('❌ 메시지 전송 실패: $e');
       debugPrint('📍 스택 트레이스: $stackTrace');
@@ -252,6 +270,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
 
       setState(() {
         _isStreaming = true;
+        _isStreamReady = false; // 스트림 재연결 시 ready 상태 초기화
       });
 
       final sseStream = await _chatRepository.connectToSSEStream(widget.sessionId);
@@ -279,15 +298,20 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                 }
                 break;
 
-              case SSEEventType.done:
-                // done 이벤트는 스트림 종료를 의미하므로 상태만 업데이트
+              case SSEEventType.ready:
+                // AI 서비스 스트림 준비 완료
+                debugPrint('✅ AI 서비스 스트림 준비 완료 (ready 이벤트 수신)');
                 if (mounted) {
                   setState(() {
-                    _isStreaming = false;
-                    _isSending = false;
-                    _currentAIMessage = null;
+                    _isStreamReady = true;
                   });
                 }
+                break;
+
+              case SSEEventType.done:
+                // done 이벤트는 스트림 종료를 의미하지만, 채팅방을 나가기 전까지는 스트림 유지
+                // done 이벤트를 무시하고 스트림을 계속 유지
+                debugPrint('ℹ️ done 이벤트 수신 (스트림 유지)');
                 break;
 
               case SSEEventType.error:

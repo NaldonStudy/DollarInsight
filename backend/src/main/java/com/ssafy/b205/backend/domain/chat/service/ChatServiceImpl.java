@@ -96,8 +96,22 @@ public class ChatServiceImpl implements ChatService {
                 .toList();
         cspRepo.saveAll(links);
 
+        final UUID sessionUuid = session.getUuid();
+        
+        // AI 서비스 세션도 미리 생성 (빈 메시지로 초기화)
+        // 세션이 생성되지 않은 상태에서 스트림 연결을 방지하기 위함
+        try {
+            log.info("[ChatSvc-Session] 🚀 AI 서비스 세션 미리 생성 sessionUuid={}, personas={}", sessionUuid, personaCodes);
+            // 빈 메시지로 AI 서비스 세션 생성 (실제 메시지는 나중에 전송)
+            gateway.start(sessionUuid.toString(), "", 3000, personaCodes);
+            log.info("[ChatSvc-Session] ✅ AI 서비스 세션 생성 완료 sessionUuid={}", sessionUuid);
+        } catch (Exception e) {
+            log.error("[ChatSvc-Session] ❌ AI 서비스 세션 생성 실패 sessionUuid={}, error={}", sessionUuid, e.getMessage());
+            throw new AppException(ErrorCode.INTERNAL_ERROR, "AI 서비스 세션 생성 실패: " + e.getMessage());
+        }
+
         return new CreateSessionResponse(
-                session.getUuid(),
+                sessionUuid,
                 personaCodes,
                 session.getCreatedAt().toInstant() // ✅ DTO가 Instant
         );
@@ -191,22 +205,50 @@ public class ChatServiceImpl implements ChatService {
         replayMissedMessages(emitter, sessionUuid, lastEventId);
         final Disposable keepAlive = startKeepAlive(emitter);
 
+        // AI 서비스 스트림 준비 완료를 기다리기 위한 CountDownLatch
+        final java.util.concurrent.CountDownLatch readyLatch = new java.util.concurrent.CountDownLatch(1);
+        final java.util.concurrent.atomic.AtomicBoolean readyReceived = new java.util.concurrent.atomic.AtomicBoolean(false);
+
         final Disposable sub = gateway.stream(sessionUuid.toString())
                 .doOnError(err -> {
-                    try { emitter.completeWithError(err); } catch (Exception ignored) {}
+                    // AI 서비스 스트림 에러는 프론트엔드 스트림을 종료하지 않음
+                    log.warn("[ChatSvc-Stream] AI 서비스 스트림 에러 (프론트엔드 스트림은 유지): {}", err.getMessage());
+                    // emitter.completeWithError(err); // 주석 처리
                 })
                 .doOnComplete(() -> {
-                    try { emitter.complete(); } catch (Exception ignored) {}
+                    // AI 서비스 스트림이 완료되어도 프론트엔드 스트림은 유지
+                    log.debug("[ChatSvc-Stream] AI 서비스 스트림 완료 (프론트엔드 스트림은 유지)");
+                    // emitter.complete(); // 주석 처리
                 })
                 .subscribe((ServerSentEvent<String> sse) -> {
                     try {
                         final String eventName = (sse.event() != null ? sse.event() : "message");
                         final String data = sse.data();
 
-                        // close 이벤트 처리: FastAPI가 스트림 종료를 알릴 때
-                        if ("close".equals(eventName)) {
-                            emitter.complete();
+                        // ready 이벤트 처리: AI 서비스가 세션과 스트림 준비 완료를 알릴 때
+                        if ("ready".equals(eventName)) {
+                            log.info("[ChatSvc-Stream] ✅ AI 서비스 ready 이벤트 수신 (세션 및 스트림 준비 완료)");
+                            readyReceived.set(true);
+                            readyLatch.countDown(); // 준비 완료 신호
+                            // 프론트엔드에 ready 이벤트 전달
+                            emitter.send(SseEmitter.event()
+                                    .id("ready-0")
+                                    .name("ready")
+                                    .data(data));
                             return;
+                        }
+
+                        // close 이벤트 처리: AI 서비스가 스트림 종료를 알릴 때
+                        // 하지만 채팅은 계속 유지되어야 하므로 close 이벤트를 무시
+                        if ("close".equals(eventName)) {
+                            log.debug("[ChatSvc-Stream] AI 서비스 close 이벤트 수신 (무시하고 계속 유지)");
+                            return; // 스트림 종료하지 않고 계속 유지
+                        }
+
+                        // error 이벤트 처리: AI 서비스가 에러를 알릴 때
+                        if ("error".equals(eventName)) {
+                            log.debug("[ChatSvc-Stream] AI 서비스 error 이벤트 수신 (무시하고 계속 유지): {}", data);
+                            return; // 스트림 종료하지 않고 계속 유지
                         }
 
                         // 메시지 이벤트는 Mongo에 저장 (token chunk가 아니라 완성 텍스트 기준이면 게이트웨이 쪽에서 제어)
@@ -271,6 +313,23 @@ public class ChatServiceImpl implements ChatService {
         emitter.onCompletion(disposeAll);
         emitter.onTimeout(disposeAll);
         emitter.onError(e -> disposeAll.run());
+        
+        // AI 서비스 스트림이 ready 이벤트를 보낼 때까지 대기 (최대 10초)
+        // 백그라운드 스레드에서 대기하여 메인 스레드를 블로킹하지 않음
+        CompletableFuture.runAsync(() -> {
+            try {
+                boolean ready = readyLatch.await(10, java.util.concurrent.TimeUnit.SECONDS);
+                if (ready) {
+                    log.info("[ChatSvc-Stream] ✅ AI 서비스 스트림 준비 완료 확인됨");
+                } else {
+                    log.warn("[ChatSvc-Stream] ⚠️ AI 서비스 ready 이벤트를 10초 내에 받지 못함 (스트림은 계속 유지)");
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                log.warn("[ChatSvc-Stream] Ready 이벤트 대기 중단됨");
+            }
+        }, asyncExecutor);
+        
         return emitter;
     }
 
