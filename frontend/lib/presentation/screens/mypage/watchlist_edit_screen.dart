@@ -146,11 +146,11 @@ class _WatchlistEditScreenState extends State<WatchlistEditScreen> {
 
                   // 검색창 (클릭 시 모달 열림)
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 60),
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
                     child: GestureDetector(
                       onTap: _openSearchModal,
                       child: Container(
-                        height: 40,
+                        height: 48,
                         decoration: ShapeDecoration(
                           color: Colors.white,
                           shape: RoundedRectangleBorder(
@@ -159,7 +159,7 @@ class _WatchlistEditScreenState extends State<WatchlistEditScreen> {
                         ),
                         child: Row(
                           children: [
-                            const SizedBox(width: 9),
+                            const SizedBox(width: 12),
                             const Icon(
                               Icons.search,
                               color: Color(0xFF757575),
@@ -171,9 +171,9 @@ class _WatchlistEditScreenState extends State<WatchlistEditScreen> {
                                 '기업을 검색해 추가하세요',
                                 style: TextStyle(
                                   color: Color(0xFF757575),
-                                  fontSize: 13,
+                                  fontSize: 15,
                                   fontFamily: 'Pretendard',
-                                  fontWeight: FontWeight.w700,
+                                  fontWeight: FontWeight.w500,
                                 ),
                               ),
                             ),
