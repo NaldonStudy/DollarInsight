@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DollarIn$ight - AI 기반 미국 주식 분석 플랫폼</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            /* 프로젝트 컬러 팔레트 */
+            --primary: #60A4DA;
+            --primary-dark: #143D60;
+            --secondary: #ABCEEA;
+            --bg-light: #F7F8FB;
+            --bg-gray: #E5E5E5;
+            --text-dark: #143D60;
+            --text-gray: #6B7280;
+            --white: #FFFFFF;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: var(--text-dark);
+            background: var(--bg-light);
+        }
+
+        /* Navigation */
+        nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            z-index: 1000;
+            padding: 1rem 0;
+        }
+
+        nav .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .logo-img {
+            height: 40px;
+            width: auto;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: var(--text-dark);
+            font-weight: 600;
+            transition: color 0.3s;
+        }
+
+        .nav-links a:hover {
+            color: var(--primary);
+        }
+
+        /* Hero Section */
+        .hero {
+            margin-top: 80px;
+            padding: 6rem 2rem;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 320"><path fill="rgba(255,255,255,0.1)" d="M0,96L48,112C96,128,192,160,288,160C384,160,480,128,576,122.7C672,117,768,139,864,138.7C960,139,1056,117,1152,101.3C1248,85,1344,75,1392,69.3L1440,64L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path></svg>') no-repeat bottom;
+            background-size: cover;
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 1;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .hero-logo {
+            max-width: 300px;
+            height: auto;
+            margin-bottom: 2rem;
+        }
+
+        .hero h1 {
+            font-size: 3.5rem;
+            font-weight: 800;
+            margin-bottom: 1.5rem;
+            line-height: 1.2;
+        }
+
+        .hero p {
+            font-size: 1.25rem;
+            margin-bottom: 2rem;
+            opacity: 0.95;
+        }
+
+        .version-badge {
+            display: inline-block;
+            background: rgba(255,255,255,0.2);
+            padding: 0.5rem 1rem;
+            border-radius: 50px;
+            font-size: 0.9rem;
+            margin-bottom: 2rem;
+        }
+
+        .download-btn {
+            display: inline-block;
+            background: white;
+            color: var(--primary);
+            padding: 1.25rem 3rem;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 1.1rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            transition: all 0.3s;
+        }
+
+        .download-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+        }
+
+        .download-btn::before {
+            content: '📱 ';
+        }
+
+        /* Section Styles */
+        section {
+            padding: 5rem 2rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .section-title {
+            text-align: center;
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: var(--primary-dark);
+        }
+
+        .section-subtitle {
+            text-align: center;
+            color: var(--text-gray);
+            font-size: 1.1rem;
+            margin-bottom: 4rem;
+        }
+
+        /* Features Grid */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        .feature-card {
+            background: white;
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+            transition: all 0.3s;
+            border: 2px solid transparent;
+            text-align: center;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            border-color: var(--primary);
+        }
+
+        .feature-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .feature-card h3 {
+            font-size: 1.3rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-dark);
+        }
+
+        .feature-card p {
+            color: var(--text-gray);
+            line-height: 1.6;
+        }
+
+        /* Personas Section */
+        .personas-section {
+            background: var(--primary-dark);
+            color: white;
+        }
+
+        .personas-section .section-title {
+            color: white;
+        }
+
+        .personas-section .section-subtitle {
+            color: var(--secondary);
+        }
+
+        .personas-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 2rem;
+            justify-content: center;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .personas-grid .persona-card {
+            flex: 0 0 calc(33.333% - 1.5rem);
+            max-width: 280px;
+        }
+
+        .personas-grid .persona-card:nth-child(n+4) {
+            flex: 0 0 calc(33.333% - 1.5rem);
+            max-width: 280px;
+        }
+
+        .persona-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 2rem;
+            border-radius: 1rem;
+            text-align: center;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+        }
+
+        .persona-card:hover {
+            border-color: var(--primary);
+            transform: scale(1.05);
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .persona-avatar {
+            width: 150px;
+            height: 150px;
+            margin: 0 auto 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .persona-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .persona-card h3 {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .persona-card .role {
+            color: var(--secondary);
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            font-size: 0.95rem;
+        }
+
+        .persona-card p {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        /* Install Guide */
+        .install-guide {
+            background: var(--bg-gray);
+        }
+
+        .guide-steps {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        .step {
+            background: white;
+            padding: 2rem;
+            border-radius: 1rem;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        }
+
+        .step-number {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 0 auto 1rem;
+        }
+
+        .step h3 {
+            margin-bottom: 0.75rem;
+            color: var(--text-dark);
+        }
+
+        .step p {
+            color: var(--text-gray);
+        }
+
+        /* CTA Section */
+        .cta-section {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            text-align: center;
+            padding: 5rem 2rem;
+        }
+
+        .cta-section h2 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .cta-section p {
+            font-size: 1.2rem;
+            margin-bottom: 2rem;
+            opacity: 0.95;
+        }
+
+        /* Footer */
+        footer {
+            background: var(--primary-dark);
+            color: white;
+            text-align: center;
+            padding: 2rem;
+        }
+
+        footer p {
+            color: var(--secondary);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+
+            .section-title {
+                font-size: 2rem;
+            }
+
+            .nav-links {
+                display: none;
+            }
+
+            .features-grid,
+            .personas-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .fade-in-up {
+            animation: fadeInUp 0.6s ease-out;
+        }
+
+        /* Dollar Symbol Animation */
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .hero-logo {
+            animation: float 3s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav>
+        <div class="container">
+            <div class="logo">
+                <!-- Logo will be placed here -->
+                 <img src="images/logomini.webp" alt="DollarIn$ight Logo" class="logo-img">
+                <span style="font-size: 1.5rem; font-weight: 800; color: var(--primary);">DollarIn$ight</span>
+            </div>
+            <ul class="nav-links">
+                <li><a href="#features">기능</a></li>
+                <li><a href="#personas">AI 분석가</a></li>
+                <li><a href="#download">다운로드</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-content fade-in-up">
+            <!-- Logo Image (3D Dollar Sign) -->
+
+            <div class="version-badge">Version 1.0.0</div>
+            <h1>AI와 함께하는<br>스마트한 미국 주식 투자</h1>
+            <p>5명의 AI 전문가가 실시간으로 분석하는 미국 주식 시장<br>이제 더 똑똑하게 투자하세요</p>
+            <a href="/apk/app-release.apk" class="download-btn" download>지금 다운로드</a>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features">
+        <div class="container">
+            <h2 class="section-title">주요 기능</h2>
+            <p class="section-subtitle">AI 기반 종합 투자 분석 플랫폼</p>
+
+            <div class="features-grid">
+                <div class="feature-card fade-in-up">
+                    <div class="feature-icon">💬</div>
+                    <h3>AI 페르소나 채팅</h3>
+                    <p>5명의 전문 AI 분석가와 실시간 대화하며 다양한 관점의 투자 인사이트를 얻으세요</p>
+                </div>
+
+                <div class="feature-card fade-in-up">
+                    <div class="feature-icon">📊</div>
+                    <h3>실시간 주가 정보</h3>
+                    <p>S&P 500, NASDAQ 등 주요 지수와 개별 종목의 실시간 가격 정보를 확인하세요</p>
+                </div>
+
+                <div class="feature-card fade-in-up">
+                    <div class="feature-icon">⭐</div>
+                    <h3>관심종목 관리</h3>
+                    <p>관심 있는 종목을 저장하고 가격 변동을 한눈에 추적하세요</p>
+                </div>
+
+                <div class="feature-card fade-in-up">
+                    <div class="feature-icon">📈</div>
+                    <h3>기업 분석 리포트</h3>
+                    <p>재무제표, 밸류에이션, 기술적 지표까지 종합적인 기업 분석 정보를 제공합니다</p>
+                </div>
+
+                <div class="feature-card fade-in-up">
+                    <div class="feature-icon">📰</div>
+                    <h3>뉴스 & 인사이트</h3>
+                    <p>최신 시장 뉴스와 AI 분석가들의 코멘트를 실시간으로 받아보세요</p>
+                </div>
+
+                <div class="feature-card fade-in-up">
+                    <div class="feature-icon">🎯</div>
+                    <h3>주가 예측</h3>
+                    <p>머신러닝 기반 주가 예측 모델로 1주일, 1개월 후 가격을 전망합니다</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Personas Section -->
+    <section id="personas" class="personas-section">
+        <div class="container">
+            <h2 class="section-title">AI 전문 분석가</h2>
+            <p class="section-subtitle">각 분야의 전문가들이 다양한 관점으로 분석합니다</p>
+
+            <div class="personas-grid">
+                <!-- 희열 -->
+                <div class="persona-card fade-in-up">
+                    <div class="persona-avatar">
+                        <img src="images/heuyeol.webp" alt="희열">
+                    </div>
+                    <h3>희열</h3>
+                    <div class="role">열정가득 승부사</div>
+                    <p>강점: 단기 수익실현<br>
+                    약점: 과열 투자, 근거 빈약, 유행민감</p>
+                </div>
+
+                <!-- 덕수 -->
+                <div class="persona-card fade-in-up">
+                    <div class="persona-avatar">
+                        <img src="images/deoksu.webp" alt="덕수">
+                    </div>
+                    <h3>덕수</h3>
+                    <div class="role">전통·관록증시 투자자</div>
+                    <p>강점: 거시적 사이클 중시, 안정적 투자<br>
+                    약점: 과도한 보수성</p>
+                </div>
+
+                <!-- 지율 -->
+                <div class="persona-card fade-in-up">
+                    <div class="persona-avatar">
+                        <img src="images/jiyul.webp" alt="지율">
+                    </div>
+                    <h3>지율</h3>
+                    <div class="role">비율·논리 증시자</div>
+                    <p>강점: 밸류에이션·현금흐름·리스크 관리<br>
+                    약점: 모멘텀 저평가, 타이밍 느림</p>
+                </div>
+
+                <!-- 테오 -->
+                <div class="persona-card fade-in-up">
+                    <div class="persona-avatar">
+                        <img src="images/teo.webp" alt="테오">
+                    </div>
+                    <h3>테오</h3>
+                    <div class="role">테크 AI 매니아</div>
+                    <p>강점: 빅데이터·미래기술 특화<br>
+                    단점: 단기 실적 둔감</p>
+                </div>
+
+                <!-- 민지 -->
+                <div class="persona-card fade-in-up">
+                    <div class="persona-avatar">
+                        <img src="images/minji.webp" alt="민지">
+                    </div>
+                    <h3>민지</h3>
+                    <div class="role">밈 분석가</div>
+                    <p>강점: 밈/시장심리 급등 포착<br>
+                    단점: 본질 약함, 수익 왜곡</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Install Guide -->
+    <section class="install-guide">
+        <div class="container">
+            <h2 class="section-title">설치 가이드</h2>
+            <p class="section-subtitle">3단계로 간편하게 설치하세요</p>
+
+            <div class="guide-steps">
+                <div class="step fade-in-up">
+                    <div class="step-number">1</div>
+                    <h3>APK 다운로드</h3>
+                    <p>아래 다운로드 버튼을 클릭하여 APK 파일을 받으세요</p>
+                </div>
+
+                <div class="step fade-in-up">
+                    <div class="step-number">2</div>
+                    <h3>알 수 없는 출처 허용</h3>
+                    <p>설정 > 보안에서 "알 수 없는 출처" 설치를 허용하세요</p>
+                </div>
+
+                <div class="step fade-in-up">
+                    <div class="step-number">3</div>
+                    <h3>앱 설치 완료</h3>
+                    <p>다운로드한 APK 파일을 실행하여 설치를 완료하세요</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section id="download" class="cta-section">
+        <div class="container">
+            <h2>지금 바로 시작하세요</h2>
+            <p>DollarIn$ight와 함께 더 스마트한 투자를 경험하세요</p>
+            <a href="/apk/app-release.apk" class="download-btn" download>무료 다운로드</a>
+            <p style="margin-top: 2rem; font-size: 0.9rem; opacity: 0.8;">
+                📱 Android 8.0 이상 지원 | 📦 파일 크기: ~50MB | 🔒 안전한 다운로드
+            </p>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <p>&copy; 2025 DollarIn$ight. SSAFY 13기 자율 프로젝트 Team B205</p>
+            <p style="margin-top: 0.5rem; font-size: 0.9rem;">
+                서버: k13b205.p.ssafy.io | 버전: 1.0.0
+            </p>
+        </div>
+    </footer>
+
+    <script>
+        // Smooth scrolling
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Intersection Observer for animations
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -100px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('.fade-in-up').forEach(el => {
+            el.style.opacity = '0';
+            el.style.transform = 'translateY(30px)';
+            el.style.transition = 'opacity 0.6s ease-out, transform 0.6s ease-out';
+            observer.observe(el);
+        });
+
+        // Download tracking
+        document.querySelectorAll('.download-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                console.log('APK Download initiated at:', new Date().toISOString());
+            });
+        });
+    </script>
+</body>
+</html>

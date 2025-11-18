@@ -517,6 +517,140 @@ rollback() {
     health_check
 }
 
+# ============================================
+# Flutter APK Build & Deploy Functions  
+# ============================================
+
+# Build Flutter APK
+build_apk() {
+    log "========================================="
+    log "Building Flutter APK"
+    log "========================================="
+    
+    local FRONTEND_DIR="${DEPLOY_DIR}/frontend"
+    local APK_OUTPUT_DIR="${FRONTEND_DIR}/build/app/outputs/flutter-apk"
+    
+    # Step 1: Check if frontend directory exists
+    if [ ! -d "$FRONTEND_DIR" ]; then
+        error "Frontend directory not found: $FRONTEND_DIR"
+    fi
+    
+    # Step 2: Navigate to frontend directory
+    cd "$FRONTEND_DIR" || error "Failed to change directory to $FRONTEND_DIR"
+    log "Working directory: $(pwd)"
+    
+    # Step 3: Check Flutter environment
+    info "Checking Flutter environment..."
+    if ! command -v flutter &> /dev/null; then
+        error "Flutter command not found. Please ensure Flutter is installed and in PATH."
+    fi
+    
+    flutter --version || error "Flutter version check failed"
+    log "Flutter environment verified ✓"
+    
+    # Step 4: Clean previous build
+    info "Cleaning previous build..."
+    flutter clean || warn "Flutter clean failed (continuing anyway)"
+    
+    # Step 5: Get dependencies
+    info "Getting Flutter dependencies..."
+    flutter pub get || error "Failed to get Flutter dependencies"
+    log "Dependencies fetched ✓"
+    
+    # Step 6: Build APK
+    info "Building release APK (this may take several minutes)..."
+    if ! flutter build apk --release; then
+        error "Flutter APK build failed. Check logs above for details."
+    fi
+    
+    # Step 7: Verify APK was created
+    if [ ! -f "$APK_OUTPUT_DIR/app-release.apk" ]; then
+        error "APK file not found after build: $APK_OUTPUT_DIR/app-release.apk"
+    fi
+    
+    local APK_SIZE=$(du -h "$APK_OUTPUT_DIR/app-release.apk" | cut -f1)
+    log "APK built successfully ✓"
+    log "APK location: $APK_OUTPUT_DIR/app-release.apk"
+    log "APK size: $APK_SIZE"
+    
+    log "========================================="
+    log "Flutter APK Build Completed"
+    log "========================================="
+}
+
+# Deploy APK to production location
+deploy_apk() {
+    log "========================================="
+    log "Deploying Flutter APK"
+    log "========================================="
+    
+    local FRONTEND_DIR="${DEPLOY_DIR}/frontend"
+    local APK_SOURCE="${FRONTEND_DIR}/build/app/outputs/flutter-apk/app-release.apk"
+    local APK_DEPLOY_DIR="${DEPLOY_DIR}/apk"
+    local APK_DEST="${APK_DEPLOY_DIR}/app-release.apk"
+    
+    # Step 1: Verify source APK exists
+    if [ ! -f "$APK_SOURCE" ]; then
+        error "Source APK not found: $APK_SOURCE\nPlease run build-apk first."
+    fi
+    
+    # Step 2: Create deployment directory if it doesn't exist
+    info "Preparing deployment directory..."
+    mkdir -p "$APK_DEPLOY_DIR" || error "Failed to create APK deployment directory"
+    
+    # Step 3: Backup existing APK if it exists
+    if [ -f "$APK_DEST" ]; then
+        local timestamp=$(date +%Y%m%d_%H%M%S)
+        local backup_path="${APK_DEPLOY_DIR}/app-release.apk.backup_${timestamp}"
+        info "Backing up existing APK..."
+        cp "$APK_DEST" "$backup_path" || warn "Failed to backup existing APK"
+        log "Backup created: $backup_path"
+    fi
+    
+    # Step 4: Copy new APK to deployment location
+    info "Copying APK to deployment location..."
+    cp "$APK_SOURCE" "$APK_DEST" || error "Failed to copy APK to deployment location"
+    
+    # Step 5: Set appropriate permissions
+    chmod 644 "$APK_DEST" || warn "Failed to set APK permissions"
+    
+    # Step 6: Verify deployment
+    if [ ! -f "$APK_DEST" ]; then
+        error "APK deployment verification failed"
+    fi
+    
+    local APK_SIZE=$(du -h "$APK_DEST" | cut -f1)
+    log "APK deployed successfully ✓"
+    log "Deployment location: $APK_DEST"
+    log "APK size: $APK_SIZE"
+    log "Download URL: https://k13b205.p.ssafy.io/apk/app-release.apk"
+    
+    log "========================================="
+    log "Flutter APK Deployment Completed"
+    log "========================================="
+}
+
+# Build and deploy APK (combined operation)
+build_and_deploy_apk() {
+    log "========================================="
+    log "Flutter APK - Build & Deploy"
+    log "========================================="
+    
+    build_apk
+    deploy_apk
+    
+    log "========================================="
+    log "Flutter APK Build & Deploy Completed! 🎉"
+    log "========================================="
+    echo ""
+    log "APK Download URLs:"
+    log "  - HTTPS: https://k13b205.p.ssafy.io/apk/app-release.apk"
+    log "  - HTTP: http://k13b205.p.ssafy.io/apk/app-release.apk"
+    log ""
+    log "Download Page:"
+    log "  - https://k13b205.p.ssafy.io/download"
+}
+
 # Cleanup old Docker resources
 cleanup_docker() {
     log "Cleaning up unused Docker resources..."
@@ -664,7 +798,17 @@ case "${1:-deploy}" in
     cleanup)
         cleanup_docker
         ;;
+    build-apk)
+        build_apk
+        ;;
+    deploy-apk)
+        deploy_apk
+        ;;
+    build-and-deploy-apk)
+        build_and_deploy_apk
+        ;;
     *)
+    
         echo "Dollar In\$ight Deployment Script (Optimized)"
         echo ""
         echo "Usage: $0 {command} [options]"
@@ -673,6 +817,9 @@ case "${1:-deploy}" in
         echo "  deploy              - Update application services + Airflow"
         echo "                        (backend, ai-service, airflow)"
         echo "                        DB, nginx, admin tools keep running [RECOMMENDED]"
+        echo "  build-apk           - Build Flutter APK only"
+        echo "  deploy-apk          - Deploy pre-built APK to production"
+        echo "  build-and-deploy-apk - Build and deploy Flutter APK (combined)"
         echo "  deploy-all          - Initial deployment (start all services)"
         echo "  rollback            - Rollback application services to previous version"
         echo "  status              - Show service status and resource usage"
@@ -687,6 +834,9 @@ case "${1:-deploy}" in
         echo ""
         echo "Examples:"
         echo "  ./deploy.sh deploy                    # Update app services + Airflow (recommended)"
+        echo "  ./deploy.sh build-and-deploy-apk      # Build and deploy Flutter APK"
+        echo "  ./deploy.sh build-apk                 # Build APK only"
+        echo "  ./deploy.sh deploy-apk                # Deploy pre-built APK"
         echo "  ./deploy.sh deploy-all                # Initial deployment"
         echo "  ./deploy.sh restart                   # Quick restart of app services + Airflow"
         echo "  ./deploy.sh restart-all               # Full system restart"
