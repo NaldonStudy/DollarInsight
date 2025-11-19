@@ -23,7 +23,7 @@ class StockSection extends StatelessWidget {
       final code = personaCode.toLowerCase();
 
       switch (code) {
-        case 'heeyul':
+        case 'heuyeol':
           return 'assets/images/heuyeol.webp';
         case 'jiyul':
           return 'assets/images/jiyul.webp';

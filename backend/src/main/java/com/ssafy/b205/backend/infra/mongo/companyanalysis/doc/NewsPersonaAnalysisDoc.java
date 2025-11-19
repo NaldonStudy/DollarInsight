@@ -25,8 +25,8 @@ public class NewsPersonaAnalysisDoc implements PersonaCommentSource {
     @Field("persona_deoksu")
     private String personaDeoksu;
 
-    @Field("persona_hyeolyeol")
-    private String personaHyeolyeol;
+    @Field("persona_heuyeol")
+    private String personaHeuyeol;
 
     @Field("persona_jiyul")
     private String personaJiyul;

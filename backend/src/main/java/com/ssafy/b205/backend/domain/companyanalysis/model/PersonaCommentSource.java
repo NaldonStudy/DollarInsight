@@ -7,7 +7,7 @@ public interface PersonaCommentSource {
 
     String getPersonaDeoksu();
 
-    String getPersonaHyeolyeol();
+    String getPersonaHeuyeol();
 
     String getPersonaJiyul();
 

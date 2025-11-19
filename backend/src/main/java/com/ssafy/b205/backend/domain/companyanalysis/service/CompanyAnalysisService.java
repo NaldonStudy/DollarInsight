@@ -70,7 +70,7 @@ public class CompanyAnalysisService {
     private final Random random = new SecureRandom();
     private static final List<PersonaMeta> PERSONAS = List.of(
             new PersonaMeta("DEOKSU", "덕수", "persona_deoksu", PersonaCommentSource::getPersonaDeoksu),
-            new PersonaMeta("HYEOLYEOL", "혈열", "persona_hyeolyeol", PersonaCommentSource::getPersonaHyeolyeol),
+            new PersonaMeta("HEUYEOL", "희열", "persona_heuyeol", PersonaCommentSource::getPersonaHeuyeol),
             new PersonaMeta("JIYUL", "지율", "persona_jiyul", PersonaCommentSource::getPersonaJiyul),
             new PersonaMeta("MINJI", "민지", "persona_minji", PersonaCommentSource::getPersonaMinji),
             new PersonaMeta("TEO", "테오", "persona_teo", PersonaCommentSource::getPersonaTeo)
