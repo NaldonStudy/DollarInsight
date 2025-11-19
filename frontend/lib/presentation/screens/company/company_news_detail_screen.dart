@@ -269,7 +269,7 @@ class _CompanyNewsDetailScreenState extends State<CompanyNewsDetailScreen> {
                                 if (response != null) {
                                   // 세션 생성 성공 - 자동 메시지와 함께 채팅방으로 이동
                                   final newsTitle = provider.title ?? '뉴스';
-                                  final autoMessage = '$newsTitle 뉴스가 경제에 미치는 영향 알려주세요';
+                                  final autoMessage = '$newsTitle 뉴스에 대해 어떻게 생각해?';
                                   
                                   // URI 인코딩하여 전달
                                   final encodedMessage = Uri.encodeComponent(autoMessage);
