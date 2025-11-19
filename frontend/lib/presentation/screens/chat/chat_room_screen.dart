@@ -138,27 +138,15 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       if (!mounted) return;
 
       final messages = historyItems.map((item) {
-        String content;
-        String? speaker;
-        try {
-          final contentData = jsonDecode(item.content) as Map<String, dynamic>;
-          // content 또는 text 필드에서 메시지 내용 추출
-          content = contentData['content'] as String? ??
-                    contentData['text'] as String? ??
-                    item.content;
-          // speaker 정보 추출
-          speaker = contentData['speaker'] as String?;
-        } catch (e) {
-          content = item.content;
-          speaker = null;
-        }
+        // speaker 정보는 item.speaker에서 직접 가져옴
+        final speaker = item.speaker;
 
         // speaker 코드를 한글 이름으로 변환
         final koreanName = PersonaMapper.getKoreanName(speaker);
 
         return ChatMessage(
           role: item.role == 'user' ? MessageRole.user : MessageRole.assistant,
-          content: content,
+          content: item.content,
           timestamp: item.ts,
           personaCode: item.role == 'assistant' ? (speaker ?? 'AI') : null,
           personaName: item.role == 'assistant' ? koreanName : null,
