@@ -346,6 +346,25 @@ def _filter_search_results(
     return relevant_results[:max_results]
 
 
+def _filter_context_messages(context_messages: list, user_keywords: set) -> list:
+    """
+    이전 대화 중 사용자 입력과 관련 있는 메시지만 남김
+    """
+    if not context_messages:
+        return []
+
+    if not user_keywords:
+        return context_messages
+
+    filtered = []
+    for msg in context_messages:
+        content = msg.get("content", "")
+        if _is_relevant(content, user_keywords):
+            filtered.append(msg)
+
+    return filtered
+
+
 def build_search_prompt(
     postgres_results=None,
     bm25_results=None,
@@ -414,12 +433,13 @@ def build_search_prompt(
                 f"[의미 검색 뉴스 - 상위 {len(filtered_vector)}개]\n{vector_text}"
             )
 
-    # 4. 이전 대화 맥락
-    if context_messages:
+    # 4. 이전 대화 맥락 (필터링)
+    filtered_context = _filter_context_messages(context_messages, user_keywords)
+    if filtered_context:
         context_text = "\n".join(
             [
                 f"  - {msg.get('name', 'unknown')}: {msg.get('content', '')[:100]}..."
-                for msg in context_messages
+                for msg in filtered_context
             ]
         )
         parts.append(f"[이전 대화]\n{context_text}")
