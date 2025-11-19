@@ -395,6 +395,17 @@ def build_search_prompt(
     # 사용자 입력에서 키워드 추출
     user_keywords = _extract_keywords_from_input(user_input)
 
+    # 사용자 입력에 키워드가 없다면, 최근 사용자 발화에서 키워드 보강
+    if not user_keywords and context_messages:
+        for msg in reversed(context_messages):
+            if msg.get("role") == "user":
+                fallback_keywords = _extract_keywords_from_input(msg.get("content", ""))
+                if fallback_keywords:
+                    user_keywords = fallback_keywords
+                    break
+
+    rag_sections = []
+
     # 1. PostgreSQL 검색 결과 (필터링)
     if postgres_results:
         filtered_pg = _filter_search_results(
@@ -402,7 +413,7 @@ def build_search_prompt(
         )
         if filtered_pg:
             pg_text = "\n".join([f"  - {r}" for r in filtered_pg])
-            parts.append(
+            rag_sections.append(
                 f"[PostgreSQL 재무 데이터 - 상위 {len(filtered_pg)}개]\n{pg_text}"
             )
 
@@ -418,7 +429,7 @@ def build_search_prompt(
                     for r in filtered_bm25
                 ]
             )
-            parts.append(
+            rag_sections.append(
                 f"[키워드 검색 뉴스 - 상위 {len(filtered_bm25)}개]\n{bm25_text}"
             )
 
@@ -434,12 +445,13 @@ def build_search_prompt(
                     for r in filtered_vector
                 ]
             )
-            parts.append(
+            rag_sections.append(
                 f"[의미 검색 뉴스 - 상위 {len(filtered_vector)}개]\n{vector_text}"
             )
 
     # 4. 이전 대화 맥락 (필터링)
     filtered_context = _filter_context_messages(context_messages, user_keywords)
+    context_block = ""
     if filtered_context:
         context_text = "\n".join(
             [
@@ -447,14 +459,11 @@ def build_search_prompt(
                 for msg in filtered_context
             ]
         )
-        parts.append(f"[이전 대화]\n{context_text}")
+        context_block = f"[이전 대화]\n{context_text}"
 
-    # 5. 현재 사용자 입력
-    if user_input:
-        parts.append(f"[현재 질문]\n{user_input}")
-
-    # 6. 지시사항
-    instruction = """\n위 정보를 참고하여 자연스럽고 생동감 있게 대화를 이어가세요.
+    # 5. 지시사항
+    instruction = """[지시사항]
+위 정보를 참고하여 자연스럽고 생동감 있게 대화를 이어가세요.
 
 🎯 최우선 목표: 재미있는 대화를 만들어가세요! 재미있게 말하는 것이 정확하게 말하는 것보다 더 중요합니다.
 
@@ -473,7 +482,21 @@ def build_search_prompt(
 6. 자신의 페르소나 특성을 유지하며 유머, 비꼼, 날카로운 표현을 적극 사용하세요.
 7. 이름 언급 금지! 다른 사람이나 자신의 이름을 절대 언급하지 마세요."""
 
-    return "\n\n".join(parts) + instruction
+    sections = [instruction]
+
+    if user_input:
+        sections.append(f"[현재 질문]\n{user_input}")
+
+    if context_block:
+        sections.append(context_block)
+
+    base_prompt = "\n\n".join(sections)
+
+    if rag_sections:
+        rag_text = "\n\n".join(rag_sections)
+        return f"{base_prompt}\n\n[참고 데이터]\n{rag_text}"
+
+    return base_prompt
 
 
 # ============================================================================
