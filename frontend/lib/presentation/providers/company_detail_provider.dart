@@ -156,13 +156,13 @@ class CompanyDetailProvider with ChangeNotifier {
 
     _weekPrediction = {
       '최저': oneWeek.lowerBound,
-      '예상': oneWeek.pointEstimate,
+      '예상': oneWeek.probabilityUp,
       '최고': oneWeek.upperBound,
     };
 
     _monthPrediction = {
       '최저': oneMonth.lowerBound,
-      '예상': oneMonth.pointEstimate,
+      '예상': oneMonth.probabilityUp,
       '최고': oneMonth.upperBound,
     };
 
