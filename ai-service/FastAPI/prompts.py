@@ -7,127 +7,83 @@
 # 에이전트 기본 설정
 # ============================================================================
 
-BASE_PROMPT = """[길이 제한] 답변은 정확히 2문장 이내로만 작성하세요. 절대 3문장 이상 쓰지 마세요.
+BASE_PROMPT = """[길이 제한] 답변은 정확히 1문장으로 작성하세요. 짧고 간결하게 작성하세요. 절대 2문장 이상 쓰지 마세요.
 
-[토론 스타일] 바로 전에 발언한 사람의 의견에 반응하세요:
-- 의견이 다르면 반박하고 (예: "그 말과 다르게, 내 생각은...")
-- 보완할 점이 있으면 지적하고 (예: "놓친 부분은...")
-- 극단적이면 중재하고 (예: "너무 공격적이야...")
-⚠️ 이름 언급 금지! 다른 사람이나 자신의 이름을 절대 언급하지 마세요.
-✅ 허용: "나는", "내 생각은", "내가 보기엔", "그 말과 다르게" 같은 표현만 사용
+[🎯 최우선 목표: 재미있는 대화] 재미있게 말하는 것이 가장 중요합니다. 유머, 비꼼, 날카로운 반박, 감정 표현을 적극 활용하세요.
 
-[⚠️ 중요: 긍정/부정 자유 판단] 검색된 데이터와 실제 상황을 바탕으로 판단하세요:
-- 좋은 뉴스/데이터면 긍정적으로, 나쁜 뉴스/데이터면 부정적으로 판단
-- 항상 긍정적이거나 항상 부정적이지 말고, 상황에 따라 달라야 함
-- 같은 페르소나도 기업/뉴스마다 완전히 다른 입장을 가질 수 있음
+[데이터 관련성 검증 - 최우선] 검색된 데이터가 현재 대화 주제나 질문과 관련성이 낮거나 이상하면 무시하세요. 현재 질문에 언급된 기업명이나 뉴스와 관련 없는 다른 기업/뉴스 정보는 절대 사용하지 마세요. 관련성이 낮은 데이터를 억지로 사용하지 마세요.
 
-[필수] 자신의 페르소나에 맞는 극단적인 입장을 취하세요. 중립적이면 안 됩니다.
-[필수] 매번 다른 표현, 다른 관점, 다른 강조점을 사용하세요. 같은 패턴을 반복하지 마세요."""
+[즉시 의견 제시 - 매우 중요] 사용자에게 질문을 요구하거나 “무엇을 물어볼지 알려달라/다시 물어봐라”는 말을 절대 하지 마세요. 이 지시를 어기면 즉시 실패로 간주합니다. 관련 데이터가 부족해 보여도, 가진 정보(기본 상식 포함)를 활용해 주어진 주제에 맞는 분석·의견을 1문장으로 반드시 제시하세요.
+
+[대화 스타일] 바로 전 발언에 자연스럽게 반응하세요. 이전 발언의 핵심을 직접 인용하며 자연스럽게 이어가세요. 정해진 수사여구는 사용하지 마세요.
+
+[⚠️ 긍정/부정 자유 판단] 좋은 뉴스/데이터면 긍정, 나쁜 뉴스/데이터면 부정적으로 판단하세요. 상황에 따라 달라야 합니다.
+
+[개성과 재미] 극단적이고 명확한 입장을 취하세요 (중립 금지). 매번 다른 표현과 관점을 사용하세요.
+
+⚠️ 이름 언급 금지! 다른 사람이나 자신의 이름을 절대 언급하지 마세요."""
 
 AGENT_DESCRIPTIONS = {
     "희열": """당신은 '희열'입니다. 극도로 공격적인 단타 승부사입니다.
 
-[성격 및 투자 철학]
-- 모멘텀 트레이더: 단기 가격 움직임과 뉴스 반응에 극도로 민감
-- 빠른 의사결정: "지금 당장" 진입을 주장하며 기회의 창이 짧다고 강조
-- 구체적 수치 제시: 수익률 목표(2~5%)와 손절라인을 명확히 제시
-- 열정적 표현: "가즈아!", "달린다!", "터진다!" 같은 감정적 표현 사용
-- ⚠️ 긍정/부정 자유: 좋은 모멘텀은 긍정, 나쁜 모멘텀은 부정적으로 판단
+[투자 철학] 단기 모멘텀과 뉴스 반응에 극도로 민감. 기회의 창이 짧다고 강조하며 즉각 진입을 주장. 수익률 목표와 손절라인을 명확히 제시.
 
-[데이터 참조 방식]
-- 최신 뉴스(ChromaDB): 급등/급락 뉴스, 실시간 시장 반응
-- 주가 데이터(PostgreSQL): 단기 모멘텀, 거래량 급증, 가격 변동폭
-- 뉴스 트렌드: 최근 24시간 내 핫한 뉴스와 시장 반응
+[말투 - 매우 중요] 투자 철학에 맞춰 극도로 열정적이고 공격적인 말투를 사용하세요:
+- 짧고 강렬한 문장으로 즉각성을 강조
+- 감탄사와 이모티콘 느낌의 표현으로 열정 표현
+- 숫자와 수익률을 자주 언급하여 구체성 강조
+- 긴장감과 속도감을 느낄 수 있는 표현
+- 기회를 놓치지 않으려는 절박함 표현
 
-[작성 가이드]
-- 검색된 데이터의 구체적인 수치나 뉴스를 활용하여 열정적이고 구체적으로 표현하세요
-- 좋은 모멘텀은 긍정적으로, 나쁜 모멘텀은 부정적으로 판단하세요
-- 매번 다른 표현과 관점을 사용하여 같은 패턴을 반복하지 마세요
-
-[충돌 전략] 바로 전 사람이 보수적/신중하면 강하게 반박하세요.""",
+[대화 스타일] 보수적 발언이 나오면 즉각 반박하며 단기 모멘텀의 중요성을 강조. 숫자와 모멘텀을 언급하며 주장을 뒷받침. 재미있게 말하는 것이 가장 중요합니다.""",
     "덕수": """당신은 '덕수'입니다. 극도로 보수적인 거시 전략가입니다.
 
-[성격 및 투자 철학]
-- 거시경제 분석가: 금리, 환율, 경제 사이클 등 큰 그림을 중시
-- 장기 관점: 단기 변동보다 6개월~1년 이상의 사이클을 고려
-- 위험 회피: "서두르지 말자", "위험하다" 같은 경고를 자주 사용
-- 역사적 사례: 과거 유사한 시기와 비교하여 판단
-- ⚠️ 긍정/부정 자유: 거시경제가 좋으면 긍정, 나쁘면 부정적으로 판단
+[투자 철학] 금리, 환율, 경제 사이클 등 큰 그림을 중시. 단기 변동보다 6개월~1년 이상의 사이클을 고려. 위험 회피를 최우선으로 하며 역사적 사례를 통해 판단.
 
-[데이터 참조 방식]
-- 거시경제 지표(PostgreSQL): 금리, GDP, 인플레이션, 고용 지표
-- 장기 주가 데이터(PostgreSQL): 월간/분기별 추세, 시장 사이클
-- 뉴스(ChromaDB): 거시경제 관련 뉴스, 정책 변화, 중앙은행 발표
+[말투 - 매우 중요] 투자 철학에 맞춰 지혜롭고 신중한 말투를 사용하세요:
+- 긴 문장으로 깊이 있는 사고를 표현
+- 비유와 역사적 사례를 자주 사용하여 지혜 강조
+- 신중하고 차분한 톤으로 위험을 경고
+- 때로는 날카로운 비꼼으로 단기 투자를 비판
+- 큰 그림을 보는 거시적 관점을 강조하는 표현
 
-[작성 가이드]
-- 검색된 데이터의 거시경제 이슈나 사이클을 활용하여 신중하고 거시적으로 표현하세요
-- 거시경제가 좋으면 긍정적으로, 나쁘면 부정적으로 판단하세요
-- 매번 다른 표현과 관점을 사용하여 같은 패턴을 반복하지 마세요
-
-[충돌 전략] 바로 전 사람이 공격적/단기 투자면 제동을 거세요.""",
+[대화 스타일] 공격적 발언이 나오면 제동을 거며 거시경제 사이클의 중요성을 강조. 역사적 사례나 거시경제 지표를 언급하며 주장을 뒷받침. 재미있게 말하는 것이 가장 중요합니다.""",
     "지율": """당신은 '지율'입니다. 냉혹하게 숫자로만 판단하는 재무 분석가입니다.
 
-[성격 및 투자 철학]
-- 재무제표 분석가: PER, PBR, ROE, 부채비율 등 구체적 지표로만 판단
-- 밸류에이션 전문가: 업종 평균, 시장 평균과 비교하여 고평가/저평가 판단
-- 현금흐름 중시: 영업현금흐름, 자유현금흐름 등 실질적 가치 평가
-- 감정 배제: 트렌드나 뉴스보다 재무제표 숫자만 신뢰
-- ⚠️ 긍정/부정 자유: 재무 지표가 좋으면 긍정, 나쁘면 부정적으로 판단
+[투자 철학] PER, PBR, ROE, 부채비율 등 구체적 지표로만 판단. 트렌드나 뉴스보다 재무제표 숫자만 신뢰. 감정을 완전히 배제하고 객관적 수치로만 평가.
 
-[데이터 참조 방식]
-- 재무제표(PostgreSQL): stocks_financial_statements 테이블의 재무 데이터
-- 주식 지표(PostgreSQL): stock_metrics_daily의 PER, PBR, ROE 등
-- 주식 점수(PostgreSQL): stock_scores_daily의 종합 평가 점수
-- 뉴스(ChromaDB): 재무 실적 발표, 실적 관련 뉴스만 참고
+[말투 - 매우 중요] 투자 철학에 맞춰 냉혹하고 객관적인 말투를 사용하세요:
+- 짧고 명확한 문장으로 핵심만 전달
+- 숫자와 지표를 자주 언급하여 객관성 강조
+- 감정을 배제한 냉혹한 톤
+- 때로는 날카로운 비꼼으로 감정적 투자 비판
+- 업종 평균, 시장 평균과 비교하는 분석적 표현
 
-[작성 가이드]
-- 검색된 데이터의 구체적인 재무 지표나 수치를 활용하여 냉혹하게 숫자로만 판단하며 표현하세요
-- 재무 지표가 좋으면 긍정적으로, 나쁘면 부정적으로 판단하세요
-- 매번 다른 표현과 관점을 사용하여 같은 패턴을 반복하지 마세요
-
-[충돌 전략] 바로 전 사람이 감정적/트렌드 추종이면 숫자로 반박하세요.""",
+[대화 스타일] 감정적 발언이 나오면 구체적인 재무 지표로 반박. 재무 지표를 언급하며 주장을 뒷받침. 재미있게 말하는 것이 가장 중요합니다.""",
     "테오": """당신은 '테오'입니다. 미래 기술에 극도로 낙관적인 혁신 투자자입니다.
 
-[성격 및 투자 철학]
-- 기술 혁신 투자자: AI, 반도체, 클라우드 등 미래 기술에 집중
-- 장기 성장 관점: 3~5년 후 10배 성장 가능성을 강조
-- 성장률 예측: 연 50% 이상 성장하는 기술 트렌드를 중시
-- 근시안적 비판: 단기 실적보다 장기 비전을 강조
-- ⚠️ 긍정/부정 자유: 기술 혁신이 활발하면 긍정, 뒤처지면 부정적으로 판단
+[투자 철학] AI, 반도체, 클라우드 등 미래 기술에 집중. 3~5년 후 10배 성장 가능성을 강조하며 단기 실적보다 장기 비전을 중시. 기술 혁신 사이클과 성장률을 중시.
 
-[데이터 참조 방식]
-- 기술 뉴스(ChromaDB): AI, 반도체, 클라우드, 기술 혁신 관련 뉴스
-- 주식 마스터(PostgreSQL): 기술 섹터 주식 정보, 산업 분류
-- 주가 데이터(PostgreSQL): 장기 성장 추세, 기술 주식 모멘텀
-- 뉴스 트렌드: 기술 혁신, 특허, R&D 투자 관련 뉴스
+[말투 - 매우 중요] 투자 철학에 맞춰 낙관적이고 미래지향적인 말투를 사용하세요:
+- 중간 길이의 문장으로 비전을 설명
+- 미래지향적 표현과 성장률을 자주 언급하여 낙관성 강조
+- 단기적 사고를 비판하는 표현
+- 기술 혁신의 흥미진진함을 표현
+- 장기 비전과 골든타임을 강조하는 표현
 
-[작성 가이드]
-- 검색된 데이터의 기술 트렌드나 성장 전망을 활용하여 미래 기술 관점에서 낙관적으로 표현하세요
-- 기술 혁신이 활발하면 긍정적으로, 뒤처지면 부정적으로 판단하세요
-- 매번 다른 표현과 관점을 사용하여 같은 패턴을 반복하지 마세요
-
-[충돌 전략] 바로 전 사람이 보수적/신중하면 미래 비전으로 반박하세요.""",
+[대화 스타일] 보수적 발언이 나오면 미래 기술 트렌드와 성장 가능성으로 반박. 기술 트렌드나 성장률을 언급하며 주장을 뒷받침. 재미있게 말하는 것이 가장 중요합니다.""",
     "민지": """당신은 '민지'입니다. 트렌드와 밈에 극도로 민감한 소셜 트렌드 헌터입니다.
 
-[성격 및 투자 철학]
-- 트렌드 헌터: 최신 뉴스, 소셜 미디어 반응, 밈에 극도로 민감
-- 단기 수급 분석: 펀더멘털보다 시장 수급과 트렌드가 본질이라고 주장
-- 타이밍 중시: 밈 사이클이 짧으므로 2~3일 안에 정리해야 한다고 경고
-- 직관적 판단: 빠르고 감각적인 투자 결정
-- ⚠️ 긍정/부정 자유: 트렌드가 핫하면 긍정, 식으면 부정적으로 판단
+[투자 철학] 펀더멘털보다 시장 수급과 트렌드가 본질. 밈 사이클이 짧으므로 빠르게 정리해야 한다고 강조. 소셜 미디어 반응과 커뮤니티 화제에 극도로 민감.
 
-[데이터 참조 방식]
-- 최신 뉴스(ChromaDB): 최근 24시간 내 핫한 뉴스, 급등/급락 관련 뉴스
-- 뉴스 트렌드: 커뮤니티 반응, 소셜 미디어 화제, 밈 주식
-- 주가 데이터(PostgreSQL): 단기 가격 변동, 거래량 급증
-- 뉴스 키워드: 트렌드 키워드, 화제성 있는 뉴스만 선별
+[말투 - 매우 중요] 투자 철학에 맞춰 빠르고 직관적인 말투를 사용하세요:
+- 짧고 빠른 문장으로 속도감 표현
+- 트렌드 용어와 소셜 표현을 자주 사용하여 현대성 강조
+- 밈과 화제성을 언급하는 직관적 표현
+- 느린 분석을 비판하는 빠른 판단 강조
+- 소셜 반응과 커뮤니티 분위기를 읽는 감각적 표현
 
-[작성 가이드]
-- 검색된 데이터의 트렌드나 소셜 반응을 활용하여 트렌드와 소셜 관점에서 빠르게 표현하세요
-- 트렌드가 핫하면 긍정적으로, 식으면 부정적으로 판단하세요
-- 매번 다른 표현과 관점을 사용하여 같은 패턴을 반복하지 마세요
-
-[충돌 전략] 바로 전 사람이 느린 분석/장기 투자면 트렌드로 반박하세요.""",
+[대화 스타일] 느린 분석이 나오면 트렌드의 빠른 변화와 밈 사이클의 짧음을 강조하며 반박. 소셜 반응이나 트렌드를 언급하며 주장을 뒷받침. 재미있게 말하는 것이 가장 중요합니다.""",
 }
 
 MODELS = {
@@ -293,6 +249,129 @@ def build_agent_prompt(agent_name: str) -> str:
     return f"{description} {BASE_PROMPT}"
 
 
+def _extract_keywords_from_input(user_input: str) -> set:
+    """
+    사용자 입력에서 주요 키워드 추출 (기업명, 뉴스 키워드 등)
+    """
+    import re
+
+    # 기본 키워드 추출 (2글자 이상 단어)
+    keywords = set(re.findall(r"[\w가-힣]{2,}", user_input.lower()))
+
+    # 일반적인 불필요한 단어 제거
+    stop_words = {
+        "에",
+        "를",
+        "을",
+        "의",
+        "와",
+        "과",
+        "로",
+        "으로",
+        "에게",
+        "에게서",
+        "에서",
+        "부터",
+        "까지",
+        "에게",
+        "한테",
+        "께",
+        "더",
+        "가",
+        "이",
+        "은",
+        "는",
+        "도",
+        "만",
+        "조금",
+        "좀",
+        "잘",
+        "많이",
+        "너무",
+        "정도",
+        "것",
+        "거",
+        "때",
+        "곳",
+        "분",
+        "년",
+        "월",
+        "일",
+        "분석",
+        "알려",
+        "주세요",
+        "해주세요",
+        "대해",
+        "관련",
+        "영향",
+    }
+
+    keywords = {k for k in keywords if k not in stop_words and len(k) >= 2}
+
+    return keywords
+
+
+def _is_relevant(result_text: str, user_keywords: set) -> bool:
+    """
+    검색 결과가 사용자 입력과 관련 있는지 확인
+    """
+    if not user_keywords:
+        return True  # 키워드가 없으면 모두 관련 있다고 간주
+
+    result_lower = result_text.lower()
+
+    # 사용자 입력의 키워드 중 하나라도 검색 결과에 포함되면 관련 있다고 판단
+    for keyword in user_keywords:
+        if keyword in result_lower:
+            return True
+
+    return False
+
+
+def _filter_search_results(
+    results: list, user_keywords: set, max_results: int = 2
+) -> list:
+    """
+    검색 결과를 사용자 입력과 관련 있는 것만 필터링
+    """
+    if not results:
+        return []
+
+    # 관련 있는 결과만 필터링
+    relevant_results = [r for r in results if _is_relevant(str(r), user_keywords)]
+
+    # 관련 있는 결과가 없으면 빈 목록 반환 (해당 섹션 자체를 제거)
+    if not relevant_results:
+        return []
+
+    # 최대 개수만큼 반환
+    return relevant_results[:max_results]
+
+
+def _filter_context_messages(context_messages: list, user_keywords: set) -> list:
+    """
+    이전 대화 중 사용자 입력과 관련 있는 메시지만 남김
+    """
+    if not context_messages:
+        return []
+
+    filtered = []
+    for msg in context_messages:
+        content = msg.get("content", "")
+        role = msg.get("role", "")
+
+        # 사용자 발화는 항상 포함
+        if role == "user":
+            filtered.append(msg)
+            continue
+
+        # 그 외 메시지는 관련 있는 경우에만 포함
+        if not user_keywords or _is_relevant(content, user_keywords):
+            filtered.append(msg)
+
+    return filtered
+
+
 def build_search_prompt(
     postgres_results=None,
     bm25_results=None,
@@ -308,71 +387,118 @@ def build_search_prompt(
         bm25_results: BM25 키워드 검색 결과 리스트
         vector_results: 벡터 의미 검색 결과 리스트
         user_input: 현재 사용자 입력
-        context_messages: 이전 대화 메시지 리스트 (최대 3개)
+        context_messages: 이전 대화 메시지 리스트
 
     Returns:
         LLM에 전달할 프롬프트 문자열
     """
     parts = []
 
-    # 1. PostgreSQL 검색 결과
+    # 사용자 입력에서 키워드 추출
+    user_keywords = _extract_keywords_from_input(user_input)
+
+    # 사용자 입력에 키워드가 없다면, 최근 사용자 발화에서 키워드 보강
+    if not user_keywords and context_messages:
+        for msg in reversed(context_messages):
+            if msg.get("role") == "user":
+                fallback_keywords = _extract_keywords_from_input(msg.get("content", ""))
+                if fallback_keywords:
+                    user_keywords = fallback_keywords
+                    break
+
+    rag_sections = []
+
+    # 1. PostgreSQL 검색 결과 (필터링)
     if postgres_results:
-        pg_text = "\n".join([f"  - {r}" for r in postgres_results[:2]])
-        parts.append(f"[PostgreSQL 재무 데이터 - 상위 2개]\n{pg_text}")
+        filtered_pg = _filter_search_results(
+            postgres_results, user_keywords, max_results=2
+        )
+        if filtered_pg:
+            pg_text = "\n".join([f"  - {r}" for r in filtered_pg])
+            rag_sections.append(
+                f"[PostgreSQL 재무 데이터 - 상위 {len(filtered_pg)}개]\n{pg_text}"
+            )
 
-    # 2. BM25 키워드 검색 결과
+    # 2. BM25 키워드 검색 결과 (필터링)
     if bm25_results:
-        bm25_text = "\n".join(
-            [
-                f"  - {r[:200]}..." if len(r) > 200 else f"  - {r}"
-                for r in bm25_results[:2]
-            ]
+        filtered_bm25 = _filter_search_results(
+            bm25_results, user_keywords, max_results=2
         )
-        parts.append(f"[키워드 검색 뉴스 - 상위 2개]\n{bm25_text}")
+        if filtered_bm25:
+            bm25_text = "\n".join(
+                [
+                    f"  - {r[:200]}..." if len(r) > 200 else f"  - {r}"
+                    for r in filtered_bm25
+                ]
+            )
+            rag_sections.append(
+                f"[키워드 검색 뉴스 - 상위 {len(filtered_bm25)}개]\n{bm25_text}"
+            )
 
-    # 3. 벡터 의미 검색 결과
+    # 3. 벡터 의미 검색 결과 (필터링)
     if vector_results:
-        vector_text = "\n".join(
-            [
-                f"  - {r[:200]}..." if len(r) > 200 else f"  - {r}"
-                for r in vector_results[:2]
-            ]
+        filtered_vector = _filter_search_results(
+            vector_results, user_keywords, max_results=2
         )
-        parts.append(f"[의미 검색 뉴스 - 상위 2개]\n{vector_text}")
+        if filtered_vector:
+            vector_text = "\n".join(
+                [
+                    f"  - {r[:200]}..." if len(r) > 200 else f"  - {r}"
+                    for r in filtered_vector
+                ]
+            )
+            rag_sections.append(
+                f"[의미 검색 뉴스 - 상위 {len(filtered_vector)}개]\n{vector_text}"
+            )
 
-    # 4. 이전 대화 맥락 (최대 3개)
-    if context_messages:
+    # 4. 이전 대화 맥락 (필터링)
+    filtered_context = _filter_context_messages(context_messages, user_keywords)
+    context_block = ""
+    if filtered_context:
         context_text = "\n".join(
             [
                 f"  - {msg.get('name', 'unknown')}: {msg.get('content', '')[:100]}..."
-                for msg in context_messages[-3:]
+                for msg in filtered_context
             ]
         )
-        parts.append(f"[이전 대화 - 최근 3개]\n{context_text}")
+        context_block = f"[이전 대화]\n{context_text}"
 
-    # 5. 현재 사용자 입력
-    if user_input:
-        parts.append(f"[현재 질문]\n{user_input}")
+    # 5. 지시사항
+    instruction = """[지시사항]
+위 정보를 참고하여 자연스럽고 생동감 있게 대화를 이어가세요.
 
-    # 6. 지시사항
-    instruction = """\n위 정보를 참고하여 자연스럽게 대화를 이어가세요. 이전 발언에 반응하며 답변하세요.
+🎯 최우선 목표: 재미있는 대화를 만들어가세요! 재미있게 말하는 것이 정확하게 말하는 것보다 더 중요합니다.
 
 ⚠️ 중요 지시사항:
-1. 검색된 데이터와 실제 상황을 바탕으로 판단하세요
-   - 좋은 뉴스/데이터면 긍정적으로, 나쁜 뉴스/데이터면 부정적으로 판단
-   - 항상 긍정적이거나 항상 부정적이지 말고, 상황에 따라 달라야 함
-2. 대답 패턴 다양화:
-   - 매번 다른 표현, 다른 관점, 다른 강조점을 사용하세요
-   - 같은 패턴을 반복하지 마세요
-   - 문장 구조, 톤, 길이를 다양하게 변화시키세요
-3. 페르소나 유지:
-   - 자신의 페르소나 특성은 유지하되, 입장(긍정/부정)은 데이터에 따라 결정
-   - 같은 페르소나도 기업/뉴스마다 완전히 다른 입장을 가질 수 있음
-4. 이름 언급 금지:
-   - 다른 사람이나 자신의 이름을 절대 언급하지 마세요
-   - "그 말과 다르게", "그 의견과는", "앞서 말한 것처럼" 같은 표현만 사용하세요"""
+1. 사용자 입력과 관련된 대답만 하세요 (최우선):
+   - 현재 질문에 언급된 기업명, 뉴스, 주제와 직접 관련된 내용만 답변하세요.
+   - 사용자가 물어본 것과 무관한 다른 기업/뉴스/주제에 대해 언급하지 마세요.
+   - 예: "페덱스"에 대해 물었으면 페덱스에 대해서만 답변하고, 다른 기업(Warby Parker, 애플 등)은 언급하지 마세요.
+   - 예: "리비안 CEO" 뉴스에 대해 물었으면 리비안에 대해서만 답변하고, 다른 기업은 언급하지 마세요.
+2. 데이터 관련성 검증: 
+   - 검색된 데이터가 현재 질문과 관련성이 낮거나 이상하면 무시하세요. 관련성이 낮은 데이터를 억지로 사용하지 마세요.
+   - 검색 결과에 관련 없는 다른 기업/뉴스 정보가 있어도 사용하지 마세요.
+3. 이전 발언의 핵심을 직접 인용하며 자연스럽게 반응하세요. 정해진 수사여구는 사용하지 마세요.
+4. 좋은 뉴스/데이터면 긍정, 나쁜 뉴스/데이터면 부정적으로 판단하세요. 상황에 따라 달라야 합니다.
+5. 매번 다른 표현과 관점을 사용하세요. 같은 패턴을 반복하지 마세요.
+6. 자신의 페르소나 특성을 유지하며 유머, 비꼼, 날카로운 표현을 적극 사용하세요.
+7. 이름 언급 금지! 다른 사람이나 자신의 이름을 절대 언급하지 마세요."""
 
-    return "\n\n".join(parts) + instruction
+    sections = [instruction]
+
+    if user_input:
+        sections.append(f"[현재 질문]\n{user_input}")
+
+    if context_block:
+        sections.append(context_block)
+
+    base_prompt = "\n\n".join(sections)
+
+    if rag_sections:
+        rag_text = "\n\n".join(rag_sections)
+        return f"{base_prompt}\n\n[참고 데이터]\n{rag_text}"
+
+    return base_prompt
 
 
 # ============================================================================
@@ -428,19 +554,18 @@ def make_agent(
     4. BM25 키워드 검색 (ChromaDB) - 확장된 쿼리 사용
     5. 벡터 의미 검색 (ChromaDB) - 확장된 쿼리 사용
     6. 검색 결과는 캐싱하여 모든 에이전트가 공유
-    7. 이전 대화 맥락 (최대 3개) 추가
+    7. 이전 대화 맥락 추가
     """
     chroma_collections = chroma_collections or []
     postgres_tables = postgres_tables or []
     search_priority = search_priority or ["vector", "bm25", "postgres"]
     news_keywords = news_keywords or []
 
-    def reply_func(recipient, messages, sender, config):
-        """단순하고 명확한 검색 및 프롬프트 구성"""
-        if not messages:
-            return False, None
+    def _prepare_prompt(recipient, messages):
+        """검색 후 LLM에 전달할 프롬프트 생성"""
+        if not messages or not build_search_prompt_func:
+            return None
 
-        # 초기화
         if not hasattr(recipient, "_last_search_results"):
             recipient._last_search_results = {}
 
@@ -449,7 +574,6 @@ def make_agent(
         for msg in reversed(messages):
             if msg.get("role") == "user":
                 content = msg.get("content", "").strip()
-                # 간단한 사용자 입력만 (프롬프트가 아닌)
                 if content and len(content) < 200:
                     user_input = content
                     break
@@ -458,41 +582,34 @@ def make_agent(
             user_input = "투자"  # 기본값
 
         # 2. 에이전트별 검색 쿼리 확장 (뉴스 필터링)
-        # 원본 쿼리 + 에이전트별 키워드 추가하여 관련 뉴스만 검색
         expanded_query = user_input
         if news_keywords:
-            # 키워드 중 2-3개를 랜덤하게 선택하여 쿼리에 추가
             import random
 
             selected_keywords = random.sample(news_keywords, min(3, len(news_keywords)))
             expanded_query = f"{user_input} {' '.join(selected_keywords)}"
 
         # 3. 검색 수행 (캐시 확인)
-        # 캐시 키는 원본 쿼리 사용 (에이전트 간 공유)
         cache_key = user_input
         if cache_key not in recipient._last_search_results:
-            # PostgreSQL 검색 (원본 쿼리 사용, 에이전트별 테이블 지정)
             pg_results, pg_metas = [], []
-            if use_postgres:
+            if use_postgres and search_postgres_func:
                 pg_results, pg_metas = search_postgres_func(
                     user_input, top_k=2, postgres_tables=postgres_tables
                 )
 
-            # BM25 키워드 검색 (확장된 쿼리 사용)
             bm25_results, bm25_metas = [], []
             if chroma_collections and keyword_search_func:
                 bm25_results, bm25_metas = keyword_search_func(
                     chroma_collections, expanded_query, top_k=2
                 )
 
-            # 벡터 의미 검색 (확장된 쿼리 사용)
             vector_results, vector_metas = [], []
             if chroma_collections and semantic_search_func:
                 vector_results, vector_metas = semantic_search_func(
                     chroma_collections, expanded_query, top_k=2
                 )
 
-            # 캐시 저장
             recipient._last_search_results[cache_key] = {
                 "postgres": pg_results,
                 "bm25": bm25_results,
@@ -500,17 +617,15 @@ def make_agent(
                 "all_metas": pg_metas + bm25_metas + vector_metas,
             }
 
-        # 캐시에서 검색 결과 가져오기
         search_results = recipient._last_search_results[cache_key]
 
-        # 3. 이전 대화 맥락 (최대 3개)
+        # 4. 이전 대화 맥락
         context_messages = []
-        for msg in messages[:-1]:  # 현재 메시지 제외
+        for msg in messages[:-1]:
             if msg.get("role") in ["user", "assistant"]:
                 context_messages.append(msg)
-        context_messages = context_messages[-3:]  # 최근 3개만
 
-        # 4. 프롬프트 구성
+        # 5. 프롬프트 구성
         prompt_text = build_search_prompt_func(
             postgres_results=search_results["postgres"],
             bm25_results=search_results["bm25"],
@@ -519,13 +634,8 @@ def make_agent(
             context_messages=context_messages,
         )
 
-        # 5. 메시지 업데이트
-        messages[-1]["content"] = prompt_text
-
-        # 6. 메타데이터 저장 (출력용)
         recipient._last_search_metadata = search_results["all_metas"][:3]
-
-        return False, None
+        return prompt_text
 
     agent = ConversableAgent_class(
         name=name,
@@ -533,7 +643,11 @@ def make_agent(
         llm_config=get_llm_config_func(model, temperature),
         human_input_mode="NEVER",
     )
-    agent.register_reply([ConversableAgent_class, None], reply_func)
+
+    def prepare_prompt(messages):
+        return _prepare_prompt(agent, messages)
+
+    agent.prepare_prompt = prepare_prompt
     return agent
 
 

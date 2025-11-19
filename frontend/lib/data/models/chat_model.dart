@@ -102,11 +102,19 @@ class HistoryItem {
   final String role;
   final String content;
   final DateTime ts;
+  final String? speaker;
+  final int? turn;
+  final int? tsMs;
+  final String? rawPayload;
 
   HistoryItem({
     required this.role,
     required this.content,
     required this.ts,
+    this.speaker,
+    this.turn,
+    this.tsMs,
+    this.rawPayload,
   });
 
   factory HistoryItem.fromJson(Map<String, dynamic> json) =>
