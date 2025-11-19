@@ -227,7 +227,7 @@ public class ChatServiceImpl implements ChatService {
                         final String data = sse.data();
                         final String eventId = sse.id();
                         log.debug("[ChatSvc-Stream] AI 서비스 이벤트 수신 - event={}, id={}, data={}", eventName, eventId, data);
-                        final String defaultPayload = buildPayload(eventName, eventId, data, null);
+                        final String defaultPayload = buildPayload(eventName, eventId, data, null, null);
 
                         // ready 이벤트 처리: AI 서비스가 세션과 스트림 준비 완료를 알릴 때
                         if ("ready".equals(eventName)) {
@@ -251,36 +251,47 @@ public class ChatServiceImpl implements ChatService {
                             return; // 스트림 종료하지 않고 계속 유지
                         }
 
-                        // 메시지 이벤트는 Mongo에 저장 (token chunk가 아니라 완성 텍스트 기준이면 게이트웨이 쪽에서 제어)
-                        if ("message".equals(eventName) && data != null && !data.isBlank()) {
-                            final AiPayload aiPayload = parseAiPayload(data);
-                            final String payload = buildPayload(eventName, eventId, data, aiPayload);
-                            emitter.send(buildEvent(eventName, eventId, payload));
+                        // FastAPI가 빈 message 이벤트를 heartbeat 용도로 보내는 경우는 프론트로 전달하지 않음
+                        if ("message".equals(eventName) && (data == null || data.isBlank())) {
+                            log.trace("[ChatSvc-Stream] 빈 message 이벤트 무시");
+                            return;
+                        }
 
+                        // 메시지 이벤트는 Mongo에 저장 (token chunk가 아니라 완성 텍스트 기준이면 게이트웨이 쪽에서 제어)
+                        if ("message".equals(eventName)) {
+                            final AiPayload aiPayload = parseAiPayload(data);
                             final String finalContent = (aiPayload != null && aiPayload.getContent() != null)
                                     ? aiPayload.getContent()
                                     : data;
                             final Long seq = parseSeq(eventId);
                             final UUID finalSessionUuid = sessionUuid;
                             final int finalSessionDbId = sessionDbId;
+                            final String upstreamEventId = eventId;
+                            final String emitterEventId = new ObjectId().toHexString();
+                            final ChatMessageDoc doc = ChatMessageDoc.builder()
+                                    .id(emitterEventId)
+                                    .sessionUuid(finalSessionUuid)
+                                    .role("assistant")
+                                    .content(finalContent)
+                                    .speaker(aiPayload != null ? aiPayload.getSpeaker() : null)
+                                    .turn(aiPayload != null ? aiPayload.getTurn() : null)
+                                    .aiTsMs(aiPayload != null ? aiPayload.getTsMs() : null)
+                                    .rawPayload(data)
+                                    .ts(Instant.now())
+                                    .seq(seq)
+                                    .build();
+
+                            final String payload = buildPayload(eventName, emitterEventId, data, aiPayload, upstreamEventId);
+                            emitter.send(buildEvent(eventName, emitterEventId, payload));
+
                             // MongoDB 저장은 비동기로 처리 (프론트엔드 전달을 블로킹하지 않음)
                             CompletableFuture.runAsync(() -> {
                                 try {
-                                    final ChatMessageDoc saved = msgRepo.save(ChatMessageDoc.builder()
-                                            .sessionUuid(finalSessionUuid)
-                                            .role("assistant")
-                                            .content(finalContent)
-                                            .speaker(aiPayload != null ? aiPayload.getSpeaker() : null)
-                                            .turn(aiPayload != null ? aiPayload.getTurn() : null)
-                                            .aiTsMs(aiPayload != null ? aiPayload.getTsMs() : null)
-                                            .rawPayload(data)
-                                            .ts(Instant.now())
-                                            .seq(seq)
-                                            .build());
+                                    msgRepo.save(doc);
                                     new TransactionTemplate(transactionManager).executeWithoutResult(status ->
                                             sessionRepo.touchUpdatedAt(finalSessionDbId, OffsetDateTime.now())
                                     );
-                                    log.debug("[ChatSvc-Stream] 메시지 저장 완료: {}", saved.getId());
+                                    log.debug("[ChatSvc-Stream] 메시지 저장 완료: {}", doc.getId());
                                 } catch (Exception e) {
                                     log.warn("[ChatSvc-Stream] 메시지 저장 실패: {}", e.getMessage());
                                 }
@@ -409,7 +420,7 @@ public class ChatServiceImpl implements ChatService {
         gateway.control(sessionUuid.toString(), "CHANGE_PACE", paceMs);
     }
 
-    private String buildPayload(String eventName, String eventId, String rawData, AiPayload parsed) {
+    private String buildPayload(String eventName, String eventId, String rawData, AiPayload parsed, String upstreamEventId) {
         try {
             final ObjectNode node = objectMapper.createObjectNode();
             node.put("event", eventName);
@@ -435,6 +446,9 @@ public class ChatServiceImpl implements ChatService {
                 if (parsed.getSessionId() != null) {
                     node.put("sessionId", parsed.getSessionId());
                 }
+            }
+            if (upstreamEventId != null) {
+                node.put("aiEventId", upstreamEventId);
             }
             return objectMapper.writeValueAsString(node);
         } catch (Exception e) {
