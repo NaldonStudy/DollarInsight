@@ -1,48 +1,81 @@
-# Backend Service - Dollar Insight
+# Backend Service · Dollar Insight
 
-Spring Boot 기반 백엔드 서비스
+> 미국 주식 AI 챗봇 **Dollar Insight**를 위한 Spring Boot 백엔드 서비스 입니다.
 
-## 기술 스택
+<p align="center">
+  <img src="https://img.shields.io/badge/Spring%20Boot-3.5.7-6DB33F?logo=springboot&logoColor=white" alt="Spring Boot">
+  <img src="https://img.shields.io/badge/Java-21-007396?logo=openjdk&logoColor=white" alt="Java 21">
+  <img src="https://img.shields.io/badge/Gradle-8.5-02303A?logo=gradle" alt="Gradle">
+  <img src="https://img.shields.io/badge/PostgreSQL-16-336791?logo=postgresql&logoColor=white" alt="PostgreSQL">
+  <img src="https://img.shields.io/badge/Redis-7-DC382D?logo=redis&logoColor=white" alt="Redis">
+</p>
 
-- **Framework**: Spring Boot 3.5.7
-- **Language**: Java 21
-- **Build Tool**: Gradle 8.5
-- **Database**: PostgreSQL, MongoDB
-- **Cache**: Redis
-- **Migration**: Flyway
+---
 
-## 프로젝트 구조
+## 📋 목차
+1. [✨ 주요 기능](#-주요-기능)
+2. [🧱 기술 스택](#-기술-스택)
+3. [🗂️ 프로젝트 구조](#️-프로젝트-구조)
+4. [⚙️ 로컬 개발 환경 설정](#️-로컬-개발-환경-설정)
+5. [🚀 Docker 빌드 & 실행](#-docker-빌드--실행)
+6. [🩺 헬스체크 & 모니터링](#-헬스체크--모니터링)
+7. [🔐 환경 변수](#-환경-변수)
+8. [🌱 프로파일별 설정](#-프로파일별-설정)
+9. [🧰 트러블슈팅](#-트러블슈팅)
+10. [🧑‍💻 개발 가이드](#-개발-가이드)
+11. [🚢 배포](#-배포)
+12. [📜 라이선스](#-라이선스)
 
+---
+
+## ✨ 주요 기능
+- 🧠 **AI 에이전트 대화 지원**: 다중 에이전트 챗 시나리오를 위한 REST & WebSocket API.
+- 📊 **PostgreSQL + MongoDB**: 정형/비정형 데이터를 분리하여 저장.
+- ⚡ **Redis 캐시 & 메시지 브로커**: 세션 캐싱과 비동기 처리.
+- 🔐 **OAuth2 로그인**: Kakao / Google 연동.
+- 🛡️ **Observability**: Actuator, Prometheus Metrics, 로그 스트리밍 지원.
+
+## 🧱 기술 스택
+| 영역 | 사용 기술 |
+|------|-----------|
+| Framework | Spring Boot 3.5.7, Spring Security, Spring Web/WebFlux |
+| Language | Java 21 (JVM Toolchain) |
+| Build | Gradle 8.5, Flyway |
+| Data | PostgreSQL, MongoDB, Redis, Redisson |
+| 기타 | Micrometer, Prometheus, SpringDoc OpenAPI |
+
+## 🗂️ 프로젝트 구조
 ```
 backend/
 ├── src/
 │   ├── main/
 │   │   ├── java/
 │   │   └── resources/
-│   │       ├── application.yml          # 메인 설정 (환경변수 기반)
-│   │       ├── application-local.yml    # 로컬 개발용
-│   │       └── application-prod.yml     # 프로덕션용
+│   │       ├── application.yml          # 환경변수 기반 기본 설정
+│   │       ├── application-local.yml    # 로컬 프로파일
+│   │       └── application-prod.yml     # 프로덕션 프로파일
 │   └── test/
-├── Dockerfile                            # Docker 이미지 빌드
-├── .env.template                         # 환경변수 템플릿
-└── build.gradle                          # Gradle 빌드 설정
+├── Dockerfile                           # Spring Boot 컨테이너 이미지
+├── .env.template                        # 백엔드 환경 변수 템플릿
+└── build.gradle                         # Gradle 빌드 스크립트
 ```
 
-## 로컬 개발 환경 설정
+---
 
+## ⚙️ 로컬 개발 환경 설정
 ### 1. 필수 요구사항
 - Java 21
 - Gradle 8.x
-- Docker & Docker Compose (선택사항)
+- Docker & Docker Compose (선택)
 
-### 2. 의존성 서비스 실행
-
-**Docker Compose 사용:**
+### 2. 의존성 서비스 기동
+**루트 디렉터리**에서 제공하는 `docker-compose-local.yml`을 활용하면 빠르게 Postgres/Mongo/Redis를 기동할 수 있습니다.
 ```bash
-docker-compose -f compose.yaml up -d
+# 프로젝트 루트(S13P31B205)에서 실행
+docker compose -f docker-compose-local.yml up -d
 ```
 
-또는 **개별 실행:**
+직접 컨테이너를 띄우고 싶다면:
 ```bash
 # PostgreSQL
 docker run -d -p 5432:5432 \
@@ -62,210 +95,160 @@ docker run -d -p 6379:6379 redis:7-alpine
 ```
 
 ### 3. 애플리케이션 실행
-
 ```bash
-# local 프로파일로 실행 (기본값)
+# 기본(local) 프로파일로 실행
 ./gradlew bootRun
 
-# 또는
+# 혹은 Jar 생성 후 실행
 ./gradlew clean build
 java -jar build/libs/*.jar
 ```
 
-## Docker 빌드 및 실행
+---
 
-### 1. 환경 변수 설정
-
+## 🚀 Docker 빌드 & 실행
+### 1. .env 준비
 ```bash
-# .env 파일 생성
 cp .env.template .env
-
-# 필요에 따라 .env 파일 수정
-vim .env
+# 필요한 값을 채운 뒤 저장
 ```
 
-### 2. Docker 이미지 빌드
-
+### 2. 이미지 빌드 & 실행
 ```bash
 # 이미지 빌드
 docker build -t dollar-insight-backend:latest .
 
-# 빌드 확인
-docker images | grep dollar-insight-backend
-```
-
-### 3. 단독 실행
-
-```bash
+# 단독 실행
 docker run -d \
   --name backend \
   --env-file .env \
-  -p 8080:8080 \
+  -p 9090:9090 \
   dollar-insight-backend:latest
 ```
 
-### 4. Docker Compose로 전체 스택 실행
-
+### 3. 전체 스택(docker-compose)
 ```bash
-# 전체 서비스 시작
-docker-compose up -d
+# 프로젝트 루트에서 전체 스택 기동
+docker compose up -d
 
-# 로그 확인
-docker-compose logs -f backend
-
-# 서비스 중지
-docker-compose down
-
-# 볼륨까지 삭제
-docker-compose down -v
+docker compose logs -f backend
 ```
 
-## 헬스체크 엔드포인트
+---
 
-애플리케이션이 실행되면 다음 엔드포인트로 상태 확인:
-
-- **전체 헬스체크**: http://localhost:8080/actuator/health
-- **Liveness Probe**: http://localhost:8080/actuator/health/liveness
-- **Readiness Probe**: http://localhost:8080/actuator/health/readiness
-- **메트릭**: http://localhost:8080/actuator/metrics
-
-### 헬스체크 응답 예시
+## 🩺 헬스체크 & 모니터링
+- 전체 헬스: `http://localhost:9090/actuator/health`
+- Liveness: `http://localhost:9090/actuator/health/liveness`
+- Readiness: `http://localhost:9090/actuator/health/readiness`
+- Metrics: `http://localhost:9090/actuator/metrics`
 
 ```json
 {
   "status": "UP",
   "components": {
-    "db": {
-      "status": "UP",
-      "details": {
-        "database": "PostgreSQL",
-        "validationQuery": "isValid()"
-      }
-    },
-    "mongo": {
-      "status": "UP",
-      "details": {
-        "version": "7.0.0"
-      }
-    },
-    "redis": {
-      "status": "UP",
-      "details": {
-        "version": "7.0.0"
-      }
-    }
+    "db": { "status": "UP", "details": { "database": "PostgreSQL" } },
+    "mongo": { "status": "UP", "details": { "version": "7.0.0" } },
+    "redis": { "status": "UP", "details": { "version": "7.0.0" } }
   }
 }
 ```
 
-## 환경 변수
+---
 
-주요 환경 변수 목록:
-
+## 🔐 환경 변수
 | 변수명 | 설명 | 기본값 |
 |--------|------|--------|
-| SPRING_PROFILES_ACTIVE | 프로파일 (local/prod) | local |
-| SERVER_PORT | 서버 포트 | 8080 |
-| SPRING_DATASOURCE_URL | PostgreSQL URL | - |
-| SPRING_DATASOURCE_USERNAME | DB 사용자명 | - |
-| SPRING_DATASOURCE_PASSWORD | DB 비밀번호 | - |
-| SPRING_DATA_MONGODB_HOST | MongoDB 호스트 | - |
-| SPRING_REDIS_HOST | Redis 호스트 | - |
+| `SPRING_PROFILES_ACTIVE` | 활성화할 프로파일(local/prod) | `local` |
+| `SERVER_PORT` | 서버 포트 | `9090` |
+| `SPRING_DATASOURCE_URL` | PostgreSQL JDBC URL | - |
+| `SPRING_DATASOURCE_USERNAME` | DB 계정 | - |
+| `SPRING_DATASOURCE_PASSWORD` | DB 비밀번호 | - |
+| `SPRING_DATA_MONGODB_HOST` | MongoDB 호스트 | - |
+| `SPRING_REDIS_HOST` | Redis 호스트 | - |
 
-전체 목록은 `.env.template` 파일 참조
+> 전체 목록은 `.env.template` 파일을 참고하세요.
 
 ### OAuth 클라이언트
-
 - **Kakao**: `KAKAO_REST_API_KEY`, `KAKAO_CLIENT_SECRET`, `KAKAO_TIMEOUT_SECONDS`, `KAKAO_ALLOW_DEFAULT_REDIRECT`
 - **Google**: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_TIMEOUT_SECONDS`, `GOOGLE_ALLOW_DEFAULT_REDIRECT`
-- 두 공급자 모두 모바일 redirect URI를 사용할 경우 클라이언트에서 전달된 값을 `redirectUri`로 넘겨야 하며, 미전달 시 서버 기본값을 허용하려면 각 `ALLOW_DEFAULT_REDIRECT` 값을 `true`로 설정합니다.
+- 모바일 redirect URI를 클라이언트에서 전달하지 않을 경우 각 `ALLOW_DEFAULT_REDIRECT` 값을 `true`로 설정합니다.
 
-## 프로파일별 설정
+---
 
-### local (로컬 개발)
-- PostgreSQL, MongoDB, Redis: localhost
-- SQL 로깅 활성화
-- 상세한 헬스체크 정보 노출
+## 🌱 프로파일별 설정
+| 프로파일 | 특징 |
+|----------|------|
+| `local` | localhost 기반 DB, SQL 로그 출력, 상세 헬스체크 |
+| `prod`  | Docker 네트워크 호스트명 사용, SQL 로그 off, 최소 헬스 정보, 최적화된 로깅 |
 
-### prod (프로덕션)
-- Docker 네트워크 내부 통신
-- SQL 로깅 비활성화
-- 헬스체크 정보 최소화
-- 최적화된 로깅 설정
+---
 
-## 트러블슈팅
-
+## 🧰 트러블슈팅
 ### 포트 충돌
 ```bash
-# 8080 포트 사용 중인 프로세스 확인
-lsof -i :8080  # macOS/Linux
-netstat -ano | findstr :8080  # Windows
+# 9090 포트 점유 확인
+lsof -i :9090        # macOS/Linux
+netstat -ano | findstr :9090  # Windows
 
 # 다른 포트로 실행
-SERVER_PORT=8081 ./gradlew bootRun
+SERVER_PORT=9091 ./gradlew bootRun
 ```
 
 ### 데이터베이스 연결 실패
 ```bash
-# 컨테이너 상태 확인
-docker-compose ps
-
-# 로그 확인
-docker-compose logs postgres
-docker-compose logs mongodb
-docker-compose logs redis
+docker compose ps
+docker compose logs postgres
+docker compose logs mongodb
+docker compose logs redis
 ```
 
 ### 빌드 실패
 ```bash
-# Gradle 캐시 삭제
 ./gradlew clean --refresh-dependencies
 
-# Docker 빌드 캐시 무시
 docker build --no-cache -t dollar-insight-backend:latest .
 ```
 
-## 개발 가이드
+---
 
+## 🧑‍💻 개발 가이드
 ### 의존성 추가
-`build.gradle` 파일에 의존성 추가 후:
 ```bash
 ./gradlew clean build
 ```
 
-### 데이터베이스 마이그레이션
-Flyway 마이그레이션 파일은 `src/main/resources/db/migration` 에 배치
-- 파일명 형식: `V{version}__{description}.sql`
-- 예: `V1__init_schema.sql`
+### Flyway 마이그레이션
+- 경로: `src/main/resources/db/migration`
+- 네이밍: `V{version}__{description}.sql` (예: `V1__init_schema.sql`)
 
 ### 로그 확인
 ```bash
-# 로컬 개발
+# 로컬
 tail -f logs/spring.log
 
-# Docker
-docker-compose logs -f backend
+# Docker 환경
+docker compose logs -f backend
 docker exec -it dollar-insight-backend tail -f /app/logs/spring.log
 ```
 
-## 배포
+---
 
-### CI/CD 파이프라인
-1. 코드 푸시
-2. Docker 이미지 빌드
-3. 이미지 레지스트리에 푸시
-4. 서버에서 이미지 pull 및 실행
+## 🚢 배포
+1. Git push → CI/CD 트리거
+2. Gradle 빌드 & Docker 이미지 생성
+3. 컨테이너 레지스트리에 push
+4. 서버에서 pull 후 재기동
 
-### 이미지 태깅
 ```bash
-# 버전 태그
+# 이미지 태깅 및 배포 예시
 docker build -t dollar-insight-backend:1.0.0 .
 docker tag dollar-insight-backend:1.0.0 dollar-insight-backend:latest
 
-# 레지스트리 푸시
-docker push your-registry/dollar-insight-backend:1.0.0
-docker push your-registry/dollar-insight-backend:latest
+docker push <registry>/dollar-insight-backend:1.0.0
+docker push <registry>/dollar-insight-backend:latest
 ```
 
-## 라이선스
+---
+
+## 📜 라이선스
 SSAFY 13기 자율 프로젝트

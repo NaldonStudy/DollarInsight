@@ -18,7 +18,7 @@
 ## 🏗️ 기술 스택
 
 ### Backend
-- **Spring Boot 3.x** (Java 17)
+- **Spring Boot 3.5.7** (Java 21)
 - **PostgreSQL 15** (메인 DB)
 - **MongoDB 7** (뉴스 저장)
 - **Redis 7** (캐시 & 메시지 큐)
