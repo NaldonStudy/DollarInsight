@@ -716,8 +716,7 @@ async def sse_generator(request: Request, session_id: str):
             print(f"SSE 생성기 에러: {e}")
             break
 
-        # 페이싱
-        await asyncio.sleep(s.pace_ms / 1000.0)
+        # 페이싱 제거 (딜레이 없음)
 
     # 종료 신호
     yield f"id: {s.idx}\nevent: close\ndata: {{}}\n\n"
