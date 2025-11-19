@@ -338,9 +338,9 @@ def _filter_search_results(
     # 관련 있는 결과만 필터링
     relevant_results = [r for r in results if _is_relevant(str(r), user_keywords)]
 
-    # 관련 있는 결과가 없으면 원본 결과 반환 (최소한 뭔가는 보여줘야 함)
+    # 관련 있는 결과가 없으면 빈 목록 반환 (해당 섹션 자체를 제거)
     if not relevant_results:
-        return results[:max_results]
+        return []
 
     # 최대 개수만큼 반환
     return relevant_results[:max_results]
@@ -353,13 +353,18 @@ def _filter_context_messages(context_messages: list, user_keywords: set) -> list
     if not context_messages:
         return []
 
-    if not user_keywords:
-        return context_messages
-
     filtered = []
     for msg in context_messages:
         content = msg.get("content", "")
-        if _is_relevant(content, user_keywords):
+        role = msg.get("role", "")
+
+        # 사용자 발화는 항상 포함
+        if role == "user":
+            filtered.append(msg)
+            continue
+
+        # 그 외 메시지는 관련 있는 경우에만 포함
+        if not user_keywords or _is_relevant(content, user_keywords):
             filtered.append(msg)
 
     return filtered
