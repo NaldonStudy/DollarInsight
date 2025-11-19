@@ -247,6 +247,105 @@ def build_agent_prompt(agent_name: str) -> str:
     return f"{description} {BASE_PROMPT}"
 
 
+def _extract_keywords_from_input(user_input: str) -> set:
+    """
+    사용자 입력에서 주요 키워드 추출 (기업명, 뉴스 키워드 등)
+    """
+    import re
+
+    # 기본 키워드 추출 (2글자 이상 단어)
+    keywords = set(re.findall(r"[\w가-힣]{2,}", user_input.lower()))
+
+    # 일반적인 불필요한 단어 제거
+    stop_words = {
+        "에",
+        "를",
+        "을",
+        "의",
+        "와",
+        "과",
+        "로",
+        "으로",
+        "에게",
+        "에게서",
+        "에서",
+        "부터",
+        "까지",
+        "에게",
+        "한테",
+        "께",
+        "더",
+        "가",
+        "이",
+        "은",
+        "는",
+        "도",
+        "만",
+        "조금",
+        "좀",
+        "잘",
+        "많이",
+        "너무",
+        "정도",
+        "것",
+        "거",
+        "때",
+        "곳",
+        "분",
+        "년",
+        "월",
+        "일",
+        "분석",
+        "알려",
+        "주세요",
+        "해주세요",
+        "대해",
+        "관련",
+        "영향",
+    }
+
+    keywords = {k for k in keywords if k not in stop_words and len(k) >= 2}
+
+    return keywords
+
+
+def _is_relevant(result_text: str, user_keywords: set) -> bool:
+    """
+    검색 결과가 사용자 입력과 관련 있는지 확인
+    """
+    if not user_keywords:
+        return True  # 키워드가 없으면 모두 관련 있다고 간주
+
+    result_lower = result_text.lower()
+
+    # 사용자 입력의 키워드 중 하나라도 검색 결과에 포함되면 관련 있다고 판단
+    for keyword in user_keywords:
+        if keyword in result_lower:
+            return True
+
+    return False
+
+
+def _filter_search_results(
+    results: list, user_keywords: set, max_results: int = 2
+) -> list:
+    """
+    검색 결과를 사용자 입력과 관련 있는 것만 필터링
+    """
+    if not results:
+        return []
+
+    # 관련 있는 결과만 필터링
+    relevant_results = [r for r in results if _is_relevant(str(r), user_keywords)]
+
+    # 관련 있는 결과가 없으면 원본 결과 반환 (최소한 뭔가는 보여줘야 함)
+    if not relevant_results:
+        return results[:max_results]
+
+    # 최대 개수만큼 반환
+    return relevant_results[:max_results]
+
+
 def build_search_prompt(
     postgres_results=None,
     bm25_results=None,
@@ -269,30 +368,51 @@ def build_search_prompt(
     """
     parts = []
 
-    # 1. PostgreSQL 검색 결과
+    # 사용자 입력에서 키워드 추출
+    user_keywords = _extract_keywords_from_input(user_input)
+
+    # 1. PostgreSQL 검색 결과 (필터링)
     if postgres_results:
-        pg_text = "\n".join([f"  - {r}" for r in postgres_results[:2]])
-        parts.append(f"[PostgreSQL 재무 데이터 - 상위 2개]\n{pg_text}")
+        filtered_pg = _filter_search_results(
+            postgres_results, user_keywords, max_results=2
+        )
+        if filtered_pg:
+            pg_text = "\n".join([f"  - {r}" for r in filtered_pg])
+            parts.append(
+                f"[PostgreSQL 재무 데이터 - 상위 {len(filtered_pg)}개]\n{pg_text}"
+            )
 
-    # 2. BM25 키워드 검색 결과
+    # 2. BM25 키워드 검색 결과 (필터링)
     if bm25_results:
-        bm25_text = "\n".join(
-            [
-                f"  - {r[:200]}..." if len(r) > 200 else f"  - {r}"
-                for r in bm25_results[:2]
-            ]
+        filtered_bm25 = _filter_search_results(
+            bm25_results, user_keywords, max_results=2
         )
-        parts.append(f"[키워드 검색 뉴스 - 상위 2개]\n{bm25_text}")
+        if filtered_bm25:
+            bm25_text = "\n".join(
+                [
+                    f"  - {r[:200]}..." if len(r) > 200 else f"  - {r}"
+                    for r in filtered_bm25
+                ]
+            )
+            parts.append(
+                f"[키워드 검색 뉴스 - 상위 {len(filtered_bm25)}개]\n{bm25_text}"
+            )
 
-    # 3. 벡터 의미 검색 결과
+    # 3. 벡터 의미 검색 결과 (필터링)
     if vector_results:
-        vector_text = "\n".join(
-            [
-                f"  - {r[:200]}..." if len(r) > 200 else f"  - {r}"
-                for r in vector_results[:2]
-            ]
+        filtered_vector = _filter_search_results(
+            vector_results, user_keywords, max_results=2
         )
-        parts.append(f"[의미 검색 뉴스 - 상위 2개]\n{vector_text}")
+        if filtered_vector:
+            vector_text = "\n".join(
+                [
+                    f"  - {r[:200]}..." if len(r) > 200 else f"  - {r}"
+                    for r in filtered_vector
+                ]
+            )
+            parts.append(
+                f"[의미 검색 뉴스 - 상위 {len(filtered_vector)}개]\n{vector_text}"
+            )
 
     # 4. 이전 대화 맥락
     if context_messages:
@@ -314,16 +434,19 @@ def build_search_prompt(
 🎯 최우선 목표: 재미있는 대화를 만들어가세요! 재미있게 말하는 것이 정확하게 말하는 것보다 더 중요합니다.
 
 ⚠️ 중요 지시사항:
-1. 데이터 관련성 검증 (최우선): 
-   - 현재 질문에 언급된 기업명이나 뉴스와 관련 없는 다른 기업/뉴스 정보는 절대 사용하지 마세요.
-   - 예: "페덱스"에 대해 물었는데 검색 결과에 "Warby Parker"나 다른 기업 정보가 있으면 무시하세요.
-   - 예: "리비안 CEO" 뉴스에 대해 물었는데 다른 기업(예: 애플, Warby Parker) 정보가 있으면 무시하세요.
-   - 검색된 데이터가 현재 대화 주제나 질문과 관련성이 낮거나 이상하면 무시하세요. 관련성이 낮은 데이터를 억지로 사용하지 마세요.
-2. 이전 발언의 핵심을 직접 인용하며 자연스럽게 반응하세요. 정해진 수사여구는 사용하지 마세요.
-3. 좋은 뉴스/데이터면 긍정, 나쁜 뉴스/데이터면 부정적으로 판단하세요. 상황에 따라 달라야 합니다.
-4. 매번 다른 표현과 관점을 사용하세요. 같은 패턴을 반복하지 마세요.
-5. 자신의 페르소나 특성을 유지하며 유머, 비꼼, 날카로운 표현을 적극 사용하세요.
-6. 이름 언급 금지! 다른 사람이나 자신의 이름을 절대 언급하지 마세요."""
+1. 사용자 입력과 관련된 대답만 하세요 (최우선):
+   - 현재 질문에 언급된 기업명, 뉴스, 주제와 직접 관련된 내용만 답변하세요.
+   - 사용자가 물어본 것과 무관한 다른 기업/뉴스/주제에 대해 언급하지 마세요.
+   - 예: "페덱스"에 대해 물었으면 페덱스에 대해서만 답변하고, 다른 기업(Warby Parker, 애플 등)은 언급하지 마세요.
+   - 예: "리비안 CEO" 뉴스에 대해 물었으면 리비안에 대해서만 답변하고, 다른 기업은 언급하지 마세요.
+2. 데이터 관련성 검증: 
+   - 검색된 데이터가 현재 질문과 관련성이 낮거나 이상하면 무시하세요. 관련성이 낮은 데이터를 억지로 사용하지 마세요.
+   - 검색 결과에 관련 없는 다른 기업/뉴스 정보가 있어도 사용하지 마세요.
+3. 이전 발언의 핵심을 직접 인용하며 자연스럽게 반응하세요. 정해진 수사여구는 사용하지 마세요.
+4. 좋은 뉴스/데이터면 긍정, 나쁜 뉴스/데이터면 부정적으로 판단하세요. 상황에 따라 달라야 합니다.
+5. 매번 다른 표현과 관점을 사용하세요. 같은 패턴을 반복하지 마세요.
+6. 자신의 페르소나 특성을 유지하며 유머, 비꼼, 날카로운 표현을 적극 사용하세요.
+7. 이름 언급 금지! 다른 사람이나 자신의 이름을 절대 언급하지 마세요."""
 
     return "\n\n".join(parts) + instruction
 
