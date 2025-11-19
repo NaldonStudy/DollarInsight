@@ -84,6 +84,3 @@ temp/
 
 # Keys
 *.pem
-
-# PDF files
-*.pdf
