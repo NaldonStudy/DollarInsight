@@ -102,9 +102,9 @@ class ETFDetailProvider with ChangeNotifier {
       final marketCapInTrillions = response.etfIndicators!.marketCap / 1000000000000;
       final totalAssetsInTrillions = response.etfIndicators!.totalAssets / 1000000000000;
       _etfIndicators = {
-        '시가총액': '${marketCapInTrillions.toStringAsFixed(1)} 조원',
+        '시가총액': '${marketCapInTrillions.toStringAsFixed(1)} 조 달러',
         '배당수익률': '${response.etfIndicators!.dividendYield.toStringAsFixed(2)}%',
-        '운용자산': '${totalAssetsInTrillions.toStringAsFixed(1)} 조원',
+        '운용자산': '${totalAssetsInTrillions.toStringAsFixed(1)} 조 달러',
         '순자산가치': '${response.etfIndicators!.nav.toStringAsFixed(2)}원',
         '괴리율': '${response.etfIndicators!.premiumDiscount.toStringAsFixed(2)}%',
         '운용보수(연)': '${response.etfIndicators!.expenseRatio.toStringAsFixed(2)}%',

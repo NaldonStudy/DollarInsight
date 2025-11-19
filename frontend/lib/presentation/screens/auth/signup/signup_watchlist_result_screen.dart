@@ -168,7 +168,7 @@ class _SignupWatchlistResultScreenState
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    '김더미님을 위한\n추천 종목이에요!',
+                    '당신을 위한\n추천 종목이에요!',
                     style: TextStyle(
                       color: Colors.black,
                       fontSize: 24,
