@@ -338,12 +338,36 @@ def _filter_search_results(
     # 관련 있는 결과만 필터링
     relevant_results = [r for r in results if _is_relevant(str(r), user_keywords)]
 
-    # 관련 있는 결과가 없으면 원본 결과 반환 (최소한 뭔가는 보여줘야 함)
+    # 관련 있는 결과가 없으면 빈 목록 반환 (해당 섹션 자체를 제거)
     if not relevant_results:
-        return results[:max_results]
+        return []
 
     # 최대 개수만큼 반환
     return relevant_results[:max_results]
+
+
+def _filter_context_messages(context_messages: list, user_keywords: set) -> list:
+    """
+    이전 대화 중 사용자 입력과 관련 있는 메시지만 남김
+    """
+    if not context_messages:
+        return []
+
+    filtered = []
+    for msg in context_messages:
+        content = msg.get("content", "")
+        role = msg.get("role", "")
+
+        # 사용자 발화는 항상 포함
+        if role == "user":
+            filtered.append(msg)
+            continue
+
+        # 그 외 메시지는 관련 있는 경우에만 포함
+        if not user_keywords or _is_relevant(content, user_keywords):
+            filtered.append(msg)
+
+    return filtered
 
 
 def build_search_prompt(
@@ -414,12 +438,13 @@ def build_search_prompt(
                 f"[의미 검색 뉴스 - 상위 {len(filtered_vector)}개]\n{vector_text}"
             )
 
-    # 4. 이전 대화 맥락
-    if context_messages:
+    # 4. 이전 대화 맥락 (필터링)
+    filtered_context = _filter_context_messages(context_messages, user_keywords)
+    if filtered_context:
         context_text = "\n".join(
             [
                 f"  - {msg.get('name', 'unknown')}: {msg.get('content', '')[:100]}..."
-                for msg in context_messages
+                for msg in filtered_context
             ]
         )
         parts.append(f"[이전 대화]\n{context_text}")
