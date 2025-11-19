@@ -8,6 +8,7 @@ import '../../providers/chat_provider.dart';
 import '../../../data/repositories/chat_repository.dart';
 import '../../../data/models/chat_model.dart';
 import '../../../data/models/message_model.dart';
+import '../../../core/utils/persona_mapper.dart';
 
 class ChatRoomScreen extends StatefulWidget {
   final String sessionId;
@@ -152,12 +153,15 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
           speaker = null;
         }
 
+        // speaker 코드를 한글 이름으로 변환
+        final koreanName = PersonaMapper.getKoreanName(speaker);
+
         return ChatMessage(
           role: item.role == 'user' ? MessageRole.user : MessageRole.assistant,
           content: content,
           timestamp: item.ts,
           personaCode: item.role == 'assistant' ? (speaker ?? 'AI') : null,
-          personaName: item.role == 'assistant' ? (speaker ?? 'AI 어시스턴트') : null,
+          personaName: item.role == 'assistant' ? koreanName : null,
         );
       }).toList();
 
@@ -303,11 +307,14 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
               case SSEEventType.message:
                 // 각 페르소나의 발언을 별도의 메시지로 처리
                 // 백엔드에서 이미 content만 추출해서 보내므로, 각 메시지는 완성된 발언임
+                // speaker 코드를 한글 이름으로 변환
+                final koreanName = PersonaMapper.getKoreanName(sseMessage.speaker);
+
                 final aiMessage = ChatMessage.assistant(
                   content: sseMessage.data,
                   timestamp: DateTime.now(),
                   personaCode: sseMessage.speaker ?? 'AI',
-                  personaName: sseMessage.speaker ?? 'AI 어시스턴트',
+                  personaName: koreanName,
                   isStreaming: false, // 이미 완성된 메시지이므로 스트리밍 아님
                 );
                 if (mounted) {
@@ -431,23 +438,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   }
 
   /// 캐릭터 이름에 따른 이미지 경로 반환
+  /// PersonaMapper를 사용하여 한글/영어 모두 지원
   String _getCharacterImagePath(String? speaker) {
-    if (speaker == null) return 'assets/deoksu.webp'; // 기본값
-
-    switch (speaker) {
-      case '덕수':
-        return 'assets/deoksu.webp';
-      case '희열':
-        return 'assets/heuyeol.webp';
-      case '민지':
-        return 'assets/minji.webp';
-      case '테오':
-        return 'assets/teo.webp';
-      case '지율':
-        return 'assets/jiyul.webp';
-      default:
-        return 'assets/deoksu.webp'; // 알 수 없는 경우 기본값
-    }
+    return PersonaMapper.getImagePath(speaker);
   }
 
   @override
@@ -581,6 +574,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
         } else {
           return _buildAIBubble(
             name: message.personaName ?? 'AI',
+            personaCode: message.personaCode,
             text: message.content,
             time: _formatTime(message.timestamp),
             isStreaming: message.isStreaming,
@@ -680,11 +674,12 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
 
   Widget _buildAIBubble({
     required String name,
+    String? personaCode,
     required String text,
     required String time,
     bool isStreaming = false,
   }) {
-    final imagePath = _getCharacterImagePath(name);
+    final imagePath = _getCharacterImagePath(personaCode ?? name);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
