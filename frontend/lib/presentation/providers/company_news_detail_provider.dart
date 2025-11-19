@@ -98,7 +98,7 @@ class CompanyNewsDetailProvider with ChangeNotifier {
     final code = personaCode.toLowerCase().trim();
 
     switch (code) {
-      case 'heeyul':
+      case 'heuyeol':
         return 'assets/images/heuyeol.webp';
       case 'jiyul':
         return 'assets/images/jiyul.webp';
