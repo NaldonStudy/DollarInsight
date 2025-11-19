@@ -559,12 +559,11 @@ def make_agent(
     search_priority = search_priority or ["vector", "bm25", "postgres"]
     news_keywords = news_keywords or []
 
-    def reply_func(recipient, messages, sender, config):
-        """단순하고 명확한 검색 및 프롬프트 구성"""
-        if not messages:
-            return False, None
+    def _prepare_prompt(recipient, messages):
+        """검색 후 LLM에 전달할 프롬프트 생성"""
+        if not messages or not build_search_prompt_func:
+            return None
 
-        # 초기화
         if not hasattr(recipient, "_last_search_results"):
             recipient._last_search_results = {}
 
@@ -573,7 +572,6 @@ def make_agent(
         for msg in reversed(messages):
             if msg.get("role") == "user":
                 content = msg.get("content", "").strip()
-                # 간단한 사용자 입력만 (프롬프트가 아닌)
                 if content and len(content) < 200:
                     user_input = content
                     break
@@ -582,41 +580,34 @@ def make_agent(
             user_input = "투자"  # 기본값
 
         # 2. 에이전트별 검색 쿼리 확장 (뉴스 필터링)
-        # 원본 쿼리 + 에이전트별 키워드 추가하여 관련 뉴스만 검색
         expanded_query = user_input
         if news_keywords:
-            # 키워드 중 2-3개를 랜덤하게 선택하여 쿼리에 추가
             import random
 
             selected_keywords = random.sample(news_keywords, min(3, len(news_keywords)))
             expanded_query = f"{user_input} {' '.join(selected_keywords)}"
 
         # 3. 검색 수행 (캐시 확인)
-        # 캐시 키는 원본 쿼리 사용 (에이전트 간 공유)
         cache_key = user_input
         if cache_key not in recipient._last_search_results:
-            # PostgreSQL 검색 (원본 쿼리 사용, 에이전트별 테이블 지정)
             pg_results, pg_metas = [], []
-            if use_postgres:
+            if use_postgres and search_postgres_func:
                 pg_results, pg_metas = search_postgres_func(
                     user_input, top_k=2, postgres_tables=postgres_tables
                 )
 
-            # BM25 키워드 검색 (확장된 쿼리 사용)
             bm25_results, bm25_metas = [], []
             if chroma_collections and keyword_search_func:
                 bm25_results, bm25_metas = keyword_search_func(
                     chroma_collections, expanded_query, top_k=2
                 )
 
-            # 벡터 의미 검색 (확장된 쿼리 사용)
             vector_results, vector_metas = [], []
             if chroma_collections and semantic_search_func:
                 vector_results, vector_metas = semantic_search_func(
                     chroma_collections, expanded_query, top_k=2
                 )
 
-            # 캐시 저장
             recipient._last_search_results[cache_key] = {
                 "postgres": pg_results,
                 "bm25": bm25_results,
@@ -624,16 +615,15 @@ def make_agent(
                 "all_metas": pg_metas + bm25_metas + vector_metas,
             }
 
-        # 캐시에서 검색 결과 가져오기
         search_results = recipient._last_search_results[cache_key]
 
-        # 3. 이전 대화 맥락
+        # 4. 이전 대화 맥락
         context_messages = []
-        for msg in messages[:-1]:  # 현재 메시지 제외
+        for msg in messages[:-1]:
             if msg.get("role") in ["user", "assistant"]:
                 context_messages.append(msg)
 
-        # 4. 프롬프트 구성
+        # 5. 프롬프트 구성
         prompt_text = build_search_prompt_func(
             postgres_results=search_results["postgres"],
             bm25_results=search_results["bm25"],
@@ -642,13 +632,8 @@ def make_agent(
             context_messages=context_messages,
         )
 
-        # 5. 메시지 업데이트
-        messages[-1]["content"] = prompt_text
-
-        # 6. 메타데이터 저장 (출력용)
         recipient._last_search_metadata = search_results["all_metas"][:3]
-
-        return False, None
+        return prompt_text
 
     agent = ConversableAgent_class(
         name=name,
@@ -656,7 +641,11 @@ def make_agent(
         llm_config=get_llm_config_func(model, temperature),
         human_input_mode="NEVER",
     )
-    agent.register_reply([ConversableAgent_class, None], reply_func)
+
+    def prepare_prompt(messages):
+        return _prepare_prompt(agent, messages)
+
+    agent.prepare_prompt = prepare_prompt
     return agent
 
 

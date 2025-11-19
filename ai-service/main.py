@@ -317,7 +317,22 @@ def run_autogen_discussion(
                     )
 
                 speaker.chat_messages[user] = limited_messages
-                result = speaker.generate_reply(messages=limited_messages, sender=user)
+
+                prompt_override = None
+                if hasattr(speaker, "prepare_prompt"):
+                    prompt_override = speaker.prepare_prompt(limited_messages)
+
+                generate_kwargs = {"messages": limited_messages, "sender": user}
+                if prompt_override:
+                    generate_kwargs["prompt"] = prompt_override
+
+                try:
+                    result = speaker.generate_reply(**generate_kwargs)
+                except TypeError:
+                    # 구버전 AutoGen 호환: prompt 인자를 지원하지 않는 경우
+                    result = speaker.generate_reply(
+                        messages=limited_messages, sender=user
+                    )
 
                 if isinstance(result, tuple):
                     final, reply = result
