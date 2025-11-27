@@ -5,7 +5,10 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jws;
 import io.jsonwebtoken.JwsHeader;
 import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.JwtVisitor;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.ServletRequest;
+import jakarta.servlet.ServletResponse;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -31,7 +34,7 @@ class TokenFilterTest {
     private static final class CountingChain extends MockFilterChain {
         int count = 0;
         @Override
-        public void doFilter(javax.servlet.ServletRequest request, javax.servlet.ServletResponse response) throws IOException, ServletException {
+        public void doFilter(ServletRequest request, ServletResponse response) throws IOException, ServletException {
             count++;
             super.doFilter(request, response);
         }
@@ -44,12 +47,12 @@ class TokenFilterTest {
 
     private static Jws<Claims> jws(Claims claims) {
         return new Jws<>() {
-            @Override
-            public JwsHeader getHeader() { return null; }
-            @Override
-            public Claims getPayload() { return claims; }
-            @Override
-            public String getSignature() { return ""; }
+            @Override public JwsHeader getHeader() { return null; }
+            @Override public Claims getBody() { return claims; }
+            @Override public Claims getPayload() { return claims; }
+            @Override public byte[] getDigest() { return new byte[0]; }
+            @Override public String getSignature() { return ""; }
+            @Override public <T> T accept(JwtVisitor<T> visitor) { return visitor.visit(this); }
         };
     }
 
@@ -62,10 +65,11 @@ class TokenFilterTest {
         MockHttpServletResponse res = new MockHttpServletResponse();
         CountingChain chain = new CountingChain();
 
-        Claims claims = Jwts.claims();
-        claims.setSubject("user-uuid");
-        claims.put("did", "device-1");
-        claims.put("roles", List.of("USER"));
+        Claims claims = Jwts.claims()
+                .subject("user-uuid")
+                .add("did", "device-1")
+                .add("roles", List.of("USER"))
+                .build();
         when(tokenProvider.parse("token-123")).thenReturn(jws(claims));
 
         filter.doFilter(req, res, chain);
@@ -85,9 +89,10 @@ class TokenFilterTest {
         MockHttpServletResponse res = new MockHttpServletResponse();
         CountingChain chain = new CountingChain();
 
-        Claims claims = Jwts.claims();
-        claims.setSubject("user-uuid");
-        claims.put("did", "device-abc");
+        Claims claims = Jwts.claims()
+                .subject("user-uuid")
+                .add("did", "device-abc")
+                .build();
         when(tokenProvider.parse("token-abc")).thenReturn(jws(claims));
 
         filter.doFilter(req, res, chain);

@@ -1,7 +1,7 @@
 package com.ssafy.b205.backend.infra.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.ssafy.b205.backend.support.error.ApiResponse;
+import com.ssafy.b205.backend.support.response.ApiResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.DisplayName;
