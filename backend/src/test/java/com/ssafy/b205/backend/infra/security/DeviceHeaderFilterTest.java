@@ -2,6 +2,8 @@ package com.ssafy.b205.backend.infra.security;
 
 import com.ssafy.b205.backend.support.error.ErrorCode;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.ServletRequest;
+import jakarta.servlet.ServletResponse;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockFilterChain;
@@ -19,7 +21,7 @@ class DeviceHeaderFilterTest {
     private static final class CountingChain extends MockFilterChain {
         int count = 0;
         @Override
-        public void doFilter(javax.servlet.ServletRequest request, javax.servlet.ServletResponse response) throws IOException, ServletException {
+        public void doFilter(ServletRequest request, ServletResponse response) throws IOException, ServletException {
             count++;
             super.doFilter(request, response);
         }
