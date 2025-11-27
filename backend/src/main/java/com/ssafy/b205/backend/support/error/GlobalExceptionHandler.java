@@ -127,8 +127,8 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<?>> handleAny(Exception ex, HttpServletRequest req) {
         String traceId = MDC.get("traceId");
-        if (traceId != null) log.error("[traceId={}] unexpected error", traceId, ex);
-        else log.error("unexpected error", ex);
+        if (traceId != null) log.error("[GlobalErr-E01] unexpected error traceId={}", traceId, ex);
+        else log.error("[GlobalErr-E01] unexpected error", ex);
         return err(ErrorCode.INTERNAL_ERROR, "unexpected error", req);
     }
 }
