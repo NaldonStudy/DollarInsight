@@ -45,7 +45,7 @@ public class MongoConfig {
                 LocalDateTime localDateTime = LocalDateTime.parse(value, LEGACY_FORMAT);
                 return localDateTime.toInstant(ZoneOffset.UTC);
             } catch (DateTimeParseException ex) {
-                log.warn("Failed to parse Mongo date value: {}", value, ex);
+                log.warn("[MongoCfg-W01] Failed to parse Mongo date value: {}", value, ex);
                 return null;
             }
         }

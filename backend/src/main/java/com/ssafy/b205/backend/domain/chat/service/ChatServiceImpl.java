@@ -102,12 +102,12 @@ public class ChatServiceImpl implements ChatService {
         // AI 서비스 세션도 미리 생성 (빈 메시지로 초기화)
         // 세션이 생성되지 않은 상태에서 스트림 연결을 방지하기 위함
         try {
-            log.info("[ChatSvc-Session] 🚀 AI 서비스 세션 미리 생성 sessionUuid={}, personas={}", sessionUuid, personaCodes);
+            log.info("[ChatSvc-01] AI 서비스 세션 미리 생성 sessionUuid={}, personas={}", sessionUuid, personaCodes);
             // 빈 메시지로 AI 서비스 세션 생성 (실제 메시지는 나중에 전송)
             gateway.start(sessionUuid.toString(), "", 3000, personaCodes);
-            log.info("[ChatSvc-Session] ✅ AI 서비스 세션 생성 완료 sessionUuid={}", sessionUuid);
+            log.info("[ChatSvc-02] AI 서비스 세션 생성 완료 sessionUuid={}", sessionUuid);
         } catch (Exception e) {
-            log.error("[ChatSvc-Session] ❌ AI 서비스 세션 생성 실패 sessionUuid={}, error={}", sessionUuid, e.getMessage());
+            log.error("[ChatSvc-E11] AI 서비스 세션 생성 실패 sessionUuid={}, error={}", sessionUuid, e.getMessage());
             throw new AppException(ErrorCode.INTERNAL_ERROR, "AI 서비스 세션 생성 실패: " + e.getMessage());
         }
 
@@ -169,21 +169,21 @@ public class ChatServiceImpl implements ChatService {
             
             // /start 호출을 동기로 처리 (AI 서비스 세션 생성 완료 후 응답 반환)
             try {
-                log.info("[ChatSvc-Message] 🚀 AI 세션 시작 (동기) sessionUuid={}, personas={}", finalSessionUuid, personas);
+                log.info("[ChatSvc-11] AI 세션 시작 (동기) sessionUuid={}, personas={}", finalSessionUuid, personas);
                 gateway.start(finalSessionUuid.toString(), finalContent, 3000, personas);
-                log.info("[ChatSvc-Message] ✅ AI 세션 시작 완료 sessionUuid={}", finalSessionUuid);
+                log.info("[ChatSvc-12] AI 세션 시작 완료 sessionUuid={}", finalSessionUuid);
             } catch (Exception e) {
-                log.error("[ChatSvc-Message] ❌ AI 세션 시작 실패 sessionUuid={}, error={}", finalSessionUuid, e.getMessage());
+                log.error("[ChatSvc-E12] AI 세션 시작 실패 sessionUuid={}, error={}", finalSessionUuid, e.getMessage());
                 throw new AppException(ErrorCode.INTERNAL_ERROR, "AI 서비스 세션 시작 실패: " + e.getMessage());
             }
         } else {
             // /input 호출도 동기로 처리
             try {
-                log.info("[ChatSvc-Message] 📤 사용자 입력 전달 (동기) sessionUuid={}", finalSessionUuid);
+                log.info("[ChatSvc-13] 사용자 입력 전달 (동기) sessionUuid={}", finalSessionUuid);
                 gateway.sendUserInput(finalSessionUuid.toString(), finalContent);
-                log.info("[ChatSvc-Message] ✅ 사용자 입력 전달 완료 sessionUuid={}", finalSessionUuid);
+                log.info("[ChatSvc-14] 사용자 입력 전달 완료 sessionUuid={}", finalSessionUuid);
             } catch (Exception e) {
-                log.error("[ChatSvc-Message] ❌ 사용자 입력 전달 실패 sessionUuid={}, error={}", finalSessionUuid, e.getMessage());
+                log.error("[ChatSvc-E13] 사용자 입력 전달 실패 sessionUuid={}, error={}", finalSessionUuid, e.getMessage());
                 throw new AppException(ErrorCode.INTERNAL_ERROR, "AI 서비스 입력 전달 실패: " + e.getMessage());
             }
         }
@@ -213,12 +213,12 @@ public class ChatServiceImpl implements ChatService {
         final Disposable sub = gateway.stream(sessionUuid.toString())
                 .doOnError(err -> {
                     // AI 서비스 스트림 에러는 프론트엔드 스트림을 종료하지 않음
-                    log.warn("[ChatSvc-Stream] AI 서비스 스트림 에러 (프론트엔드 스트림은 유지): {}", err.getMessage());
+                    log.warn("[ChatSvc-W21] AI 서비스 스트림 에러 (프론트엔드 스트림은 유지) msg={}", err.getMessage());
                     // emitter.completeWithError(err); // 주석 처리
                 })
                 .doOnComplete(() -> {
                     // AI 서비스 스트림이 완료되어도 프론트엔드 스트림은 유지
-                    log.debug("[ChatSvc-Stream] AI 서비스 스트림 완료 (프론트엔드 스트림은 유지)");
+                    log.debug("[ChatSvc-22] AI 서비스 스트림 완료 (프론트엔드 스트림은 유지)");
                     // emitter.complete(); // 주석 처리
                 })
                 .subscribe((ServerSentEvent<String> sse) -> {
@@ -226,12 +226,12 @@ public class ChatServiceImpl implements ChatService {
                         final String eventName = (sse.event() != null ? sse.event() : "message");
                         final String data = sse.data();
                         final String eventId = sse.id();
-                        log.debug("[ChatSvc-Stream] AI 서비스 이벤트 수신 - event={}, id={}, data={}", eventName, eventId, data);
+                        log.debug("[ChatSvc-23] AI 서비스 이벤트 수신 event={}, id={}, data={}", eventName, eventId, data);
                         final String defaultPayload = buildPayload(eventName, eventId, data, null, null);
 
                         // ready 이벤트 처리: AI 서비스가 세션과 스트림 준비 완료를 알릴 때
                         if ("ready".equals(eventName)) {
-                            log.info("[ChatSvc-Stream] ✅ AI 서비스 ready 이벤트 수신 (세션 및 스트림 준비 완료)");
+                            log.info("[ChatSvc-24] AI 서비스 ready 이벤트 수신 (세션 및 스트림 준비 완료)");
                             readyReceived.set(true);
                             readyLatch.countDown(); // 준비 완료 신호
                             emitter.send(buildEvent(eventName, eventId, defaultPayload));
@@ -241,19 +241,19 @@ public class ChatServiceImpl implements ChatService {
                         // close 이벤트 처리: AI 서비스가 스트림 종료를 알릴 때
                         // 하지만 채팅은 계속 유지되어야 하므로 close 이벤트를 무시
                         if ("close".equals(eventName)) {
-                            log.debug("[ChatSvc-Stream] AI 서비스 close 이벤트 수신 (무시하고 계속 유지)");
+                            log.debug("[ChatSvc-25] AI 서비스 close 이벤트 수신 (무시하고 계속 유지)");
                             return; // 스트림 종료하지 않고 계속 유지
                         }
 
                         // error 이벤트 처리: AI 서비스가 에러를 알릴 때
                         if ("error".equals(eventName)) {
-                            log.debug("[ChatSvc-Stream] AI 서비스 error 이벤트 수신 (무시하고 계속 유지): {}", data);
+                            log.debug("[ChatSvc-26] AI 서비스 error 이벤트 수신 (무시하고 계속 유지) data={}", data);
                             return; // 스트림 종료하지 않고 계속 유지
                         }
 
                         // FastAPI가 빈 message 이벤트를 heartbeat 용도로 보내는 경우는 프론트로 전달하지 않음
                         if ("message".equals(eventName) && (data == null || data.isBlank())) {
-                            log.trace("[ChatSvc-Stream] 빈 message 이벤트 무시");
+                            log.trace("[ChatSvc-27] 빈 message 이벤트 무시");
                             return;
                         }
 
@@ -291,9 +291,9 @@ public class ChatServiceImpl implements ChatService {
                                     new TransactionTemplate(transactionManager).executeWithoutResult(status ->
                                             sessionRepo.touchUpdatedAt(finalSessionDbId, OffsetDateTime.now())
                                     );
-                                    log.debug("[ChatSvc-Stream] 메시지 저장 완료: {}", doc.getId());
+                                    log.debug("[ChatSvc-28] 메시지 저장 완료 docId={}", doc.getId());
                                 } catch (Exception e) {
-                                    log.warn("[ChatSvc-Stream] 메시지 저장 실패: {}", e.getMessage());
+                                    log.warn("[ChatSvc-W28] 메시지 저장 실패 msg={}", e.getMessage());
                                 }
                             }, asyncExecutor);
                             
@@ -302,7 +302,7 @@ public class ChatServiceImpl implements ChatService {
 
                         emitter.send(buildEvent(eventName, eventId, defaultPayload));
                     } catch (Exception e) {
-                        log.error("[ChatSvc-Stream] SSE send error (연결 종료): {}", e.getMessage(), e);
+                        log.error("[ChatSvc-E29] SSE send error (연결 종료) msg={}", e.getMessage(), e);
                         emitter.completeWithError(e);
                         throw new RuntimeException("SSE 전송 실패로 연결 종료", e);
                     }
@@ -322,13 +322,13 @@ public class ChatServiceImpl implements ChatService {
             try {
                 boolean ready = readyLatch.await(10, java.util.concurrent.TimeUnit.SECONDS);
                 if (ready) {
-                    log.info("[ChatSvc-Stream] ✅ AI 서비스 스트림 준비 완료 확인됨");
+                    log.info("[ChatSvc-31] AI 서비스 스트림 준비 완료 확인됨");
                 } else {
-                    log.warn("[ChatSvc-Stream] ⚠️ AI 서비스 ready 이벤트를 10초 내에 받지 못함 (스트림은 계속 유지)");
+                    log.warn("[ChatSvc-W31] AI 서비스 ready 이벤트를 10초 내에 받지 못함 (스트림은 계속 유지)");
                 }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-                log.warn("[ChatSvc-Stream] Ready 이벤트 대기 중단됨");
+                log.warn("[ChatSvc-W32] Ready 이벤트 대기 중단됨");
             }
         }, asyncExecutor);
         
@@ -452,7 +452,7 @@ public class ChatServiceImpl implements ChatService {
             }
             return objectMapper.writeValueAsString(node);
         } catch (Exception e) {
-            log.debug("[ChatSvc-Stream] payload 직렬화 실패: {}", e.getMessage());
+            log.debug("[ChatSvc-41] payload 직렬화 실패 msg={}", e.getMessage());
             return rawData != null ? rawData : "";
         }
     }
@@ -488,7 +488,7 @@ public class ChatServiceImpl implements ChatService {
             }
             return new AiPayload(content, speaker, turn, tsMs, sessionId);
         } catch (Exception e) {
-            log.debug("[ChatSvc-Stream] AI payload 파싱 실패: {}", e.getMessage());
+            log.debug("[ChatSvc-42] AI payload 파싱 실패 msg={}", e.getMessage());
             return null;
         }
     }
@@ -507,14 +507,14 @@ public class ChatServiceImpl implements ChatService {
                             .name("message")
                             .data(doc.getContent()));
                 } catch (Exception sendError) {
-                    log.debug("[ChatSvc-Stream] replay send interrupted: {}", sendError.getMessage());
+                    log.debug("[ChatSvc-43] replay send interrupted msg={}", sendError.getMessage());
                     return;
                 }
             }
         } catch (IllegalArgumentException e) {
-            log.warn("[ChatSvc-Stream] lastEventId {} is not a valid ObjectId", lastEventId);
+            log.warn("[ChatSvc-W44] lastEventId {} is not a valid ObjectId", lastEventId);
         } catch (Exception e) {
-            log.warn("[ChatSvc-Stream] replay send error: {}", e.getMessage());
+            log.warn("[ChatSvc-W45] replay send error msg={}", e.getMessage());
         }
     }
 
@@ -526,7 +526,7 @@ public class ChatServiceImpl implements ChatService {
                                 .name("ping")
                                 .data("keep-alive"));
                     } catch (Exception e) {
-                        log.warn("[ChatSvc-Stream] keep-alive send failed, completing emitter: {}", e.getMessage());
+                        log.warn("[ChatSvc-W46] keep-alive send failed, completing emitter msg={}", e.getMessage());
                         emitter.completeWithError(e);
                     }
                 });
