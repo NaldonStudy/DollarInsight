@@ -1,0 +1,55 @@
+# Airflow 전용 requirements.txt
+# 크롤링에 필요한 패키지만 포함
+# Python 3.9+ 호환 버전 사용 (Airflow 2.9+)
+
+# PostgreSQL 연결용 (명시적 추가)
+psycopg2-binary==2.9.9
+
+# MongoDB 연결용
+pymongo==4.6.1
+
+# HTTP 클라이언트 (FastAPI 호출용)
+requests==2.31.0
+python-dotenv==1.1.1
+
+# OpenAI API 클라이언트 (LLM 기업 추출용)
+openai>=1.0.0
+
+# 벡터화 패키지
+chromadb==1.2.1
+FlagEmbedding==1.3.5
+kss==5.2.0
+konlpy>=0.6.0  # KSS Mecab 백엔드 지원 (python-mecab-kor 대신 사용)
+
+# 크롤링 패키지
+feedparser==6.0.12
+playwright==1.55.0
+beautifulsoup4==4.14.2
+bs4==0.0.2
+pytrends==4.9.2
+deep-translator==1.11.4
+
+# 시간대 처리 (DAG 시간대 설정용)
+pytz==2024.1
+
+# 금융 데이터 수집 패키지 (pipelines 모듈용)
+yfinance>=0.2.0
+fredapi>=0.5.0
+pandas>=2.0.0
+pandas-market-calendars>=4.3.0
+numpy>=1.24.0
+
+# 머신러닝 패키지 (prediction_system 모듈용)
+xgboost>=2.0.0
+scikit-learn>=1.3.0
+shap>=0.43.0
+optuna>=3.0.0
+joblib>=1.3.0
+
+# 데이터 검증 및 설정 파일 처리
+pydantic>=2.0.0
+pyyaml>=6.0
+
+# FastAPI (prediction_system main.py용, 선택사항)
+fastapi>=0.100.0
+

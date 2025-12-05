@@ -1,0 +1,120 @@
+server:
+  port: ${SERVER_PORT:9090}
+  servlet:
+    encoding:
+      charset: UTF-8
+      force: true
+      enabled: true
+
+spring:
+  docker:
+    compose:
+      lifecycle-management: none # IDE가 docker-compose 자동 기동하지 않도록
+
+  autoconfigure:
+    exclude:
+      - org.redisson.spring.starter.RedissonAutoConfigurationV2
+
+  # ===== PostgreSQL (로컬 기본: 127.0.0.1:5432 / DB=dollar_insight / user=postgres / pw=ssafy) =====
+  datasource:
+    # 1순위: SPRING_DATASOURCE_URL
+    # 2순위: POSTGRESQL_* 조합해 URL 구성
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${POSTGRESQL_URL:127.0.0.1}:${POSTGRESQL_PORT:5432}/${POSTGRESQL_NAME:dollar_insight}}
+    username: ${SPRING_DATASOURCE_USERNAME:${POSTGRESQL_USER:postgres}}
+    password: ${SPRING_DATASOURCE_PASSWORD:${POSTGRESQL_PASSWORD:}}
+    driver-class-name: ${SPRING_DATASOURCE_DRIVER_CLASS_NAME:org.postgresql.Driver}
+
+  jpa:
+    hibernate:
+      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:validate}
+    open-in-view: false
+    show-sql: ${SPRING_JPA_SHOW_SQL:false}
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+        dialect: ${SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT:org.hibernate.dialect.PostgreSQLDialect}
+        format_sql: ${SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL:false}
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration,classpath:db/migration-dev
+    # datasource와 1:1로 강제 매핑(환경변수 오염 방지)
+    url: ${spring.datasource.url}
+    user: ${spring.datasource.username}
+    password: ${spring.datasource.password}
+
+  # ===== MongoDB =====
+  data:
+    mongodb:
+      host: ${SPRING_DATA_MONGODB_HOST:${MONGODB_URL:127.0.0.1}}
+      port: ${SPRING_DATA_MONGODB_PORT:${MONGODB_PORT:27017}}
+      database: ${SPRING_DATA_MONGODB_DATABASE:${MONGODB_NAME:dollar_insight}}
+      username: ${SPRING_DATA_MONGODB_USERNAME:${MONGODB_USER:}}
+      password: ${SPRING_DATA_MONGODB_PASSWORD:${MONGODB_PASSWORD:}}
+      # admin 계정 쓰면 SPRING_DATA_MONGODB_AUTHENTICATION_DATABASE=admin 로 덮어쓰기
+      authentication-database: ${SPRING_DATA_MONGODB_AUTHENTICATION_DATABASE:${MONGODB_AUTH_DB:dollar_insight}}
+
+    # ===== Redis =====
+    redis:
+      host: ${SPRING_REDIS_HOST:${REDIS_URL:127.0.0.1}}
+      port: ${SPRING_REDIS_PORT:${REDIS_PORT:6379}}
+      password: ${SPRING_REDIS_PASSWORD:${REDIS_PASSWORD:}}
+      timeout: 2s
+      client-type: lettuce
+
+  cache:
+    type: redis
+    redis:
+      time-to-live: 5m
+
+# ===== Actuator =====
+management:
+  endpoints:
+    web:
+      base-path: /actuator
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when-authorized
+      probes:
+        enabled: true
+  health:
+    redis:
+      enabled: true
+    mongo:
+      enabled: true
+    db:
+      enabled: true
+  server:
+    port: ${MANAGEMENT_PORT:9090}
+
+# ===== Swagger =====
+springdoc:
+  api-docs.path: /v3/api-docs
+  swagger-ui.path: /swagger-ui
+
+# ===== JWT =====
+app:
+  jwt:
+    secret: ${APP_JWT_SECRET:local-dev-secret-at-least-32-chars-1234567890abcd}
+    access-ttl-seconds: ${APP_JWT_ACCESS_TTL_SECONDS:3600}
+
+  oauth:
+    kakao:
+      client-id: ${KAKAO_REST_API_KEY}
+      client-secret: ${KAKAO_CLIENT_SECRET:}
+      default-redirect-uri: http://localhost:9090/auth/callback/kakao # 보관용
+      allow-default-redirect: false # 로컬은 모바일만
+    google:
+      client-id: ${GOOGLE_CLIENT_ID}
+      client-secret: ${GOOGLE_CLIENT_SECRET:}
+      default-redirect-uri: http://localhost:9090/auth/callback/google
+      allow-default-redirect: false
+
+# ===== ChromaDB =====
+external:
+  chromadb:
+    base-url: ${CHROMADB_BASE_URL:http://${CHROMADB_URL:127.0.0.1}:${CHROMADB_PORT:9000}}

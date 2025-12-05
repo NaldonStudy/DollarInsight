@@ -1,0 +1,76 @@
+# Apache Airflow를 위한 Dockerfile
+FROM apache/airflow:2.9.0
+
+USER root
+
+# 시스템 패키지 설치 (Playwright 의존성 포함 + 벡터화 패키지 + Mecab)
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    gfortran \
+    libnss3 \
+    libnspr4 \
+    libatk1.0-0 \
+    libatk-bridge2.0-0 \
+    libcups2 \
+    libdrm2 \
+    libdbus-1-3 \
+    libxkbcommon0 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxfixes3 \
+    libxrandr2 \
+    libgbm1 \
+    libasound2 \
+    curl \
+    mecab \
+    libmecab-dev \
+    mecab-ipadic-utf8 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Mecab 설정 파일 생성 (mecab-python3가 찾을 수 있도록)
+RUN mkdir -p /usr/local/etc && \
+    if [ -f /etc/mecabrc ]; then \
+        cp /etc/mecabrc /usr/local/etc/mecabrc; \
+    else \
+        echo "dicdir = /usr/lib/x86_64-linux-gnu/mecab/dic/ipadic" > /usr/local/etc/mecabrc; \
+    fi
+
+USER airflow
+
+# Hugging Face 캐시 디렉토리 생성 및 권한 설정
+RUN mkdir -p /opt/airflow/.cache/huggingface && \
+    chmod -R 755 /opt/airflow/.cache
+
+# Hugging Face 캐시 환경 변수 설정
+ENV HF_HOME=/opt/airflow/.cache/huggingface
+ENV TRANSFORMERS_CACHE=/opt/airflow/.cache/huggingface
+ENV HF_DATASETS_CACHE=/opt/airflow/.cache/huggingface
+
+# Python 패키지 설치 (Airflow 전용)
+COPY requirements_airflow.txt /requirements_airflow.txt
+RUN pip install --no-cache-dir -r /requirements_airflow.txt
+
+# Mecab Python 바인딩 설치 (KSS Mecab 백엔드 지원)
+RUN pip install --no-cache-dir mecab-python3
+
+# Playwright 브라우저 설치 (의존성은 이미 root에서 설치됨)
+RUN python -m playwright install chromium
+
+# USER 설정 제거: docker-compose에서 root로 실행하도록 설정
+# USER airflow
+
+# root 사용자로 전환하여 root에서도 playwright 브라우저 설치
+USER root
+RUN pip install --no-cache-dir playwright && \
+    python -m playwright install chromium && \
+    python -m playwright install-deps chromium || true
+
+# root 사용자가 airflow 사용자의 playwright 브라우저를 사용할 수 있도록 심볼릭 링크 생성
+RUN mkdir -p /root/.cache/ms-playwright && \
+    ln -sf /home/airflow/.cache/ms-playwright/* /root/.cache/ms-playwright/ 2>/dev/null || true
+
+WORKDIR /opt/airflow
+
+# 포트 노출은 docker-compose.yml에서 webserver 서비스에만 명시적으로 설정됨
+# 스케줄러는 웹 포트를 사용하지 않으므로 EXPOSE 제거

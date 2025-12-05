@@ -1,0 +1,86 @@
+# ========================
+# Environment variables
+# ========================
+# 모든 하위 폴더까지 .env류는 무시
+**/.env
+**/.env.*           # .env.local, .env.dev 등
+
+# 템플릿/예시는 커밋 허용
+!**/.env.example
+!**/.env.template
+
+# 혹시 서브프로젝트에서 따로 쓸 때(이미 포함되지만 명시)
+# backend/.env
+# ai-service/.env
+
+# ========================
+# Docker volumes (로컬 데이터 디렉토리 사용 시)
+# ========================
+postgres_data/
+redis_data/
+mongodb_data/
+chromadb_data/
+
+
+
+# ========================
+# Logs
+# ========================
+*.log
+logs/
+backend_logs/
+ai_logs/
+nginx_logs/
+
+# ========================
+# IDE
+# ========================
+.idea/
+.vscode/
+*.iml
+*.swp
+*.swo
+*~
+
+# ========================
+# OS
+# ========================
+.DS_Store
+Thumbs.db
+
+# ========================
+# Python
+# ========================
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+venv/
+env/
+
+# ========================
+# Java / Gradle
+# ========================
+*.class
+target/
+build/
+.gradle/
+
+# ========================
+# Docker / Local-only
+# ========================
+# ❌ (중요) compose 파일은 "변수만" 쓰도록 하고 커밋 대상에 둔다. 팀원 모두 동일 로컬 환경 띄우기 위함.
+docker-compose-local.yml   
+
+# 이것도 백앤드용 더미파일
+/backend/src/main/resources/db/migration-dev/*
+
+# ========================
+# Temp
+# ========================
+tmp/
+temp/
+*.tmp
+
+# Keys
+*.pem

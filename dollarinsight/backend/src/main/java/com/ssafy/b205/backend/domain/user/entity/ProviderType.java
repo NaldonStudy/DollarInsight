@@ -1,0 +1,5 @@
+package com.ssafy.b205.backend.domain.user.entity;
+
+public enum ProviderType {
+    GOOGLE, KAKAO
+}

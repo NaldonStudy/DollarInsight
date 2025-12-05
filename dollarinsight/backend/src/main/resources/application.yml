@@ -1,0 +1,144 @@
+server:
+  port: ${SERVER_PORT:9090}
+  servlet:
+    encoding:
+      charset: UTF-8
+      force: true
+      enabled: true
+
+springdoc:
+  api-docs.path: /v3/api-docs
+  swagger-ui.path: /swagger-ui
+
+spring:
+  config:
+    import: optional:file:.env[.properties]
+
+  # 기본 활성 프로필은 local
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:local}
+
+  docker:
+    compose:
+      lifecycle-management: none # IDE가 docker-compose 자동 기동하지 않도록
+
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+    driver-class-name: ${SPRING_DATASOURCE_DRIVER_CLASS_NAME:org.postgresql.Driver}
+
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+
+  jpa:
+    hibernate:
+      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:validate}
+    open-in-view: false
+    show-sql: ${SPRING_JPA_SHOW_SQL:false}
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+        dialect: ${SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT:org.hibernate.dialect.PostgreSQLDialect}
+        format_sql: ${SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL:true}
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+
+  data:
+    mongodb:
+      host: ${SPRING_DATA_MONGODB_HOST:127.0.0.1}
+      port: ${SPRING_DATA_MONGODB_PORT:27017}
+      database: ${SPRING_DATA_MONGODB_DATABASE:dollar_insight}
+      username: ${SPRING_DATA_MONGODB_USERNAME:}
+      password: ${SPRING_DATA_MONGODB_PASSWORD:}
+      authentication-database: ${SPRING_DATA_MONGODB_AUTHENTICATION_DATABASE:}
+    redis:
+      host: ${SPRING_REDIS_HOST:127.0.0.1}
+      port: ${SPRING_REDIS_PORT:6379}
+      password: ${SPRING_REDIS_PASSWORD:}
+      timeout: 2s
+      client-type: lettuce
+
+  cache:
+    type: redis
+    redis:
+      time-to-live: 5m
+
+management:
+  endpoints:
+    web:
+      base-path: /actuator
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when-authorized
+      probes:
+        enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+  health:
+    redis:
+      enabled: true
+    mongo:
+      enabled: true
+    db:
+      enabled: true
+
+logging:
+  level:
+    root: ${LOGGING_LEVEL_ROOT:INFO}
+    com.ssafy.b205: ${LOGGING_LEVEL_COM_DOLLARINSIGHT:DEBUG}
+  file:
+    path: ${LOGGING_FILE_PATH:./logs}
+
+app:
+  jwt:
+    # (선택1) Base64 인코딩된 시크릿
+    secret-base64: ${APP_JWT_SECRET_BASE64:}
+    # (선택2) 일반 문자열 시크릿
+    secret: ${APP_JWT_SECRET:}
+    access-ttl-seconds: ${APP_JWT_ACCESS_TTL_SECONDS:3600}
+    refresh-ttl-days: ${APP_JWT_REFRESH_TTL_DAYS:28}
+    refresh-pepper: ${APP_JWT_REFRESH_PEPPER:}
+
+  cors:
+    allowed-origins: >
+      http://k13b205.p.ssafy.io,
+      https://k13b205.p.ssafy.io,
+      http://localhost,
+      http://localhost:3000,
+      http://localhost:50645,
+      http://localhost:56113,
+      http://localhost:*,
+      http://127.0.0.1:*,
+      https://localhost:*,
+      https://127.0.0.1:*
+
+  market:
+    fx:
+      usd-krw: ${APP_MARKET_FX_USD_KRW:1350.0}
+
+  oauth:
+    kakao:
+      timeout-seconds: ${KAKAO_TIMEOUT_SECONDS:5}
+      allow-default-redirect: ${KAKAO_ALLOW_DEFAULT_REDIRECT:false} # 기본 OFF
+    google:
+      timeout-seconds: ${GOOGLE_TIMEOUT_SECONDS:5}
+      allow-default-redirect: ${GOOGLE_ALLOW_DEFAULT_REDIRECT:false}
+
+external:
+  chromadb:
+    base-url: ${CHROMADB_BASE_URL:http://127.0.0.1:9000}
+
+fastai:
+  base-url: ${FASTAI_BASE_URL:http://localhost:8000}
+  connect-timeout-ms: 3000
+  read-timeout-ms: 600000 # 10분 (SSE 스트림 타임아웃)

@@ -1,0 +1,45 @@
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+
+  data:
+    redis:
+      password: ${SPRING_REDIS_PASSWORD} # default 없이 강제
+
+management:
+  endpoint:
+    health:
+      show-details: never # 프로덕션에서는 상세 헬스 비공개
+
+logging:
+  level:
+    root: INFO
+    com.ssafy.b205: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+app:
+  oauth:
+    kakao:
+      client-id: ${KAKAO_REST_API_KEY}
+      client-secret: ${KAKAO_CLIENT_SECRET}
+      default-redirect-uri: https://k13b205.p.ssafy.io/auth/callback/kakao
+      allow-default-redirect: ${KAKAO_ALLOW_DEFAULT_REDIRECT:false} # 기본 OFF, 켤 땐 env로 true
+    google:
+      client-id: ${GOOGLE_CLIENT_ID}
+      client-secret: ${GOOGLE_CLIENT_SECRET}
+      default-redirect-uri: https://k13b205.p.ssafy.io/auth/callback/google
+      allow-default-redirect: ${GOOGLE_ALLOW_DEFAULT_REDIRECT:false}
+# (선택) 필수 비밀/주소는 지정 안되면 부팅 실패하도록 강제
+# spring:
+#   datasource:
+#     url: ${SPRING_DATASOURCE_URL:?SPRING_DATASOURCE_URL is required in prod}
+#     username: ${SPRING_DATASOURCE_USERNAME:?SPRING_DATASOURCE_USERNAME is required in prod}
+#     password: ${SPRING_DATASOURCE_PASSWORD:?SPRING_DATASOURCE_PASSWORD is required in prod}

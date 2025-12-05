@@ -1,0 +1,236 @@
+x-airflow-common:
+  &airflow-common
+  image: imtaewon/dollar-airflow:${AIRFLOW_VERSION:-latest}
+  env_file:
+    - /opt/S13P31B205/ai-service/.env  # 상위 디렉토리의 .env 파일 사용 (절대 경로)
+  environment:
+    &airflow-common-env
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    # ⚠️ 민감 정보: Airflow DB 비밀번호는 환경 변수로 설정하세요
+    # 기본값: airflow (개발 환경용, 프로덕션에서는 반드시 변경)
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:${AIRFLOW_DB_PASSWORD:-airflow}@postgres:5432/airflow
+    AIRFLOW__CORE__FERNET_KEY: ''
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'false'
+    AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+    AIRFLOW__API__AUTH_BACKENDS: 'airflow.api.auth.backend.basic_auth'
+    AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: 'true'
+    AIRFLOW__WEBSERVER__WEB_SERVER_PORT: '8090'
+    # Airflow 병렬성 제한 설정 (리소스 최적화)
+    # AI 학습 DAG 고려하여 적절한 병렬성 설정
+    AIRFLOW__CORE__PARALLELISM: '8'  # 전체 시스템 동시 실행 태스크 수 제한 (기본값: 32, AI 학습 DAG 고려)
+    AIRFLOW__CORE__DAG_CONCURRENCY: '4'  # DAG별 동시 실행 태스크 수 제한 (기본값: 16, AI 학습 DAG 고려)
+    AIRFLOW__SCHEDULER__MAX_THREADS: '2'  # 스케줄러 스레드 수 (기본값: 2)
+    AIRFLOW__SCHEDULER__JOB_HEARTBEAT_SEC: '1800'  # 스케줄러 실행 간격 30분 (1800초, 기본값: 5초)
+    AIRFLOW__WEBSERVER__WORKERS: '2'  # 웹서버 워커 수 (기본값: 4)
+    _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:-}
+    # Reddit API 인증 정보 (OAuth 사용 필수)
+    # Reddit API는 client_credentials grant를 지원하지 않습니다
+    # Password grant만 지원하므로 REDDIT_PASSWORD가 필요합니다
+    # 구글 계정 로그인 시에도 Reddit 계정에 비밀번호를 추가로 설정할 수 있습니다
+    # Reddit 설정: https://www.reddit.com/prefs/apps 에서 앱 확인
+    # 앱 타입: personal use script (script 타입 - password grant 지원)
+    # ⚠️ 민감 정보: .env 파일에서 설정하세요
+    # env_file과 함께 environment에서도 명시적으로 설정 (env_file이 제대로 작동하지 않을 경우 대비)
+    REDDIT_CLIENT_ID: ${REDDIT_CLIENT_ID}
+    REDDIT_CLIENT_SECRET: ${REDDIT_CLIENT_SECRET}
+    REDDIT_USERNAME: ${REDDIT_USERNAME}
+    REDDIT_PASSWORD: ${REDDIT_PASSWORD}
+    # MongoDB 설정
+    MONGODB_HOST: ${MONGODB_HOST:-mongodb}
+    MONGODB_PORT: ${MONGODB_PORT:-27017}
+    MONGODB_DB: ${MONGODB_DB:-dollar_insight}
+    MONGODB_COLLECTION: ${MONGODB_COLLECTION:-investing_news}
+    MONGODB_NEWS_COLLECTION: ${MONGODB_NEWS_COLLECTION:-investing_news}
+    MONGODB_PERSONA_COLLECTION: ${MONGODB_PERSONA_COLLECTION:-news_persona_analysis}
+    MONGODB_COMPANY_COLLECTION: ${MONGODB_COMPANY_COLLECTION:-company_analysis}
+    # MongoDB 인증 정보 (env_file 또는 환경 변수에서 읽어옴)
+    # ⚠️ 민감 정보: .env 파일에서 설정하세요
+    # docker-compose.yml의 MONGO_USER, MONGO_PASSWORD와 동일한 값 사용
+    # .env 파일에 MONGO_USER와 MONGO_PASSWORD가 설정되어 있으면 자동으로 사용됨
+    MONGODB_USER: ${MONGODB_USER:-${MONGO_USER}}
+    MONGODB_PASSWORD: ${MONGODB_PASSWORD:-${MONGO_PASSWORD}}
+    MONGODB_AUTH_SOURCE: ${MONGODB_AUTH_SOURCE:-admin}
+    # ChromaDB 설정
+    CHROMADB_URL: ${CHROMADB_URL:-3.34.50.3}
+    CHROMADB_PORT: ${CHROMADB_PORT:-9000}
+    CHROMADB_COLLECTION_NAME: ${CHROMADB_COLLECTION_NAME:-news_bge_m3}
+    # OpenAI API (GMS)
+    GMS_API_KEY: ${GMS_API_KEY:-}
+    # BGE-M3 모델 (선택사항)
+    BGE_M3_MODEL_PATH: ${BGE_M3_MODEL_PATH:-}
+    # FastAPI 서버 URL (뉴스 분석용)
+    # Linux에서는 host.docker.internal이 작동하지 않으므로 컨테이너 이름 사용
+    FASTAPI_URL: ${FASTAPI_URL:-http://dollar-insight-ai-service:8000}
+  volumes:
+    - ./dags:/opt/airflow/dags
+    - ./utils:/opt/airflow/utils
+    - ./data:/opt/airflow/data
+    - ./logs:/opt/airflow/logs
+    - ./plugins:/opt/airflow/plugins
+    - /opt/S13P31B205/ai-service/.env:/opt/airflow/.env:ro  # .env 파일 읽기 전용 마운트
+    - ./requirements_airflow.txt:/opt/airflow/requirements_airflow.txt
+    - airflow-hf-cache:/opt/airflow/.cache/huggingface
+  user: "0:0"  # root로 실행하여 권한 문제 해결
+  networks:
+    - airflow-network
+    - dollar-insight-network
+
+services:
+  postgres:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - postgres-db-volume:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airflow"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: always
+    networks:
+      - airflow-network
+      - dollar-insight-network
+
+  airflow-webserver:
+    <<: *airflow-common
+    command: webserver
+    ports:
+      - "8090:8090"
+    mem_limit: 2.5g  # 메모리 사용량 제한 (최대 2.5GB) - OOM 방지 및 안정성 확보
+    mem_reservation: 512m  # 최소 메모리 보장
+    cpus: 0.5  # CPU 사용량 제한 (최대 0.5코어) - 서버 총량(4코어)의 12.5%
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8090/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-scheduler:
+    <<: *airflow-common
+    command: scheduler
+    environment:
+      <<: *airflow-common-env
+      AIRFLOW__WEBSERVER__WEB_SERVER_PORT: ''
+    mem_limit: 6g  # 메모리 사용량 제한 (최대 6GB) - 서버 총량(16GB)의 약 37.5%
+    mem_reservation: 1g  # 최소 메모리 보장
+    cpus: 1.5  # CPU 사용량 제한 (최대 1.5코어) - 서버 총량(4코어)의 37.5%
+    healthcheck:
+      test: ["CMD-SHELL", 'airflow jobs check --job-type SchedulerJob --hostname "$${HOSTNAME}"']
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-init:
+    <<: *airflow-common
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        function ver() {
+          printf "%04d%04d%04d%04d" $${1//./ }
+        }
+        airflow_version=$$(/entrypoint airflow version 2>/dev/null | head -1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || echo "2.9.0")
+        airflow_version_comparable=$$(ver $${airflow_version})
+        min_airflow_version=2.2.0
+        min_airflow_version_comparable=$$(ver $${min_airflow_version})
+        if (( airflow_version_comparable < min_airflow_version_comparable )); then
+          echo
+          echo -e "\033[1;31mERROR!!!: Too old Airflow version $${airflow_version}!\033[0m"
+          echo "Minimum required version: $${min_airflow_version}"
+          echo
+          exit 1
+        fi
+        if [[ -z "$${AIRFLOW_UID}" ]]; then
+          echo
+          echo -e "\033[1;33mWARNING!!!: AIRFLOW_UID not set!\033[0m"
+          echo "If you are on Linux, you SHOULD follow the instructions below to set "
+          echo "AIRFLOW_UID environment variable, otherwise files will be owned by root."
+          echo "For other operating systems you can safely ignore this warning"
+          echo "you can get your AIRFLOW_UID by executing 'id -u' command in the terminal."
+          echo
+        fi
+        mkdir -p /sources/logs /sources/dags /sources/plugins /sources/data
+        chown -R "$${AIRFLOW_UID:-1000}:0" /sources/{logs,dags,plugins,data}
+        
+        # Hugging Face 캐시 디렉토리 생성 및 권한 설정
+        mkdir -p /opt/airflow/.cache/huggingface
+        chown -R "$${AIRFLOW_UID:-1000}:0" /opt/airflow/.cache
+        chmod -R 755 /opt/airflow/.cache
+        
+        # PostgreSQL 연결 대기 및 확인 (최대 60초)
+        echo "Waiting for PostgreSQL to be ready..."
+        db_counter=0
+        db_max_attempts=30
+        while [ $$db_counter -lt $$db_max_attempts ]; do
+          if /entrypoint airflow db check >/dev/null 2>&1; then
+            echo "✅ PostgreSQL connection successful!"
+            sleep 2
+            break
+          fi
+          db_counter=$$((db_counter + 1))
+          echo "PostgreSQL is not ready yet. Waiting... ($$db_counter/$$db_max_attempts)"
+          sleep 2
+        done
+        
+        # 명시적으로 DB 초기화 실행
+        echo "Initializing Airflow database..."
+        /entrypoint airflow db init || {
+          echo "⚠️ DB init failed, trying migrate instead..."
+          /entrypoint airflow db migrate || {
+            echo "❌ Database initialization failed!"
+            exit 1
+          }
+        }
+        echo "✅ Database initialized successfully!"
+        
+        # 웹 사용자 생성 (이미 존재하면 스킵)
+        echo "Creating Airflow web user..."
+        /entrypoint airflow users create \
+          --username $${_AIRFLOW_WWW_USER_USERNAME:-airflow} \
+          --firstname Airflow \
+          --lastname Admin \
+          --role Admin \
+          --email airflow@example.com \
+          --password $${_AIRFLOW_WWW_USER_PASSWORD:-airflow} \
+          2>&1 | grep -v "already exists" || echo "User already exists or created"
+        
+        echo "✅ Airflow initialization completed!"
+        /entrypoint airflow version
+    environment:
+      <<: *airflow-common-env
+      _AIRFLOW_WWW_USER_USERNAME: ${_AIRFLOW_WWW_USER_USERNAME:-airflow}
+      _AIRFLOW_WWW_USER_PASSWORD: ${_AIRFLOW_WWW_USER_PASSWORD:-airflow}
+    user: "0:0"
+    volumes:
+      - .:/sources
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres-db-volume:
+  airflow-hf-cache:
+
+networks:
+  airflow-network:
+    driver: bridge
+  dollar-insight-network:
+    external: true
+    name: s13p31b205_dollar-insight-network

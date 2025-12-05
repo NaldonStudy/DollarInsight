@@ -1,0 +1,77 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'dollar-insight'
+    replica: '0'
+
+# Alertmanager configuration (선택적)
+# alerting:
+#   alertmanagers:
+#     - static_configs:
+#         - targets: []
+
+# Load rules once and periodically evaluate them
+# rule_files:
+#   - "alert_rules.yml"
+
+scrape_configs:
+  # Prometheus 자체 모니터링
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+        labels:
+          service: 'prometheus'
+
+  # cAdvisor - Docker 컨테이너 메트릭
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+        labels:
+          service: 'cadvisor'
+    metric_relabel_configs:
+      # container 레이블만 유지하여 불필요한 레이블 제거
+      - source_labels: [__name__]
+        regex: 'container_.*'
+        action: keep
+
+  # Spring Boot Backend (Actuator Prometheus 엔드포인트)
+  # 활성화하려면 Backend에서 Actuator Prometheus 엔드포인트 설정 필요
+  - job_name: 'backend'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['backend:9090']
+        labels:
+          service: 'backend'
+          app: 'spring-boot'
+
+  # FastAPI AI Service (Prometheus 메트릭 엔드포인트)
+  # 활성화하려면 AI Service에서 /metrics 엔드포인트 구현 필요
+  - job_name: 'ai-service'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['ai-service:8000']
+        labels:
+          service: 'ai-service'
+          app: 'fastapi'
+
+  # PostgreSQL Exporter (선택적 - 나중에 추가 가능)
+  # - job_name: 'postgres'
+  #   static_configs:
+  #     - targets: ['postgres-exporter:9187']
+  #       labels:
+  #         service: 'postgres'
+
+  # Redis Exporter (선택적 - 나중에 추가 가능)
+  # - job_name: 'redis'
+  #   static_configs:
+  #     - targets: ['redis-exporter:9121']
+  #       labels:
+  #         service: 'redis'
+
+  # MongoDB Exporter (선택적 - 나중에 추가 가능)
+  # - job_name: 'mongodb'
+  #   static_configs:
+  #     - targets: ['mongodb-exporter:9216']
+  #       labels:
+  #         service: 'mongodb'
