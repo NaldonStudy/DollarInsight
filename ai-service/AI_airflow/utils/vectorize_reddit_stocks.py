@@ -59,7 +59,14 @@ else:
 # ============================================================================
 
 # ChromaDB 설정
-CHROMADB_URL = os.getenv("CHROMADB_URL", "3.34.50.3")
+# ⚠️ 민감 정보: .env 파일에서 반드시 설정하세요
+# <<여기에 ChromaDB 서버 주소를 넣어주세요>>
+# 예시: CHROMADB_URL=xxx.xxx.xxx.xxx (실제 IP 주소) 또는 CHROMADB_URL=localhost (로컬 개발) 또는 CHROMADB_URL=dollar-insight-chromadb (Docker)
+# .env 파일에 다음과 같이 추가: CHROMADB_URL=xxx.xxx.xxx.xxx
+# Docker 네트워크 내에서는 컨테이너 이름(dollar-insight-chromadb) 사용 가능
+CHROMADB_URL = os.getenv("CHROMADB_URL")
+if not CHROMADB_URL:
+    raise ValueError("CHROMADB_URL가 .env 파일에 설정되지 않았습니다.")
 CHROMADB_PORT = int(os.getenv("CHROMADB_PORT", "9000"))
 CHROMADB_COLLECTION_NAME = os.getenv("CHROMADB_REDDIT_COLLECTION_NAME", "reddit_stocks_bge_m3")
 

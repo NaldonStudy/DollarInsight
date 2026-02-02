@@ -15,13 +15,18 @@ spring:
     exclude:
       - org.redisson.spring.starter.RedissonAutoConfigurationV2
 
-  # ===== PostgreSQL (로컬 기본: 127.0.0.1:5432 / DB=dollar_insight / user=postgres / pw=ssafy) =====
+  # ===== PostgreSQL =====
+  # ⚠️ 민감 정보: .env 파일에서 반드시 설정하세요
   datasource:
     # 1순위: SPRING_DATASOURCE_URL
     # 2순위: POSTGRESQL_* 조합해 URL 구성
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${POSTGRESQL_URL:127.0.0.1}:${POSTGRESQL_PORT:5432}/${POSTGRESQL_NAME:dollar_insight}}
     username: ${SPRING_DATASOURCE_USERNAME:${POSTGRESQL_USER:postgres}}
-    password: ${SPRING_DATASOURCE_PASSWORD:${POSTGRESQL_PASSWORD:ssafy}}
+    # <<여기에 PostgreSQL 비밀번호를 넣어주세요>>
+    # 예시: POSTGRESQL_PASSWORD=xxxxxxxxxxxxxxxx (실제 비밀번호, 16자 이상 권장)
+    # .env 파일에 다음과 같이 추가: POSTGRESQL_PASSWORD=xxxxxxxxxxxxxxxx
+    # 주의: 비밀번호는 16자 이상, 대소문자/숫자/특수문자 포함 권장
+    password: ${SPRING_DATASOURCE_PASSWORD:${POSTGRESQL_PASSWORD:?POSTGRESQL_PASSWORD 환경 변수가 설정되지 않았습니다. .env 파일을 확인하세요.}}
     driver-class-name: ${SPRING_DATASOURCE_DRIVER_CLASS_NAME:org.postgresql.Driver}
 
   jpa:

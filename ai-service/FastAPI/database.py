@@ -29,10 +29,26 @@ CHROMADB_URL = os.getenv(
 )  # Docker 네트워크 내에서는 컨테이너 이름 사용
 CHROMADB_PORT = int(os.getenv("CHROMADB_PORT", "8000"))  # ChromaDB 기본 포트는 8000
 
-POSTGRESQL_URL = os.getenv("POSTGRESQL_URL", "3.34.50.3")
+# ⚠️ 민감 정보: .env 파일에서 반드시 설정하세요
+# <<여기에 PostgreSQL 서버 주소를 넣어주세요>>
+# 예시: POSTGRESQL_URL=xxx.xxx.xxx.xxx (실제 IP 주소) 또는 POSTGRESQL_URL=localhost (로컬 개발)
+# .env 파일에 다음과 같이 추가: POSTGRESQL_URL=xxx.xxx.xxx.xxx
+POSTGRESQL_URL = os.getenv("POSTGRESQL_URL")
+if not POSTGRESQL_URL:
+    raise ValueError("POSTGRESQL_URL가 .env 파일에 설정되지 않았습니다.")
 POSTGRESQL_NAME = os.getenv("POSTGRESQL_NAME", "dollar_insight")
-POSTGRESQL_USER = os.getenv("POSTGRESQL_USER", "dopamine")
+# ⚠️ 민감 정보: .env 파일에서 반드시 설정하세요
+# <<여기에 PostgreSQL 사용자명을 넣어주세요>>
+# 예시: POSTGRESQL_USER=xxxxx (실제 사용자명) 또는 POSTGRESQL_USER=postgres (기본값)
+# .env 파일에 다음과 같이 추가: POSTGRESQL_USER=xxxxx
+POSTGRESQL_USER = os.getenv("POSTGRESQL_USER")
+if not POSTGRESQL_USER:
+    raise ValueError("POSTGRESQL_USER가 .env 파일에 설정되지 않았습니다.")
 # ⚠️ 민감 정보: .env 파일에서 POSTGRESQL_PASSWORD를 반드시 설정하세요
+# <<여기에 PostgreSQL 비밀번호를 넣어주세요>>
+# 예시: POSTGRESQL_PASSWORD=xxxxxxxxxxxxxxxx (실제 비밀번호, 16자 이상 권장)
+# .env 파일에 다음과 같이 추가: POSTGRESQL_PASSWORD=xxxxxxxxxxxxxxxx
+# 주의: 비밀번호는 16자 이상, 대소문자/숫자/특수문자 포함 권장
 POSTGRESQL_PASSWORD = os.getenv("POSTGRESQL_PASSWORD")
 if not POSTGRESQL_PASSWORD:
     raise ValueError("POSTGRESQL_PASSWORD가 .env 파일에 설정되지 않았습니다.")
@@ -42,6 +58,11 @@ POSTGRES_CONN = os.getenv(
     f"postgresql://{POSTGRESQL_USER}:{POSTGRESQL_PASSWORD}@{POSTGRESQL_URL}:{POSTGRESQL_PORT}/{POSTGRESQL_NAME}",
 )
 
+# ⚠️ 민감 정보: .env 파일에서 반드시 설정하세요
+# <<여기에 GMS API 키를 넣어주세요>>
+# 예시: GMS_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx (실제 API 키)
+# .env 파일에 다음과 같이 추가: GMS_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+# GMS API 키는 SSAFY GMS 시스템에서 발급받은 키를 사용하세요
 OPENAI_API_KEY = os.getenv("GMS_API_KEY")
 if not OPENAI_API_KEY:
     raise ValueError("GMS_API_KEY가 .env 파일에 설정되지 않았습니다.")
