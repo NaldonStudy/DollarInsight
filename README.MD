@@ -8,7 +8,6 @@ DollarInsight는 한국 투자자들을 위한 AI 기반 미국 주식 분석 �
 
 - **팀**: SSAFY 13기 자율프로젝트 B205팀
 - **개발 기간**: 2024.10 ~ 2024.11
-- **서비스 URL**: https://k13b205.p.ssafy.io
 
 ## ✨ 주요 기능
 
@@ -330,8 +329,6 @@ docker exec mongodb mongosh --eval "db.adminCommand('ping')"
 ## 📞 연락처
 
 - **프로젝트**: SSAFY 13기 B205 자율프로젝트
-- **Git Repository**: https://lab.ssafy.com/s13-final/S13P31B205
-- **서비스 URL**: https://k13b205.p.ssafy.io
 
 ---
 
