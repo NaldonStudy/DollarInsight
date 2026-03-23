@@ -1,6 +1,6 @@
-package com.ssafy.b205.backend.infra.mongo.companyanalysis.doc;
+﻿package com.ssafy.b205.backend.infra.mongo.companyanalysis.doc;
 
-import com.ssafy.b205.backend.domain.companyanalysis.model.PersonaCommentSource;
+import com.ssafy.b205.backend.companyanalysis.domain.model.PersonaCommentSource;
 import lombok.Getter;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
