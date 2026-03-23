@@ -1,7 +1,7 @@
 package com.ssafy.b205.backend.device.adapter.web;
 
 import com.ssafy.b205.backend.device.application.DeviceService;
-import com.ssafy.b205.backend.device.domain.entity.UserDevice;
+import com.ssafy.b205.backend.device.adapter.web.dto.response.DeviceListItemResponse;
 import com.ssafy.b205.backend.infra.docs.DocRefs;
 import com.ssafy.b205.backend.support.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -36,7 +36,7 @@ public class DeviceController {
                     @io.swagger.v3.oas.annotations.responses.ApiResponse(
                             responseCode = "200", description = "OK",
                             content = @Content(mediaType = "application/json",
-                                    array = @ArraySchema(schema = @Schema(implementation = UserDevice.class)),
+                                    array = @ArraySchema(schema = @Schema(implementation = DeviceListItemResponse.class)),
                                     examples = @ExampleObject(value = """
                                         [
                                           { "id":12, "deviceId":"my-phone-01", "platform":"ANDROID", "pushEnabled":true },
@@ -52,8 +52,10 @@ public class DeviceController {
     @Parameter(name = "X-Device-Id", in = ParameterIn.HEADER, required = true,
             description = "디바이스 식별자", example = "11111111-1111-1111-1111-111111111111")
     @GetMapping
-    public ApiResponse<List<UserDevice>> list(@AuthenticationPrincipal String userUuid) {
-        return ApiResponse.ok(deviceService.list(userUuid));
+    public ApiResponse<List<DeviceListItemResponse>> list(@AuthenticationPrincipal String userUuid) {
+        return ApiResponse.ok(deviceService.list(userUuid).stream()
+                .map(DeviceListItemResponse::from)
+                .toList());
     }
 
     @Operation(
